@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
+const { Readable } = require('stream');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const mongoose = require('mongoose');
@@ -29,23 +30,27 @@ const io = new Server(server, {
 
 // --- CLOUDINARY CONFIGURATION ---
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
 // --- SET UP STORAGE ENGINE ---
+// --- UPDATED: OPEN DOOR STORAGE CONFIG ---
 const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: {
-    folder: 'nexus_chat_uploads',
-    allowed_formats: ['jpg', 'png', 'jpeg', 'gif', 'webp', 'pdf', 'docx', 'txt', 'csv'],
-    resource_type: 'auto' 
-  },
+    cloudinary: cloudinary,
+    params: {
+        folder: 'nexus_chat_uploads',
+        // 1. REMOVE 'allowed_formats' entirely to stop the "Unknown format" error
+        // allowed_formats: ['jpg', 'png', ...], 
+
+        // 2. ENSURE this is set to 'auto' so it handles PDFs and Images differently
+        resource_type: 'auto'
+    },
 });
 
 // Enforce a strict 10MB limit to prevent server memory crashes
-const upload = multer({ 
+const upload = multer({
     storage: storage,
     limits: { fileSize: 10 * 1024 * 1024 } // 10 Megabytes
 });
@@ -61,8 +66,14 @@ mongoose.connect(process.env.MONGO_URI)
 app.post("/register", async (req, res) => {
     try {
         const { username, email, password } = req.body;
-        const existingUser = await User.findOne({ email });
-        if (existingUser) return res.status(400).json({ error: "User already exists" });
+
+        // Check for email duplication
+        const existingEmail = await User.findOne({ email });
+        if (existingEmail) return res.status(400).json({ error: "This email is already registered. Try signing in instead." });
+
+        // Check for username duplication
+        const existingUsername = await User.findOne({ username });
+        if (existingUsername) return res.status(400).json({ error: "This username is already taken. Try another username." });
 
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
@@ -71,7 +82,23 @@ app.post("/register", async (req, res) => {
         await newUser.save();
         res.json({ msg: "User registered successfully!" });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        // --- NEW: SURGICAL ERROR INTERCEPTION ---
+        // 11000 is MongoDB's official code for "Duplicate Key"
+        if (err.code === 11000) {
+            // Check which field triggered the duplicate error
+            const duplicatedField = Object.keys(err.keyValue)[0];
+
+            if (duplicatedField === 'email') {
+                return res.status(400).json({ error: "An account with this email already exists." });
+            }
+            if (duplicatedField === 'username') {
+                return res.status(400).json({ error: "This username is already taken. Please choose another." });
+            }
+        }
+
+        // Fallback for any other random server errors
+        console.error("Registration Error:", err);
+        res.status(500).json({ error: "Server error during registration." });
     }
 });
 
@@ -130,9 +157,9 @@ io.on("connection", (socket) => {
 
                 // Notify the original senders so their single ticks instantly turn into double ticks
                 pendingMessages.forEach(msg => {
-                    socket.to(msg.sender.toString()).emit("status_changed", { 
-                        msgId: msg._id, 
-                        status: 'delivered' 
+                    socket.to(msg.sender.toString()).emit("status_changed", {
+                        msgId: msg._id,
+                        status: 'delivered'
                     });
                 });
             }
@@ -210,33 +237,62 @@ io.on("connection", (socket) => {
 // --- FILE UPLOAD ROUTE ---
 // --- BULLETPROOF UPLOAD ROUTE ---
 app.post("/upload", (req, res) => {
-    // We execute multer manually to catch internal size/format errors
     upload.single('file')(req, res, function (err) {
-        
-        // A. Handle Multer-specific errors (like File Too Large)
-        if (err instanceof multer.MulterError) {
-            console.error(`Multer Error: ${err.message}`);
-            return res.status(400).json({ error: `Upload failed: ${err.message}` });
-        } 
-        // B. Handle Cloudinary or Network errors
-        else if (err) {
-            console.error(`Cloudinary Error:`, err);
-            return res.status(500).json({ error: "Server error during file transfer." });
+        if (err) {
+            console.error("--- UPLOAD ERROR LOGGED ---");
+            console.error(err); // This will show the real error in terminal
+            return res.status(400).json({
+                error: err.message || "File type not supported by Cloudinary"
+            });
         }
 
-        // C. Handle empty requests
         if (!req.file) {
-            return res.status(400).json({ error: "No file was provided." });
+            return res.status(400).json({ error: "No file received" });
         }
 
-        // D. Success! Return full metadata
-        res.status(200).json({ 
-            fileUrl: req.file.path, 
+        // Success!
+        res.json({
+            fileUrl: req.file.path,
             fileName: req.file.originalname,
-            fileType: req.file.mimetype,
-            fileSize: req.file.size // Sending size back to frontend
+            fileType: req.file.mimetype
         });
     });
+});
+
+// --- SECURE DOWNLOAD PROXY (WITH ANTI-BOT DISGUISE) ---
+app.get("/download", async (req, res) => {
+    try {
+        const fileUrl = req.query.url;
+        const fileName = req.query.filename || 'document.pdf';
+
+        if (!fileUrl) return res.status(400).send("No file URL provided.");
+
+        // 1. DISGUISE NODE.JS AS A BROWSER
+        const response = await fetch(fileUrl, {
+            headers: {
+                // This tells Cloudinary: "I am a normal Windows Chrome Browser, let me in!"
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+        });
+
+        // 2. LOG EXACT CDN ERRORS
+        if (!response.ok) {
+            console.error(`🚨 CDN Blocked Request: ${response.status} ${response.statusText}`);
+            console.error(`🚨 Attempted URL: ${fileUrl}`);
+            return res.status(response.status).send(`Failed to fetch from Cloudinary. Status: ${response.status}`);
+        }
+
+        const safeFileName = fileName.replace(/[^a-zA-Z0-9.\-_\s()]/g, "").trim();
+
+        res.setHeader('Content-Disposition', `attachment; filename="${safeFileName}"`);
+        res.setHeader('Content-Type', response.headers.get('content-type') || 'application/octet-stream');
+
+        Readable.fromWeb(response.body).pipe(res);
+
+    } catch (err) {
+        console.error("Proxy Download Error:", err);
+        res.status(500).send("Server failed to process the download.");
+    }
 });
 
 // --- 5. CHAT HISTORY ROUTE ---
@@ -292,11 +348,11 @@ app.get("/chats/:userId", async (req, res) => {
 
         for (let msg of messages) {
             const partnerId = msg.sender.toString() === userId ? msg.receiver.toString() : msg.sender.toString();
-            
+
             if (!seenPartners.has(partnerId)) {
                 seenPartners.add(partnerId);
                 const partner = await User.findById(partnerId).select("username");
-                
+
                 // --- NEW: Count unread messages from this specific partner ---
                 const unreadCount = await Message.countDocuments({
                     room: msg.room,

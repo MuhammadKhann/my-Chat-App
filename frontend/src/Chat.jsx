@@ -19,6 +19,7 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
   // --- NEW: FILE UPLOAD STATE ---
   const [selectedFile, setSelectedFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0); // --- NEW: Tracks 0 to 100
   const scrollRef = useRef();
 
   // --- CLOUDINARY DOWNLOAD HELPER ---
@@ -34,6 +35,36 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
     }
     
     return safeUrl;
+  };
+
+  // --- PROGRAMMATIC DOWNLOAD HELPER ---
+  const handleDownload = async (url, fileName) => {
+    try {
+      // 1. Force the Cloudinary URL to be a download link
+      const downloadUrl = url.replace("/upload/", "/upload/fl_attachment/");
+
+      // 2. Fetch the file data
+      const response = await fetch(downloadUrl);
+      const blob = await response.blob();
+
+      // 3. Create a temporary 'virtual' URL for the file blob
+      const blobUrl = window.URL.createObjectURL(blob);
+
+      // 4. Create a hidden link and click it automatically
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = fileName || "document.pdf";
+      document.body.appendChild(link);
+      link.click();
+
+      // 5. Cleanup: remove the link and revoke the blob URL
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error("Download failed:", error);
+      // Fallback: Open in a new tab if the fetch fails
+      window.open(url, "_blank");
+    }
   };
 
   // 1. Generate a unique Room ID based on both User IDs
@@ -68,6 +99,16 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
 
   // --- 3. THE REAL-TIME ENGINE (Ticks & Incoming Messages) ---
   useEffect(() => {
+    // --- CRITICAL RECONNECTION LOGIC ---
+    // If the socket was killed by a previous logout, wake it back up!
+    if (socket && !socket.connected) {
+      socket.connect();
+    }
+
+    if (user) {
+      socket.emit("add_user", user.id);
+    }
+
     socket.on("message_confirmed", ({ tempId, dbId }) => {
       setChatHistory(prev => prev.map(m => m.tempId === tempId ? { ...m, _id: dbId, status: 'sent' } : m));
     });
@@ -199,29 +240,60 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
     let fileName = null;
     let fileType = null;
 
-    // --- NEW: HANDLE FILE UPLOAD FIRST ---
+    // --- UPDATED FILE UPLOAD LOGIC IN sendMessage ---
     if (selectedFile) {
         setIsUploading(true);
+        setUploadProgress(0); // Reset progress at start
+
         const formData = new FormData();
-        formData.append("file", selectedFile);
+        formData.append("file", selectedFile, selectedFile.name);
 
         try {
-            const res = await fetch("http://localhost:5000/upload", {
-                method: "POST",
-                body: formData
+            // --- ENTERPRISE UPLOAD: XHR with Progress Tracking ---
+            const data = await new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open("POST", "http://localhost:5000/upload");
+
+                // 1. Listen to the upload progress
+                xhr.upload.onprogress = (event) => {
+                    if (event.lengthComputable) {
+                        const percentComplete = Math.round((event.loaded / event.total) * 100);
+                        setUploadProgress(percentComplete); // Update the UI in real-time!
+                    }
+                };
+
+                // 2. Handle the final response
+                xhr.onload = () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        resolve(JSON.parse(xhr.responseText));
+                    } else {
+                        reject(new Error("Upload failed on server"));
+                    }
+                };
+
+                // 3. Handle network crashes
+                xhr.onerror = () => reject(new Error("Network Error"));
+
+                // 4. Fire the payload
+                xhr.send(formData);
             });
-            const data = await res.json();
-            if (res.ok) {
+            // -----------------------------------------------------
+
+            if (data.fileUrl) {
                 fileUrl = data.fileUrl;
-                fileName = data.fileName;
-                fileType = data.fileType;
+                fileName = data.fileName || selectedFile.name;
+                fileType = data.fileType || selectedFile.type;
             }
         } catch (err) {
-            console.error("Upload failed", err);
+            console.error("Upload failed:", err);
+            alert("Upload failed. Check console for details.");
             setIsUploading(false);
-            return; // Stop if upload fails
+            setUploadProgress(0);
+            return;
         }
+
         setIsUploading(false);
+        setUploadProgress(0);
         setSelectedFile(null); // Clear selection
     }
 
@@ -270,13 +342,23 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
     }
   };
 
+  // --- ROBUST LOGOUT HANDLER ---
   const handleLogout = () => {
-    // 1. Switch the page first to unmount the Chat component immediately
-    setPage("login");
-    
-    // 2. Then clear the user data and storage
+    // 1. Physically sever the real-time WebSocket connection
+    if (socket) {
+      socket.disconnect();
+    }
+
+    // 2. Clear frontend state
     setUser(null);
+    setSelectedUser(null);
+    setChatHistory([]);
+    
+    // 3. Clear persistence
     localStorage.removeItem("nexusUser");
+    
+    // 4. Navigate to login
+    setPage("login");
   };
 
   return (
@@ -539,10 +621,7 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
                         {/* --- 2. RENDER DOCUMENTS (PDFs, Word, etc.) --- */}
                         {msg.fileUrl && !msg.fileType?.startsWith('image/') && (
                           <a 
-                            href={getDownloadUrl(msg.fileUrl, msg.fileName)}
-                            download={msg.fileName || "document.pdf"}
-                            target="_blank" 
-                            rel="noopener noreferrer"
+                            href={`http://localhost:5000/download?url=${encodeURIComponent(msg.fileUrl)}&filename=${encodeURIComponent(msg.fileName || 'document.pdf')}`}
                             style={{ 
                               display: "flex", 
                               alignItems: "center", 
@@ -601,11 +680,49 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
                 </div>
               )}
 
-              {/* --- NEW: FILE PREVIEW --- */}
+              {/* --- NEW: FILE PREVIEW & PROGRESS BAR --- */}
               {selectedFile && (
-                <div style={{ padding: "8px 16px", background: "var(--bg2)", fontSize: "12px", display: "flex", justifyContent: "space-between" }}>
-                  <span>📎 {selectedFile.name}</span>
-                  <span style={{ cursor: "pointer", color: "#ef4444" }} onClick={() => setSelectedFile(null)}>Remove</span>
+                <div style={{ 
+                  padding: "10px 16px", 
+                  background: "var(--bg2)", 
+                  display: "flex", 
+                  flexDirection: "column", 
+                  gap: "8px",
+                  borderTop: "1px solid var(--border)"
+                }}>
+                  
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", alignItems: "center" }}>
+                    <span style={{ fontWeight: 500, color: "var(--ink)" }}>📎 {selectedFile.name}</span>
+                    
+                    {/* Show 'Remove' if waiting, show 'Percentage' if uploading */}
+                    {!isUploading ? (
+                      <span style={{ cursor: "pointer", color: "#ef4444", fontWeight: "bold" }} onClick={() => setSelectedFile(null)}>
+                        Remove
+                      </span>
+                    ) : (
+                      <span style={{ color: "var(--accent)", fontWeight: "bold" }}>
+                        {uploadProgress}%
+                      </span>
+                    )}
+                  </div>
+
+                  {/* The Animated Progress Bar */}
+                  {isUploading && (
+                    <div style={{ 
+                      width: "100%", 
+                      height: "4px", 
+                      background: "var(--border)", 
+                      borderRadius: "2px", 
+                      overflow: "hidden" 
+                    }}>
+                      <div style={{ 
+                        width: `${uploadProgress}%`, 
+                        height: "100%", 
+                        background: "var(--accent)", 
+                        transition: "width 0.2s ease-out" 
+                      }}></div>
+                    </div>
+                  )}
                 </div>
               )}
 

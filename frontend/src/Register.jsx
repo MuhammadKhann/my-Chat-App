@@ -264,13 +264,14 @@ function Register({ setPage, dark, setDark }) {
                 setPage("login");
             }, 1800);
         } else {
-            // REPLACE ALERT:
-            setErrorMsg(data.error || "Username or Email already taken.");
+            // --- NEW: DYNAMIC ERROR BINDING ---
+            // This will now perfectly display the specific message from our backend update
+            setErrorMsg(data.error || "Registration failed. Please try again.");
             setBtnState("idle");
             setTimeout(() => setErrorMsg(""), 4000); // Clear after 4 seconds
         }
-    } catch {
-        setErrorMsg("Connection failed. Is your server running?");
+    } catch (err) {
+        setErrorMsg("Network error. Is the server running?");
         setBtnState("idle");
         setTimeout(() => setErrorMsg(""), 4000);
     }
