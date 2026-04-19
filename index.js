@@ -5,6 +5,9 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs'); // Needed for password security
+const multer = require('multer');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const cloudinary = require('cloudinary').v2;
 
 // Import your Database Models
 const Message = require("./models/Message");
@@ -22,6 +25,29 @@ const io = new Server(server, {
         origin: "http://localhost:5173",
         methods: ["GET", "POST"]
     }
+});
+
+// --- CLOUDINARY CONFIGURATION ---
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+// --- SET UP STORAGE ENGINE ---
+const storage = new CloudinaryStorage({
+  cloudinary: cloudinary,
+  params: {
+    folder: 'nexus_chat_uploads',
+    allowed_formats: ['jpg', 'png', 'jpeg', 'gif', 'webp', 'pdf', 'docx', 'txt', 'csv'],
+    resource_type: 'auto' 
+  },
+});
+
+// Enforce a strict 10MB limit to prevent server memory crashes
+const upload = multer({ 
+    storage: storage,
+    limits: { fileSize: 10 * 1024 * 1024 } // 10 Megabytes
 });
 
 // --- 2. DATABASE CONNECTION ---
@@ -118,22 +144,29 @@ io.on("connection", (socket) => {
     // 2. Send Message directly to the receiver's personal room
     socket.on("send_message", async (data) => {
         try {
+            // SECURITY CHECK: Don't allow completely empty ghost messages
+            if (!data.text && !data.fileUrl) return;
+
             const newMessage = new Message({
-                sender: data.senderId,
-                receiver: data.receiverId,
-                text: data.text,
+                sender: data.sender || data.senderId,
+                receiver: data.receiver || data.receiverId,
+                text: data.text || "",
+                fileUrl: data.fileUrl || null,
+                fileName: data.fileName || null,
+                fileType: data.fileType || null,
+                fileSize: data.fileSize || null,
                 room: data.room,
                 status: 'sent'
             });
             await newMessage.save();
 
-            // Give the sender the real DB ID so their local tick updates to 'Sent'
+            // 1. Confirm directly to Sender (Updates their tick to single gray)
             socket.emit("message_confirmed", { tempId: data.tempId, dbId: newMessage._id });
 
-            // Push DIRECTLY to the receiver's personal room
-            socket.to(data.receiverId).emit("receive_message", newMessage);
+            // 2. Broadcast to Receiver's personal room
+            socket.to(data.receiver || data.receiverId).emit("receive_message", newMessage);
         } catch (error) {
-            console.error("Message error:", error);
+            console.error("Failed to process socket message:", error);
         }
     });
 
@@ -171,6 +204,38 @@ io.on("connection", (socket) => {
                 break;
             }
         }
+    });
+});
+
+// --- FILE UPLOAD ROUTE ---
+// --- BULLETPROOF UPLOAD ROUTE ---
+app.post("/upload", (req, res) => {
+    // We execute multer manually to catch internal size/format errors
+    upload.single('file')(req, res, function (err) {
+        
+        // A. Handle Multer-specific errors (like File Too Large)
+        if (err instanceof multer.MulterError) {
+            console.error(`Multer Error: ${err.message}`);
+            return res.status(400).json({ error: `Upload failed: ${err.message}` });
+        } 
+        // B. Handle Cloudinary or Network errors
+        else if (err) {
+            console.error(`Cloudinary Error:`, err);
+            return res.status(500).json({ error: "Server error during file transfer." });
+        }
+
+        // C. Handle empty requests
+        if (!req.file) {
+            return res.status(400).json({ error: "No file was provided." });
+        }
+
+        // D. Success! Return full metadata
+        res.status(200).json({ 
+            fileUrl: req.file.path, 
+            fileName: req.file.originalname,
+            fileType: req.file.mimetype,
+            fileSize: req.file.size // Sending size back to frontend
+        });
     });
 });
 

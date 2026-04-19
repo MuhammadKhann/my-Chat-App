@@ -16,7 +16,25 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
   const [isPartnerTyping, setIsPartnerTyping] = useState(false);
   const [chatList, setChatList] = useState([]);
   const [onlineUsers, setOnlineUsers] = useState(new Set());
+  // --- NEW: FILE UPLOAD STATE ---
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [isUploading, setIsUploading] = useState(false);
   const scrollRef = useRef();
+
+  // --- CLOUDINARY DOWNLOAD HELPER ---
+  const getDownloadUrl = (url, fallbackName) => {
+    if (!url) return "#";
+    
+    // 1. Force Cloudinary to send it as an attachment (Download)
+    let safeUrl = url.replace("/upload/", "/upload/fl_attachment/");
+    
+    // 2. Ensure it ends with .pdf if it's a document but missing the extension
+    if (!safeUrl.toLowerCase().endsWith('.pdf') && !safeUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+       safeUrl += ".pdf";
+    }
+    
+    return safeUrl;
+  };
 
   // 1. Generate a unique Room ID based on both User IDs
   const getRoomId = (id1, id2) => [id1, id2].sort().join("_");
@@ -153,35 +171,76 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
     if (user.id) fetchChatList();
   }, [user.id, selectedUser]);
 
+  // --- NEW: STRICT FILE VALIDATION ---
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // 1. Check if the file name actually has a period (an extension)
+    if (!file.name.includes('.')) {
+      alert("⚠️ Invalid File: Your file is missing an extension. Please rename it on your computer to include '.pdf', '.jpg', etc. before uploading.");
+      e.target.value = ""; // Reset the input
+      return;
+    }
+
+    // 2. If it passes, set the file
+    setSelectedFile(file);
+  };
+
   // 6. Send Message Function - With TempId for No Duplicates
-  const sendMessage = (e) => {
+  const sendMessage = async (e) => {
     e.preventDefault();
-    if (!message.trim() || !selectedUser) return;
+    if (!message.trim() && !selectedFile) return;
 
-    const tempId = Date.now().toString(); // Temporary ID for UI tracking
+    const tempId = Date.now().toString();
     const room = getRoomId(user.id, selectedUser._id);
+    
+    let fileUrl = null;
+    let fileName = null;
+    let fileType = null;
 
-    const localMsg = {
-      _id: tempId, // Temporary ID
-      tempId: tempId,
-      sender: user.id,
-      text: message,
-      status: 'sending...', // Visual state
-      createdAt: new Date()
-    };
+    // --- NEW: HANDLE FILE UPLOAD FIRST ---
+    if (selectedFile) {
+        setIsUploading(true);
+        const formData = new FormData();
+        formData.append("file", selectedFile);
 
-    // Add to local UI immediately
-    setChatHistory((prev) => [...prev, localMsg]);
-    setMessage("");
+        try {
+            const res = await fetch("http://localhost:5000/upload", {
+                method: "POST",
+                body: formData
+            });
+            const data = await res.json();
+            if (res.ok) {
+                fileUrl = data.fileUrl;
+                fileName = data.fileName;
+                fileType = data.fileType;
+            }
+        } catch (err) {
+            console.error("Upload failed", err);
+            setIsUploading(false);
+            return; // Stop if upload fails
+        }
+        setIsUploading(false);
+        setSelectedFile(null); // Clear selection
+    }
 
-    // Emit to server
-    socket.emit("send_message", {
+    const msgData = {
       tempId,
       senderId: user.id,
       receiverId: selectedUser._id,
       text: message,
-      room
-    });
+      fileUrl,      // Add file URL
+      fileName,     // Add file Name
+      fileType,     // Add file Type
+      room,
+      createdAt: new Date().toISOString(),
+      status: 'sent'
+    };
+
+    setChatHistory(prev => [...prev, msgData]);
+    socket.emit("send_message", msgData);
+    setMessage("");
   };
 
   const clearChat = async () => {
@@ -439,32 +498,99 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
               
               {/* Messages Area */}
               <div style={{ flex: 1, overflowY: "auto", padding: "20px", display: "flex", flexDirection: "column", gap: "10px" }}>
-                {chatHistory.map((msg, index) => (
-                  <div key={index} style={{ 
-                    alignSelf: (msg.senderId === user.id || msg.sender === user.id) ? "flex-end" : "flex-start",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: (msg.senderId === user.id || msg.sender === user.id) ? "flex-end" : "flex-start"
-                  }}>
-                    <div style={{ 
-                      background: (msg.senderId === user.id || msg.sender === user.id) ? "var(--accent)" : "var(--bg2)",
-                      color: (msg.senderId === user.id || msg.sender === user.id) ? "white" : "var(--ink)",
-                      padding: "8px 14px", borderRadius: "15px", maxWidth: "70%", fontSize: "14px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px"
+                {chatHistory.map((msg, index) => {
+                  const isMe = msg.sender === user.id;
+
+                  return (
+                    <div key={index} style={{ 
+                      display: "flex", 
+                      flexDirection: "column", 
+                      alignItems: isMe ? "flex-end" : "flex-start", 
+                      marginBottom: "12px",
+                      padding: "0 16px"
                     }}>
-                      {msg.text}
-                      {/* Show status icon only for your own messages */}
-                      {(msg.senderId === user.id || msg.sender === user.id) && (
-                        <span style={{ fontSize: '11px', marginLeft: '5px', whiteSpace: 'nowrap' }}>                          {msg.status === 'sending...' && '...'}                          {msg.status === 'sent' && '✓'} 
-                          {msg.status === 'delivered' && '✓✓'}
-                          {msg.status === 'seen' && <span style={{ color: '#34b7f1' }}>✓✓</span>}
-                        </span>
-                      )}
+                      <div style={{
+                        maxWidth: "65%",
+                        padding: "10px 14px",
+                        borderRadius: isMe ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
+                        background: isMe ? "var(--accent)" : "var(--card)",
+                        color: isMe ? "#fff" : "var(--ink)",
+                        boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+                        wordWrap: "break-word"
+                      }}>
+                        
+                        {/* --- 1. RENDER IMAGES --- */}
+                        {msg.fileUrl && msg.fileType?.startsWith('image/') && (
+                          <img 
+                            src={msg.fileUrl} 
+                            alt="attachment" 
+                            style={{ 
+                              maxWidth: "100%", 
+                              maxHeight: "250px", 
+                              borderRadius: "8px", 
+                              marginBottom: msg.text ? "8px" : "0", 
+                              cursor: "pointer",
+                              objectFit: "cover"
+                            }} 
+                            onClick={() => window.open(msg.fileUrl, "_blank")} // Click to enlarge
+                          />
+                        )}
+                        
+                        {/* --- 2. RENDER DOCUMENTS (PDFs, Word, etc.) --- */}
+                        {msg.fileUrl && !msg.fileType?.startsWith('image/') && (
+                          <a 
+                            href={getDownloadUrl(msg.fileUrl, msg.fileName)}
+                            download={msg.fileName || "document.pdf"}
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            style={{ 
+                              display: "flex", 
+                              alignItems: "center", 
+                              gap: "6px", 
+                              color: isMe ? "#fff" : "var(--accent)", 
+                              textDecoration: "none",
+                              background: isMe ? "rgba(255,255,255,0.2)" : "var(--bg2)",
+                              padding: "8px 12px",
+                              borderRadius: "8px",
+                              marginBottom: msg.text ? "8px" : "0",
+                              fontSize: "13px",
+                              fontWeight: 500
+                            }}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"></path>
+                              <polyline points="13 2 13 9 20 9"></polyline>
+                            </svg>
+                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {msg.fileName || "Download File"}
+                            </span>
+                          </a>
+                        )}
+
+                        {/* --- 3. RENDER TEXT --- */}
+                        {msg.text && (
+                          <div style={{ fontSize: "14px", lineHeight: "1.4" }}>
+                            {msg.text}
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Time and Status Ticks */}
+                      <div style={{ fontSize: "10px", color: "var(--ink3)", marginTop: "4px", display: "flex", alignItems: "center", gap: "4px" }}>
+                        {new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {isMe && (
+                          <span style={{ 
+                            color: msg.status === 'seen' ? "#3b82f6" : "inherit",
+                            fontWeight: "bold",
+                            letterSpacing: "-1px"
+                          }}>
+                            {msg.status === 'sent' ? '✓' : '✓✓'}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 <div ref={scrollRef} />
               </div>
 
@@ -475,10 +601,32 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
                 </div>
               )}
 
+              {/* --- NEW: FILE PREVIEW --- */}
+              {selectedFile && (
+                <div style={{ padding: "8px 16px", background: "var(--bg2)", fontSize: "12px", display: "flex", justifyContent: "space-between" }}>
+                  <span>📎 {selectedFile.name}</span>
+                  <span style={{ cursor: "pointer", color: "#ef4444" }} onClick={() => setSelectedFile(null)}>Remove</span>
+                </div>
+              )}
+
               {/* Input Area */}
               <form onSubmit={sendMessage} style={{ padding: "20px", borderTop: "1px solid var(--border)", display: "flex", gap: "10px" }}>
-                <input type="text" value={message} onChange={handleInputChange} placeholder="Type a message..." style={{ flex: 1, padding: "12px", borderRadius: "25px", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--ink)", outline: "none" }} />
-                <button type="submit" style={{ padding: "10px 20px", borderRadius: "25px", border: "none", background: "var(--accent)", color: "white", fontWeight: 600, cursor: "pointer" }}>Send</button>
+                
+                {/* --- NEW: ATTACHMENT BUTTON --- */}
+                <label style={{ cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 10px", color: "var(--ink3)" }}>
+                  <input 
+                    type="file" 
+                    style={{ display: "none" }} 
+                    onChange={handleFileSelect}
+                    disabled={isUploading}
+                  />
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+                  </svg>
+                </label>
+
+                <input type="text" value={message} onChange={handleInputChange} placeholder={isUploading ? "Uploading file..." : "Type a message..."} disabled={isUploading} style={{ flex: 1, padding: "12px", borderRadius: "25px", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--ink)", outline: "none" }} />
+                <button type="submit" disabled={isUploading} style={{ padding: "10px 20px", borderRadius: "25px", border: "none", background: "var(--accent)", color: "white", fontWeight: 600, cursor: isUploading ? "not-allowed" : "pointer" }}>{isUploading ? "..." : "Send"}</button>
               </form>
             </>
           ) : (
