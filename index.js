@@ -56,9 +56,33 @@ const upload = multer({
 });
 
 // --- 2. DATABASE CONNECTION ---
-mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log("✅ MongoDB Connected Successfully!"))
-    .catch(err => console.log("❌ MongoDB Connection Error:", err));
+// --- BULLETPROOF MONGODB CONNECTION ---
+const connectDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI, {
+      // 1. Force IPv4 (This is the magic bullet for the EAI_AGAIN error)
+      family: 4, 
+      
+      // 2. How long to wait for a connection before failing (10 seconds)
+      serverSelectionTimeoutMS: 10000, 
+      
+      // 3. How long a socket stays open if there is network silence (45 seconds)
+      socketTimeoutMS: 45000, 
+    });
+    console.log("✅ MongoDB Connected Successfully!");
+  } catch (err) {
+    console.error("❌ Critical MongoDB Connection Error:", err);
+    // Exit the process with failure so process managers (like PM2) can restart it
+    process.exit(1); 
+  }
+};
+
+// Listen for random network drops after initial connection
+mongoose.connection.on('error', err => {
+  console.error("⚠️ MongoDB Network Error after initial connection:", err);
+});
+
+connectDB();
 
 // --- 3. AUTHENTICATION ROUTES ---
 
@@ -195,6 +219,22 @@ io.on("connection", (socket) => {
         } catch (error) {
             console.error("Failed to process socket message:", error);
         }
+    });
+
+    // --- 1. TYPING INDICATOR RELAY ---
+    socket.on("typing_start", (data) => {
+        // Broadcast specifically to the person they are chatting with
+        socket.to(data.receiver).emit("user_typing", { 
+            senderId: data.senderId, 
+            typing: true 
+        });
+    });
+
+    socket.on("typing_stop", (data) => {
+        socket.to(data.receiver).emit("user_typing", { 
+            senderId: data.senderId, 
+            typing: false 
+        });
     });
 
     // 3. Status Handshake (Delivered / Seen)
