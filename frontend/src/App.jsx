@@ -23,7 +23,12 @@ function App() {
       const parsed = JSON.parse(savedUser);
       
       // 4. Final verification: Does it actually have an ID?
-      return (parsed && (parsed.id || parsed._id)) ? parsed : null;
+      if (parsed && (parsed.id || parsed._id)) {
+        // Normalize: ensure `id` always exists for Chat.jsx
+        parsed.id = parsed._id || parsed.id;
+        return parsed;
+      }
+      return null;
 
     } catch (error) {
       // If ANY of the above fails, nuke the storage and start fresh
@@ -42,14 +47,33 @@ function App() {
     localStorage.setItem("nexus-theme", dark ? "dark" : "light");
   }, [dark]);
 
-  // --- AUTO-NAVIGATE TO CHAT WHEN USER IS LOADED ---
-  // This ensures on every reload, if a user exists (from Remember Me),
-  // the page automatically navigates to chat instead of staying stuck on login
   useEffect(() => {
-    if (user) {
-      setPage("chat");
-    }
-  }, [user]);
+    const checkAuth = async () => {
+      try {
+        const res = await fetch("http://localhost:5000/api/auth/check", {
+          method: "GET",
+          credentials: "include", // Mandatory to send the JWT cookie
+        });
+
+        if (res.ok) {
+          const authenticatedUser = await res.json();
+          // Normalize: MongoDB returns `_id`, but Chat.jsx uses `user.id` everywhere.
+          // Ensure BOTH keys exist so nothing breaks.
+          authenticatedUser.id = authenticatedUser._id || authenticatedUser.id;
+          setUser(authenticatedUser); // Sync UI with the REAL server session
+          setPage("chat");
+        } else {
+          // If cookie is invalid or missing, force logout/login
+          setUser(null);
+          setPage("login");
+        }
+      } catch (error) {
+        console.error("Auth Check failed:", error);
+      }
+    };
+
+    checkAuth();
+  }, []);
 
   return (
     <div>

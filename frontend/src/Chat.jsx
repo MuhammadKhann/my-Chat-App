@@ -1,15 +1,18 @@
 import { useState, useEffect, useRef } from "react";
 import io from "socket.io-client";
 
-// Connect to the backend
-const socket = io.connect("http://localhost:5000");
+// --- UPGRADED: SECURE SOCKET CONNECTION ---
+const socket = io("http://localhost:5000", {
+  withCredentials: true, // CRITICAL: Allows the socket to send the JWT cookie to the server
+  transports: ["websocket"]
+});
 
 function Chat({ user, setPage, setUser, dark, setDark }) {
   const [activeTab, setActiveTab] = useState("chats");
   const [selectedUser, setSelectedUser] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
-  
+
   // --- Messaging States ---
   const [message, setMessage] = useState("");
   const [chatHistory, setChatHistory] = useState([]);
@@ -28,15 +31,15 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
   // --- CLOUDINARY DOWNLOAD HELPER ---
   const getDownloadUrl = (url, fallbackName) => {
     if (!url) return "#";
-    
+
     // 1. Force Cloudinary to send it as an attachment (Download)
     let safeUrl = url.replace("/upload/", "/upload/fl_attachment/");
-    
+
     // 2. Ensure it ends with .pdf if it's a document but missing the extension
     if (!safeUrl.toLowerCase().endsWith('.pdf') && !safeUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
-       safeUrl += ".pdf";
+      safeUrl += ".pdf";
     }
-    
+
     return safeUrl;
   };
 
@@ -84,8 +87,8 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
   useEffect(() => {
     if (selectedUser) {
       const room = getRoomId(user.id, selectedUser._id);
-      
-      fetch(`http://localhost:5000/messages/${room}`)
+
+      fetch(`http://localhost:5000/messages/${room}`, { credentials: 'include' })
         .then(res => res.json())
         .then(data => setChatHistory(data))
         .catch(err => console.error(err));
@@ -94,7 +97,7 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
       socket.emit("mark_room_seen", { room, userId: user.id, partnerId: selectedUser._id });
 
       // Clear the unread count locally for the selected user
-      setChatList(prev => prev.map(chat => 
+      setChatList(prev => prev.map(chat =>
         chat._id === selectedUser._id ? { ...chat, unreadCount: 0 } : chat
       ));
     }
@@ -112,23 +115,42 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
       socket.emit("add_user", user.id);
     }
 
-    socket.on("message_confirmed", ({ tempId, dbId }) => {
-      setChatHistory(prev => prev.map(m => m.tempId === tempId ? { ...m, _id: dbId, status: 'sent' } : m));
+    socket.on("message_confirmed", ({ tempId, dbId, status, createdAt }) => {
+      // Replace the optimistic (temp) message with the confirmed DB record
+      // This is critical: all future status_changed events use the real dbId
+      setChatHistory(prev => prev.map(m =>
+        (m._id === "temp_" + tempId || m.tempId === tempId)
+          ? { ...m, _id: dbId, status: status || 'sent', createdAt: createdAt }
+          : m
+      ));
     });
 
-    socket.on("receive_message", (newMsg) => {
-      // SAFEGUARD: Ignore our own echoed messages entirely
-      const senderId = newMsg.sender?.toString ? newMsg.sender.toString() : newMsg.sender;
-      if (senderId === user.id) return;
+    // ✅ NEW: Handle send errors from the backend
+    socket.on("send_error", ({ error }) => {
+      console.error("❌ Message Send Error:", error);
+      alert(`Message Error: ${error}`);
+      // Optionally remove the failed optimistic message from chat history
+      // This prevents "stuck" messages from cluttering the UI
+    });
 
-      const isChatOpen = selectedUser && selectedUser._id === senderId;
+    socket.on("receive_message", (incomingMsg) => {
+      // THE SAFETY NET: Force the shape to match the UI's expectations
+      const normalizedMsg = {
+        ...incomingMsg,
+        // Fallbacks in case the payload is slightly malformed
+        sender: incomingMsg.sender || incomingMsg.senderId,
+        timestamp: incomingMsg.timestamp || incomingMsg.createdAt || new Date().toISOString(),
+        status: incomingMsg.status || "delivered"
+      };
 
-      if (isChatOpen) {
-        setChatHistory(prev => [...prev, newMsg]);
-        socket.emit("update_status", { msgId: newMsg._id, senderId: newMsg.sender, status: 'seen' });
-      } else {
-        socket.emit("update_status", { msgId: newMsg._id, senderId: newMsg.sender, status: 'delivered' });
-        fetchChatList();
+      setChatHistory((prev) => [...prev, normalizedMsg]);
+
+      // Optional: Tell the server we saw it so the sender gets double ticks!
+      if (selectedUser && normalizedMsg.sender === selectedUser._id) {
+        socket.emit("messages_seen", {
+          senderId: selectedUser._id,
+          receiverId: user.id
+        });
       }
     });
 
@@ -164,6 +186,7 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
 
     return () => {
       socket.off("message_confirmed");
+      socket.off("send_error");
       socket.off("receive_message");
       socket.off("status_changed");
       socket.off("room_marked_seen");
@@ -185,9 +208,9 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
     // 1. Only tell the server we started if we weren't already typing
     if (!isMeTyping) {
       setIsMeTyping(true);
-      socket.emit("typing_start", { 
-        senderId: user.id, 
-        receiver: selectedUser._id 
+      socket.emit("typing_start", {
+        senderId: user.id,
+        receiver: selectedUser._id
       });
     }
 
@@ -197,16 +220,16 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
     // 3. If we stop typing for 2 seconds, tell the server we stopped
     typingTimeoutRef.current = setTimeout(() => {
       setIsMeTyping(false);
-      socket.emit("typing_stop", { 
-        senderId: user.id, 
-        receiver: selectedUser._id 
+      socket.emit("typing_stop", {
+        senderId: user.id,
+        receiver: selectedUser._id
       });
     }, 2000);
   };
 
   const fetchChatList = async () => {
     try {
-      const res = await fetch(`http://localhost:5000/chats/${user.id}`);
+      const res = await fetch(`http://localhost:5000/chats/${user.id}`, { credentials: 'include' });
       const data = await res.json();
       setChatList(data);
     } catch (err) { console.error(err); }
@@ -236,7 +259,7 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
     if (file.size > MAX_FILE_SIZE_BYTES) {
       // Calculate exactly how big their file is to 2 decimal places
       const actualSizeMB = (file.size / (1024 * 1024)).toFixed(2);
-      
+
       alert(`⚠️ File too large (${MAX_FILE_SIZE_MB}MB max). Your file is ${actualSizeMB}MB.`);
       e.target.value = ""; // Reset the input
       return;
@@ -250,6 +273,19 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
   const sendMessage = async (e) => {
     e.preventDefault();
 
+    // ✅ BULLETPROOF GUARD: Ensure user and selectedUser exist before proceeding
+    if (!user || !user.id) {
+      console.error("❌ CRITICAL: User session lost. Cannot send message.");
+      alert("Session lost. Please log in again.");
+      return;
+    }
+
+    if (!selectedUser || !selectedUser._id) {
+      console.error("❌ CRITICAL: No user selected. Cannot send message.");
+      alert("Please select a user to message.");
+      return;
+    }
+
     // --- INSTANT TYPING CLEAR ON SEND ---
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     if (isMeTyping) {
@@ -261,107 +297,123 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
 
     const tempId = Date.now().toString();
     const room = getRoomId(user.id, selectedUser._id);
-    
+
     let fileUrl = null;
     let fileName = null;
     let fileType = null;
 
     // --- UPDATED FILE UPLOAD LOGIC IN sendMessage ---
     if (selectedFile) {
-        setIsUploading(true);
-        setUploadProgress(0); // Reset progress at start
+      setIsUploading(true);
+      setUploadProgress(0); // Reset progress at start
 
-        const formData = new FormData();
-        formData.append("file", selectedFile, selectedFile.name);
+      const formData = new FormData();
+      formData.append("file", selectedFile, selectedFile.name);
 
-        try {
-            // --- ENTERPRISE UPLOAD: XHR with Progress Tracking ---
-            const data = await new Promise((resolve, reject) => {
-                const xhr = new XMLHttpRequest();
-                xhr.open("POST", "http://localhost:5000/upload");
+      try {
+        // --- ENTERPRISE UPLOAD: XHR with Progress Tracking ---
+        const data = await new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open("POST", "http://localhost:5000/upload");
 
-                // 1. Listen to the upload progress
-                xhr.upload.onprogress = (event) => {
-                    if (event.lengthComputable) {
-                        const percentComplete = Math.round((event.loaded / event.total) * 100);
-                        setUploadProgress(percentComplete); // Update the UI in real-time!
-                    }
-                };
-
-                // 2. Handle the final response
-                xhr.onload = () => {
-                    if (xhr.status >= 200 && xhr.status < 300) {
-                        resolve(JSON.parse(xhr.responseText));
-                    } else {
-                        reject(new Error("Upload failed on server"));
-                    }
-                };
-
-                // 3. Handle network crashes
-                xhr.onerror = () => reject(new Error("Network Error"));
-
-                // 4. Fire the payload
-                xhr.send(formData);
-            });
-            // -----------------------------------------------------
-
-            if (data.fileUrl) {
-                fileUrl = data.fileUrl;
-                fileName = data.fileName || selectedFile.name;
-                fileType = data.fileType || selectedFile.type;
+          // 1. Listen to the upload progress
+          xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable) {
+              const percentComplete = Math.round((event.loaded / event.total) * 100);
+              setUploadProgress(percentComplete); // Update the UI in real-time!
             }
-        } catch (err) {
-            console.error("Upload failed:", err);
-            alert("Upload failed. Check console for details.");
-            setIsUploading(false);
-            setUploadProgress(0);
-            return;
-        }
+          };
 
+          // 2. Handle the final response
+          xhr.onload = () => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve(JSON.parse(xhr.responseText));
+            } else {
+              reject(new Error("Upload failed on server"));
+            }
+          };
+
+          // 3. Handle network crashes
+          xhr.onerror = () => reject(new Error("Network Error"));
+
+          // 4. Fire the payload
+          xhr.send(formData);
+        });
+        // -----------------------------------------------------
+
+        if (data.fileUrl) {
+          fileUrl = data.fileUrl;
+          fileName = data.fileName || selectedFile.name;
+          fileType = data.fileType || selectedFile.type;
+        }
+      } catch (err) {
+        console.error("Upload failed:", err);
+        alert("Upload failed. Check console for details.");
         setIsUploading(false);
         setUploadProgress(0);
+        return;
+      }
+
+      setIsUploading(false);
+      setUploadProgress(0);
     }
 
-    const msgData = {
-      tempId,
-      senderId: user.id,
-      receiverId: selectedUser._id,
+    // 1. CONSTRUCT THE PERFECT LOCAL REPLICA
+    const optimisticMessage = {
+      _id: "temp_" + tempId,               // ✅ Uses the SAME tempId sent to server
+      tempId: tempId,                      // ✅ Stored for reconciliation fallback
+      sender: user.id,                     // Matches your `isMe` check exactly
+      receiver: selectedUser._id,
       text: message,
-      fileUrl,      // Add file URL
-      fileName,     // Add file Name
-      fileType,     // Add file Type
-      room,
-      createdAt: new Date().toISOString(),
-      status: 'sent'
+      fileUrl: fileUrl,                    // From your upload logic
+      fileName: fileName,
+      fileType: fileType,
+      timestamp: new Date().toISOString(), // Used for display until createdAt arrives
+      status: "sent"                       // Instantly triggers the single tick (✓)
     };
 
-    setChatHistory(prev => [...prev, msgData]);
-    socket.emit("send_message", msgData);
-    
-    // Clear inputs ONLY at the very end
+    // 2. INSTANTLY UPDATE THE UI
+    setChatHistory((prev) => [...prev, optimisticMessage]);
+
+    // 3. EMIT TO THE SERVER
+    socket.emit("send_message", {
+      tempId: tempId,                        // ✅ So server can echo it back
+      sender: user.id.toString(),           // ✅ Ensure ID is a string
+      receiver: selectedUser?._id?.toString(), // ✅ Ensure ID is a string
+      text: message,
+      fileUrl: fileUrl,
+      fileName: fileName,
+      fileType: fileType,
+      fileSize: selectedFile?.size || null, // ✅ Include file size
+      room: room,                           // ✅ Always send the room
+      status: "sent"
+    });
+
+    // 4. NOW YOU CAN CLEAR THE INPUTS
     setMessage("");
     setSelectedFile(null);
   };
 
   const clearChat = async () => {
     if (!selectedUser) return;
-    
+
     const confirmDelete = window.confirm(`Are you sure you want to clear all messages with ${selectedUser?.username}?`);
-    
+
     if (confirmDelete) {
       const room = getRoomId(user.id, selectedUser._id);
       try {
         const res = await fetch(`http://localhost:5000/messages/delete/${room}`, {
-          method: "DELETE", // Use the DELETE method
+          method: "DELETE",
+          credentials: 'include',
         });
 
         if (res.ok) {
           setChatHistory([]); // Empty the message window
           // Refresh the sidebar list immediately
           const updatedList = chatList.filter(item => item._id !== selectedUser._id);
-          setChatList(updatedList); 
+          setChatList(updatedList);
           // Optional: Close the window after clearing
-          setSelectedUser(null); 
+          setSelectedUser(null);
           alert("Conversation cleared.");
         }
       } catch (err) {
@@ -371,21 +423,29 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
   };
 
   // --- ROBUST LOGOUT HANDLER ---
-  const handleLogout = () => {
-    // 1. Physically sever the real-time WebSocket connection
+  const handleLogout = async () => {
+    // 1. Tell the server to clear the JWT cookie
+    try {
+      await fetch("http://localhost:5000/api/logout", {
+        method: "POST",
+        credentials: 'include'
+      });
+    } catch { /* ignore network errors on logout */ }
+
+    // 2. Physically sever the real-time WebSocket connection
     if (socket) {
       socket.disconnect();
     }
 
-    // 2. Clear frontend state
+    // 3. Clear frontend state
     setUser(null);
     setSelectedUser(null);
     setChatHistory([]);
-    
-    // 3. Clear persistence
+
+    // 4. Clear persistence
     localStorage.removeItem("nexusUser");
-    
-    // 4. Navigate to login
+
+    // 5. Navigate to login
     setPage("login");
   };
 
@@ -395,7 +455,7 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
       <nav style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 24px", background: "var(--card)", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ width: 28, height: 28, borderRadius: 6, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
           </div>
           <span style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 700, fontSize: 16 }}>Nexus</span>
         </div>
@@ -409,7 +469,7 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
 
       {/* --- Main Dashboard Area --- */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
-        
+
         {/* SIDEBAR */}
         <div style={{ width: "320px", background: "var(--card2)", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column" }}>
           <div style={{ display: "flex", borderBottom: "1px solid var(--border)" }}>
@@ -420,138 +480,138 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
 
           <div style={{ flex: 1, padding: "10px", overflowY: "auto" }}>
             {activeTab === "search" && (
-  <div style={{ padding: "10px" }}>
-    <div style={{ display: "flex", gap: "8px", marginBottom: "15px" }}>
-      <input
-        type="text"
-        placeholder="Search username..."
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        style={{ 
-          flex: 1, 
-          padding: "10px", 
-          borderRadius: "8px", 
-          border: "1px solid var(--border)", 
-          background: "var(--bg2)", 
-          color: "var(--ink)", 
-          outline: "none" 
-        }}
-      />
-      <button 
-        onClick={async () => {
-          console.log("Button clicked, searching for:", searchQuery);
-          const response = await fetch(`http://localhost:5000/users/search?q=${searchQuery}`);
-          const data = await response.json();
-          setSearchResults(data);
-        }}
-        style={{ 
-          padding: "10px 15px", 
-          borderRadius: "8px", 
-          background: "var(--accent)", 
-          color: "white", 
-          border: "none", 
-          cursor: "pointer", 
-          fontWeight: "600" 
-        }}
-      >
-        Find
-      </button>
-    </div>
-
-    {/* Display Results */}
-    {searchResults.length > 0 ? (
-      searchResults.map((u) => (
-        <div 
-          key={u._id} 
-          onClick={() => { setSelectedUser(u); setActiveTab("chats"); setSearchQuery(""); }} 
-          style={{ 
-            padding: "12px", 
-            borderRadius: "10px", 
-            cursor: "pointer", 
-            display: "flex", 
-            alignItems: "center", 
-            gap: "12px", 
-            marginBottom: "8px",
-            background: "var(--bg2)" 
-          }}
-        >
-          <div style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "bold" }}>
-            {u.username[0].toUpperCase()}
-          </div>
-          <span style={{ fontWeight: 500 }}>{u.username}</span>
-        </div>
-      ))
-    ) : (
-      searchQuery.length > 0 && <p style={{ textAlign: "center", fontSize: "12px", color: "var(--ink3)" }}>No users found.</p>
-    )}
-  </div>
-)}
-            {activeTab === "chats" && (
-  <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-    {chatList.length > 0 ? (
-      chatList.map((chat) => (
-        <div 
-          key={chat._id} 
-          onClick={() => setSelectedUser(chat)}
-          style={{ 
-            padding: "12px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: "12px",
-            background: selectedUser?._id === chat._id ? "var(--bg3)" : "transparent",
-            borderBottom: "1px solid var(--border)"
-          }}
-          onMouseOver={(e) => e.currentTarget.style.background = "var(--bg3)"}
-          onMouseOut={(e) => e.currentTarget.style.background = selectedUser?._id === chat._id ? "var(--bg3)" : "transparent"}
-        >
-          <div style={{ width: 40, height: 40, borderRadius: "50%", background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "bold" }}>
-            {chat.username[0].toUpperCase()}
-          </div>
-          <div style={{ flex: 1, overflow: "hidden" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "2px" }}>
-                <span style={{ fontWeight: 600, fontSize: "14px" }}>{chat.username}</span>
-                {onlineUsers.has(chat._id) && (
-                  <div 
-                    title="Online"
-                    style={{ 
-                      width: "8px", 
-                      height: "8px", 
-                      borderRadius: "50%", 
-                      background: "#10b981",
-                      boxShadow: "0 0 4px rgba(16, 185, 129, 0.4)"
-                    }} 
+              <div style={{ padding: "10px" }}>
+                <div style={{ display: "flex", gap: "8px", marginBottom: "15px" }}>
+                  <input
+                    type="text"
+                    placeholder="Search username..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    style={{
+                      flex: 1,
+                      padding: "10px",
+                      borderRadius: "8px",
+                      border: "1px solid var(--border)",
+                      background: "var(--bg2)",
+                      color: "var(--ink)",
+                      outline: "none"
+                    }}
                   />
+                  <button
+                    onClick={async () => {
+                      console.log("Button clicked, searching for:", searchQuery);
+                      const response = await fetch(`http://localhost:5000/users/search?q=${searchQuery}`, { credentials: 'include' });
+                      const data = await response.json();
+                      setSearchResults(data);
+                    }}
+                    style={{
+                      padding: "10px 15px",
+                      borderRadius: "8px",
+                      background: "var(--accent)",
+                      color: "white",
+                      border: "none",
+                      cursor: "pointer",
+                      fontWeight: "600"
+                    }}
+                  >
+                    Find
+                  </button>
+                </div>
+
+                {/* Display Results */}
+                {searchResults.length > 0 ? (
+                  searchResults.map((u) => (
+                    <div
+                      key={u._id}
+                      onClick={() => { setSelectedUser(u); setActiveTab("chats"); setSearchQuery(""); }}
+                      style={{
+                        padding: "12px",
+                        borderRadius: "10px",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "12px",
+                        marginBottom: "8px",
+                        background: "var(--bg2)"
+                      }}
+                    >
+                      <div style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "bold" }}>
+                        {u.username[0].toUpperCase()}
+                      </div>
+                      <span style={{ fontWeight: 500 }}>{u.username}</span>
+                    </div>
+                  ))
+                ) : (
+                  searchQuery.length > 0 && <p style={{ textAlign: "center", fontSize: "12px", color: "var(--ink3)" }}>No users found.</p>
                 )}
               </div>
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "5px" }}>
-                <span style={{ fontSize: "10px", color: "var(--ink3)" }}>
-                  {new Date(chat.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
-                {chat.unreadCount > 0 && (
-                  <div style={{ 
-                    background: "#ef4444", 
-                    color: "white", 
-                    fontSize: "10px", 
-                    fontWeight: "bold", 
-                    padding: "2px 6px", 
-                    borderRadius: "10px",
-                    minWidth: "18px",
-                    textAlign: "center"
-                  }}>
-                    {chat.unreadCount}
-                  </div>
+            )}
+            {activeTab === "chats" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                {chatList.length > 0 ? (
+                  chatList.map((chat) => (
+                    <div
+                      key={chat._id}
+                      onClick={() => setSelectedUser(chat)}
+                      style={{
+                        padding: "12px 16px", cursor: "pointer", display: "flex", alignItems: "center", gap: "12px",
+                        background: selectedUser?._id === chat._id ? "var(--bg3)" : "transparent",
+                        borderBottom: "1px solid var(--border)"
+                      }}
+                      onMouseOver={(e) => e.currentTarget.style.background = "var(--bg3)"}
+                      onMouseOut={(e) => e.currentTarget.style.background = selectedUser?._id === chat._id ? "var(--bg3)" : "transparent"}
+                    >
+                      <div style={{ width: 40, height: 40, borderRadius: "50%", background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "bold" }}>
+                        {chat.username[0].toUpperCase()}
+                      </div>
+                      <div style={{ flex: 1, overflow: "hidden" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "2px" }}>
+                            <span style={{ fontWeight: 600, fontSize: "14px" }}>{chat.username}</span>
+                            {onlineUsers.has(chat._id) && (
+                              <div
+                                title="Online"
+                                style={{
+                                  width: "8px",
+                                  height: "8px",
+                                  borderRadius: "50%",
+                                  background: "#10b981",
+                                  boxShadow: "0 0 4px rgba(16, 185, 129, 0.4)"
+                                }}
+                              />
+                            )}
+                          </div>
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "5px" }}>
+                            <span style={{ fontSize: "10px", color: "var(--ink3)" }}>
+                              {new Date(chat.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            {chat.unreadCount > 0 && (
+                              <div style={{
+                                background: "#ef4444",
+                                color: "white",
+                                fontSize: "10px",
+                                fontWeight: "bold",
+                                padding: "2px 6px",
+                                borderRadius: "10px",
+                                minWidth: "18px",
+                                textAlign: "center"
+                              }}>
+                                {chat.unreadCount}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div style={{ fontSize: "12px", color: "var(--ink3)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {chat.lastMessage}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p style={{ textAlign: "center", marginTop: "20px", fontSize: "12px", color: "var(--ink3)" }}>No messages yet.</p>
                 )}
               </div>
-            </div>
-            <div style={{ fontSize: "12px", color: "var(--ink3)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-              {chat.lastMessage}
-            </div>
-          </div>
-        </div>
-      ))
-    ) : (
-      <p style={{ textAlign: "center", marginTop: "20px", fontSize: "12px", color: "var(--ink3)" }}>No messages yet.</p>
-    )}
-  </div>
-)}
+            )}
           </div>
         </div>
 
@@ -560,9 +620,9 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
           {selectedUser ? (
             <>
               {/* Updated Chat Header with Close and Clear buttons */}
-              <div style={{ 
-                padding: "16px 24px", 
-                borderBottom: "1px solid var(--border)", 
+              <div style={{
+                padding: "16px 24px",
+                borderBottom: "1px solid var(--border)",
                 background: "var(--card)",
                 display: "flex",
                 justifyContent: "space-between",
@@ -578,7 +638,7 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
 
                 <div style={{ display: "flex", gap: "8px" }}>
                   {/* CLEAR CHAT BUTTON */}
-                  <button 
+                  <button
                     onClick={clearChat}
                     title="Delete all messages"
                     style={{
@@ -590,7 +650,7 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
                   </button>
 
                   {/* CLOSE CHAT BUTTON */}
-                  <button 
+                  <button
                     onClick={() => {
                       setSelectedUser(null);
                       setChatHistory([]);
@@ -605,18 +665,18 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
                   </button>
                 </div>
               </div>
-              
+
               {/* Messages Area */}
               <div style={{ flex: 1, overflowY: "auto", padding: "20px", display: "flex", flexDirection: "column", gap: "10px" }}>
                 {chatHistory.map((msg, index) => {
                   const isMe = msg.sender === user.id;
 
                   return (
-                    <div 
-                      key={index} 
-                      style={{ 
-                        display: "flex", 
-                        flexDirection: "column", 
+                    <div
+                      key={index}
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
                         alignItems: isMe ? "flex-end" : "flex-start",
                         marginBottom: "16px",
                         padding: "0 16px"
@@ -634,7 +694,7 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
                         gap: "8px", // MAGIC: Adds perfect spacing ONLY if both text and file exist
                         boxShadow: "0 2px 5px rgba(0,0,0,0.05)"
                       }}>
-                        
+
                         {/* 1. TEXT LAYER (Renders at the top if it exists) */}
                         {msg.text && (
                           <span style={{ wordBreak: "break-word", lineHeight: "1.4", fontSize: "14px" }}>
@@ -644,13 +704,13 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
 
                         {/* 2. IMAGE LAYER (Renders below text) */}
                         {msg.fileUrl && msg.fileType?.startsWith('image/') && (
-                          <img 
-                            src={msg.fileUrl} 
+                          <img
+                            src={msg.fileUrl}
                             alt="Attached content"
-                            style={{ 
-                              maxWidth: "100%", 
-                              maxHeight: "250px", 
-                              objectFit: "cover", 
+                            style={{
+                              maxWidth: "100%",
+                              maxHeight: "250px",
+                              objectFit: "cover",
                               borderRadius: "8px", // Inner border radius looks cleaner
                               cursor: "pointer",
                               border: isMe ? "1px solid rgba(255,255,255,0.2)" : "1px solid var(--border)"
@@ -661,13 +721,13 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
 
                         {/* 3. DOCUMENT LAYER (Renders below text) - Uses our Proxy Download from earlier */}
                         {msg.fileUrl && !msg.fileType?.startsWith('image/') && (
-                          <a 
+                          <a
                             href={`http://localhost:5000/download?url=${encodeURIComponent(msg.fileUrl)}&filename=${encodeURIComponent(msg.fileName || 'document.pdf')}`}
-                            style={{ 
-                              display: "flex", 
-                              alignItems: "center", 
-                              gap: "6px", 
-                              color: isMe ? "#fff" : "var(--accent)", 
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "6px",
+                              color: isMe ? "#fff" : "var(--accent)",
                               textDecoration: "none",
                               background: isMe ? "rgba(255,255,255,0.2)" : "var(--bg)",
                               padding: "10px 12px",
@@ -686,17 +746,17 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
                           </a>
                         )}
                       </div>
-                      
+
                       {/* THE STATUS LAYER (Ticks and Time) */}
-                      <div style={{ 
-                        fontSize: "11px", 
-                        color: "var(--ink3)", 
-                        marginTop: "4px", 
-                        display: "flex", 
+                      <div style={{
+                        fontSize: "11px",
+                        color: "var(--ink3)",
+                        marginTop: "4px",
+                        display: "flex",
                         gap: "4px",
                         alignItems: "center"
                       }}>
-                        <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span>{new Date(msg.createdAt || msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                         {isMe && (
                           <span style={{ color: msg.status === 'seen' ? "#3b82f6" : "inherit", fontWeight: "bold" }}>
                             {msg.status === 'sent' ? '✓' : '✓✓'}
@@ -711,10 +771,10 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
 
               {/* --- TYPING INDICATOR UI --- */}
               {isPartnerTyping && (
-                <div style={{ 
-                  padding: "0px 16px 8px 16px", 
-                  fontSize: "12px", 
-                  color: "var(--accent)", 
+                <div style={{
+                  padding: "0px 16px 8px 16px",
+                  fontSize: "12px",
+                  color: "var(--accent)",
                   fontStyle: "italic",
                   animation: "fadeIn 0.3s ease"
                 }}>
@@ -724,18 +784,18 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
 
               {/* --- NEW: FILE PREVIEW & PROGRESS BAR --- */}
               {selectedFile && (
-                <div style={{ 
-                  padding: "10px 16px", 
-                  background: "var(--bg2)", 
-                  display: "flex", 
-                  flexDirection: "column", 
+                <div style={{
+                  padding: "10px 16px",
+                  background: "var(--bg2)",
+                  display: "flex",
+                  flexDirection: "column",
                   gap: "8px",
                   borderTop: "1px solid var(--border)"
                 }}>
-                  
+
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", alignItems: "center" }}>
                     <span style={{ fontWeight: 500, color: "var(--ink)" }}>📎 {selectedFile.name}</span>
-                    
+
                     {/* Show 'Remove' if waiting, show 'Percentage' if uploading */}
                     {!isUploading ? (
                       <span style={{ cursor: "pointer", color: "#ef4444", fontWeight: "bold" }} onClick={() => setSelectedFile(null)}>
@@ -750,18 +810,18 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
 
                   {/* The Animated Progress Bar */}
                   {isUploading && (
-                    <div style={{ 
-                      width: "100%", 
-                      height: "4px", 
-                      background: "var(--border)", 
-                      borderRadius: "2px", 
-                      overflow: "hidden" 
+                    <div style={{
+                      width: "100%",
+                      height: "4px",
+                      background: "var(--border)",
+                      borderRadius: "2px",
+                      overflow: "hidden"
                     }}>
-                      <div style={{ 
-                        width: `${uploadProgress}%`, 
-                        height: "100%", 
-                        background: "var(--accent)", 
-                        transition: "width 0.2s ease-out" 
+                      <div style={{
+                        width: `${uploadProgress}%`,
+                        height: "100%",
+                        background: "var(--accent)",
+                        transition: "width 0.2s ease-out"
                       }}></div>
                     </div>
                   )}
@@ -770,12 +830,12 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
 
               {/* Input Area */}
               <form onSubmit={sendMessage} style={{ padding: "20px", borderTop: "1px solid var(--border)", display: "flex", gap: "10px" }}>
-                
+
                 {/* --- NEW: ATTACHMENT BUTTON --- */}
                 <label style={{ cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 10px", color: "var(--ink3)" }}>
-                  <input 
-                    type="file" 
-                    style={{ display: "none" }} 
+                  <input
+                    type="file"
+                    style={{ display: "none" }}
                     onChange={handleFileSelect}
                     disabled={isUploading}
                   />
@@ -784,16 +844,16 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
                   </svg>
                 </label>
 
-                <input 
-                  type="text" 
-                  value={message} 
+                <input
+                  type="text"
+                  value={message}
                   onChange={(e) => {
                     setMessage(e.target.value);
                     handleKeystroke();
-                  }} 
-                  placeholder={isUploading ? "Uploading file..." : "Type a message..."} 
-                  disabled={isUploading} 
-                  style={{ flex: 1, padding: "12px", borderRadius: "25px", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--ink)", outline: "none" }} 
+                  }}
+                  placeholder={isUploading ? "Uploading file..." : "Type a message..."}
+                  disabled={isUploading}
+                  style={{ flex: 1, padding: "12px", borderRadius: "25px", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--ink)", outline: "none" }}
                 />
                 <button type="submit" disabled={isUploading} style={{ padding: "10px 20px", borderRadius: "25px", border: "none", background: "var(--accent)", color: "white", fontWeight: 600, cursor: isUploading ? "not-allowed" : "pointer" }}>{isUploading ? "..." : "Send"}</button>
               </form>

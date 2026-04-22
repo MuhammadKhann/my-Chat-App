@@ -203,10 +203,14 @@ function Login({ setPage, dark, setDark, setUser }) {
       const response = await fetch("http://localhost:5000/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: 'include',  // ✅ Lets the browser store the httpOnly JWT cookie
         body: JSON.stringify({ identifier: formData.identifier, password: formData.password }),
       });
       const data = await response.json();
       if (response.ok) {
+        // Normalize: Backend returns `_id`, but Chat.jsx uses `user.id`.
+        data.id = data._id || data.id;
+
         // Only save the session permanently if "Remember Me" is checked
         if (rememberMe) {
             localStorage.setItem("nexusUser", JSON.stringify(data));

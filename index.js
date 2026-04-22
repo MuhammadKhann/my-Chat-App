@@ -5,7 +5,9 @@ const { Readable } = require('stream');
 const { Server } = require('socket.io');
 const cors = require('cors');
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs'); // Needed for password security
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
 const multer = require('multer');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const cloudinary = require('cloudinary').v2;
@@ -15,8 +17,68 @@ const Message = require("./models/Message");
 const User = require("./models/User"); // Added User model
 
 const app = express();
-app.use(cors());
-app.use(express.json()); // Essential to read JSON data from your frontend
+
+// --- ENTERPRISE SECURITY MIDDLEWARE ---
+app.use(cors({
+    origin: "http://localhost:5173", // Exact Vite dev-server URL
+    credentials: true                // Required for cookies to flow cross-origin
+}));
+app.use(express.json());
+app.use(cookieParser());             // Allows Express to read incoming secure cookies
+
+// --- ENTERPRISE JWT & COOKIE ENGINE ---
+const generateTokenAndSetCookie = (userId, res) => {
+    // 1. Create a signed token containing the user's ID
+    const token = jwt.sign({ id: userId }, process.env.JWT_SECRET, {
+        expiresIn: '15d' // Token valid for 15 days
+    });
+
+    // 2. Set the token as a secure cookie in the response
+    res.cookie("jwt", token, {
+        maxAge: 15 * 24 * 60 * 60 * 1000, // 15 days in milliseconds
+        httpOnly: true,     // Prevents JavaScript (XSS) from reading the cookie
+        sameSite: "strict", // Prevents CSRF (Cross-Site Request Forgery) attacks
+        secure: process.env.NODE_ENV !== "development", // Only sends over HTTPS in production
+    });
+
+    return token;
+};
+
+// --- ENTERPRISE AUTH MIDDLEWARE (The Security Guard) ---
+const protectRoute = async (req, res, next) => {
+    try {
+        // 1. Grab the token from the secure cookie
+        const token = req.cookies.jwt;
+        if (!token) {
+            return res.status(401).json({ error: "Unauthorized: No Token Provided" });
+        }
+
+        // 2. Decode and verify the token signature
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (!decoded) {
+            return res.status(401).json({ error: "Unauthorized: Invalid Token" });
+        }
+
+        // 3. Find the user in the DB (excluding password)
+        const user = await User.findById(decoded.id).select("-password");
+        if (!user) {
+            return res.status(404).json({ error: "User not found" });
+        }
+
+        // 4. Attach the user object to the request so the next function can use it
+        req.user = user;
+        next();
+    } catch (err) {
+        console.error("Auth Middleware Error:", err.message);
+        res.status(500).json({ error: "Internal Server Error" });
+    }
+};
+
+// --- CHECK AUTH ROUTE ---
+app.get("/api/auth/check", protectRoute, (req, res) => {
+    // If it passed the protectRoute, req.user is now populated
+    res.status(200).json(req.user);
+});
 
 const server = http.createServer(app);
 
@@ -24,7 +86,8 @@ const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
         origin: "http://localhost:5173",
-        methods: ["GET", "POST"]
+        methods: ["GET", "POST"],
+        credentials: true
     }
 });
 
@@ -104,7 +167,16 @@ app.post("/register", async (req, res) => {
 
         const newUser = new User({ username, email, password: hashedPassword });
         await newUser.save();
-        res.json({ msg: "User registered successfully!" });
+
+        // --- NEW: Generate token and set cookie ---
+        generateTokenAndSetCookie(newUser._id, res);
+
+        // Send the response (Exclude the password for security)
+        res.status(201).json({
+            _id: newUser._id,
+            username: newUser.username,
+            email: newUser.email
+        });
     } catch (err) {
         // --- NEW: SURGICAL ERROR INTERCEPTION ---
         // 11000 is MongoDB's official code for "Duplicate Key"
@@ -126,12 +198,11 @@ app.post("/register", async (req, res) => {
     }
 });
 
-// Login Route (Added here)
+// Login Route — issues a signed JWT cookie on success
 app.post("/login", async (req, res) => {
     try {
-        const { identifier, password } = req.body; // 'identifier' can be email OR username
+        const { identifier, password } = req.body;
 
-        // Find user where either email or username matches the identifier
         const user = await User.findOne({
             $or: [{ email: identifier }, { username: identifier }]
         });
@@ -141,8 +212,11 @@ app.post("/login", async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
 
-        res.json({
-            id: user._id,
+        // --- NEW: Generate token and set cookie ---
+        generateTokenAndSetCookie(user._id, res);
+
+        res.status(200).json({
+            _id: user._id,
             username: user.username,
             email: user.email
         });
@@ -151,11 +225,58 @@ app.post("/login", async (req, res) => {
     }
 });
 
+// --- ENTERPRISE SECURE LOGOUT ROUTE ---
+app.post("/api/logout", (req, res) => {
+    try {
+        // We "clear" the cookie by sending a response that overwrites 
+        // the 'jwt' cookie with an empty string and sets its expiration to 0.
+        res.cookie("jwt", "", { 
+            maxAge: 0,
+            httpOnly: true,
+            sameSite: "strict",
+            secure: process.env.NODE_ENV !== "development"
+        });
+
+        res.status(200).json({ message: "Logged out successfully" });
+    } catch (err) {
+        console.error("Logout Error:", err);
+        res.status(500).json({ error: "Internal Server Error during logout" });
+    }
+});
+
 // --- TRACK ONLINE USERS ---
 const onlineUsers = new Map(); // Maps userId to their current socket ID
 
+// --- SECURE SOCKET IDENTITY CHECK ---
+io.use((socket, next) => {
+  try {
+    // 1. Manually grab the cookie from the handshake headers
+    const cookieHeader = socket.handshake.headers.cookie;
+    if (!cookieHeader) return next(new Error("Authentication error"));
+
+    // 2. Extract the 'jwt' value from the cookie string
+    const token = cookieHeader.split(';').find(c => c.trim().startsWith('jwt=')).split('=')[1];
+    
+    if (!token) return next(new Error("Authentication error"));
+
+    // 3. Verify the token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    socket.userId = decoded.id; // Attach the real User ID to the socket
+    next();
+  } catch (err) {
+    next(new Error("Authentication error"));
+  }
+});
+
 // --- 4. REAL-TIME LOGIC (Socket.io) ---
 io.on("connection", (socket) => {
+  // Use the SECURE ID we just extracted in the middleware
+  const userId = socket.userId; 
+  
+  if (userId) {
+    socket.join(userId.toString());
+    console.log(`✅ User ${userId} secured in private room`);
+  }
     // 1. Every user joins their own personal room on login
     socket.on("join_personal", async (userId) => {
         socket.join(userId);
@@ -193,31 +314,87 @@ io.on("connection", (socket) => {
     });
 
     // 2. Send Message directly to the receiver's personal room
+    // --- BULLETPROOF MESSAGE HANDLER WITH FALLBACK LOGIC ---
     socket.on("send_message", async (data) => {
         try {
-            // SECURITY CHECK: Don't allow completely empty ghost messages
-            if (!data.text && !data.fileUrl) return;
+            // ✅ SAFETY CHECK 1: Ensure sender and receiver IDs are valid
+            if (!data.sender || !data.receiver) {
+                console.error("❌ CRITICAL: Missing sender or receiver ID", { sender: data.sender, receiver: data.receiver });
+                socket.emit("send_error", { error: "Invalid sender or receiver" });
+                return;
+            }
 
+            // ✅ SAFETY CHECK 2: Validate IDs are proper strings or ObjectIds
+            let senderId, receiverId;
+
+            try {
+                // Convert string IDs to proper MongoDB ObjectId format
+                senderId = typeof data.sender === 'string' 
+                    ? new mongoose.Types.ObjectId(data.sender) 
+                    : data.sender;
+                
+                receiverId = typeof data.receiver === 'string' 
+                    ? new mongoose.Types.ObjectId(data.receiver) 
+                    : data.receiver;
+            } catch (idError) {
+                console.error("❌ ObjectId conversion failed:", idError.message);
+                socket.emit("send_error", { error: "Invalid user ID format" });
+                return;
+            }
+
+            // ✅ SAFETY CHECK 3: Calculate room ID as FALLBACK if not provided
+            // This ensures we NEVER have an undefined room field
+            const calculatedRoom = [senderId.toString(), receiverId.toString()].sort().join("_");
+            const room = data.room || calculatedRoom;
+
+            if (!room) {
+                console.error("❌ CRITICAL: Could not determine room ID");
+                socket.emit("send_error", { error: "Could not create chat room" });
+                return;
+            }
+
+            // ✅ VERBOSE LOGGING: Track exactly what's being saved
+            console.log("📤 SENDING MESSAGE:", {
+                from: senderId.toString(),
+                to: receiverId.toString(),
+                room: room,
+                text: data.text?.substring(0, 50) || "(no text)",
+                hasFile: !!data.fileUrl
+            });
+
+            // 1. Save to Database FIRST - with ALL required fields
             const newMessage = new Message({
-                sender: data.sender || data.senderId,
-                receiver: data.receiver || data.receiverId,
+                sender: senderId,
+                receiver: receiverId,
                 text: data.text || "",
                 fileUrl: data.fileUrl || null,
                 fileName: data.fileName || null,
                 fileType: data.fileType || null,
                 fileSize: data.fileSize || null,
-                room: data.room,
-                status: 'sent'
+                room: room,
+                status: "sent"
             });
-            await newMessage.save();
+            
+            const savedMessage = await newMessage.save();
 
-            // 1. Confirm directly to Sender (Updates their tick to single gray)
-            socket.emit("message_confirmed", { tempId: data.tempId, dbId: newMessage._id });
+            console.log("✅ MESSAGE SAVED TO DB:", savedMessage._id);
 
-            // 2. Broadcast to Receiver's personal room
-            socket.to(data.receiver || data.receiverId).emit("receive_message", newMessage);
+            // 2. Confirm back to the SENDER: replace temp ID with real DB _id
+            socket.emit("message_confirmed", {
+                tempId: data.tempId,
+                dbId: savedMessage._id,
+                status: savedMessage.status,
+                createdAt: savedMessage.createdAt
+            });
+
+            // 3. Send to receiver's personal room (where they joined on login)
+            socket.to(receiverId.toString()).emit("receive_message", savedMessage);
+            console.log("📩 MESSAGE EMITTED to receiver's room:", receiverId.toString());
+            
         } catch (error) {
-            console.error("Failed to process socket message:", error);
+            console.error("❌ Real-time Save Error:", error.message);
+            console.error("   Full Stack:", error.stack);
+            socket.emit("send_error", { error: "Failed to save message. Please try again." });
         }
     });
 
@@ -336,7 +513,7 @@ app.get("/download", async (req, res) => {
 });
 
 // --- 5. CHAT HISTORY ROUTE ---
-app.get("/messages", async (req, res) => {
+app.get("/messages", protectRoute, async (req, res) => {
     try {
         const messages = await Message.find();
         res.json(messages);
@@ -345,7 +522,7 @@ app.get("/messages", async (req, res) => {
     }
 });
 // --- USER SEARCH ROUTE ---
-app.get("/users/search", async (req, res) => {
+app.get("/users/search", protectRoute, async (req, res) => {
     try {
         const query = req.query.q;
         console.log("Search received for:", query); // Check your terminal for this!
@@ -366,7 +543,7 @@ app.get("/users/search", async (req, res) => {
 
 
 // --- ROUTE TO GET PRIVATE CHAT HISTORY ---
-app.get("/messages/:room", async (req, res) => {
+app.get("/messages/:room", protectRoute, async (req, res) => {
     try {
         const messages = await Message.find({ room: req.params.room }).sort({ createdAt: 1 });
         res.json(messages);
@@ -376,7 +553,7 @@ app.get("/messages/:room", async (req, res) => {
 });
 
 // --- GET ALL ACTIVE CHATS FOR A USER ---
-app.get("/chats/:userId", async (req, res) => {
+app.get("/chats/:userId", protectRoute, async (req, res) => {
     try {
         const { userId } = req.params;
         const messages = await Message.find({
@@ -416,7 +593,7 @@ app.get("/chats/:userId", async (req, res) => {
 });
 
 // --- UPDATED DELETE ROUTE ---
-app.delete("/messages/delete/:room", async (req, res) => {
+app.delete("/messages/delete/:room", protectRoute, async (req, res) => {
     try {
         const { room } = req.params;
         const result = await Message.deleteMany({ room });
