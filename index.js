@@ -4,6 +4,7 @@ const http = require('http');
 const { Readable } = require('stream');
 const { Server } = require('socket.io');
 const cors = require('cors');
+const rateLimit = require('express-rate-limit');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -25,6 +26,42 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(cookieParser());             // Allows Express to read incoming secure cookies
+
+// CRITICAL FOR DEPLOYMENT: Tells Express to trust the real IP of the user,
+// not the IP of the cloud provider's load balancer (Render, Heroku, AWS, etc.)
+app.set('trust proxy', 1);
+
+// --- RATE LIMITERS (Phase 1.2: Backend Rate Limiting) ---
+
+// 1. Global Limiter: Protects against general DDoS attacks
+const globalLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 1000,                // Limit each IP to 1000 requests per window
+    message: { error: "Too many requests from this IP, please try again later." },
+    standardHeaders: true,    // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false,     // Disable the `X-RateLimit-*` headers
+});
+
+// 2. Auth Limiter: Strictly prevents brute-force password attacks
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10,                  // Limit each IP to 10 login/register attempts per 15 minutes
+    message: { error: "Too many authentication attempts. Please try again in 15 minutes." },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// 3. Upload Limiter: Prevents Cloudinary storage spam/abuse
+const uploadLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 Hour
+    max: 30,                  // Limit each IP to 30 file uploads per hour
+    message: { error: "Upload limit reached. Please try again in an hour." },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// Apply the Global Limiter to ALL API routes by default
+app.use(globalLimiter);
 
 // --- ENTERPRISE JWT & COOKIE ENGINE ---
 const generateTokenAndSetCookie = (userId, res) => {
@@ -150,7 +187,7 @@ connectDB();
 // --- 3. AUTHENTICATION ROUTES ---
 
 // Registration Route
-app.post("/register", async (req, res) => {
+app.post("/register", authLimiter, async (req, res) => {
     try {
         const { username, email, password } = req.body;
 
@@ -199,7 +236,7 @@ app.post("/register", async (req, res) => {
 });
 
 // Login Route — issues a signed JWT cookie on success
-app.post("/login", async (req, res) => {
+app.post("/login", authLimiter, async (req, res) => {
     try {
         const { identifier, password } = req.body;
 
@@ -388,7 +425,11 @@ io.on("connection", (socket) => {
             });
 
             // 3. Send to receiver's personal room (where they joined on login)
-            socket.to(receiverId.toString()).emit("receive_message", savedMessage);
+            // Include sender's username so the receiver's sidebar can display it for new conversations
+            const senderUser = await User.findById(senderId).select("username");
+            const messagePayload = savedMessage.toObject();
+            messagePayload.senderUsername = senderUser?.username || "Unknown";
+            socket.to(receiverId.toString()).emit("receive_message", messagePayload);
             console.log("📩 MESSAGE EMITTED to receiver's room:", receiverId.toString());
             
         } catch (error) {
@@ -453,7 +494,7 @@ io.on("connection", (socket) => {
 
 // --- FILE UPLOAD ROUTE ---
 // --- BULLETPROOF UPLOAD ROUTE ---
-app.post("/upload", (req, res) => {
+app.post("/upload", uploadLimiter, (req, res) => {
     upload.single('file')(req, res, function (err) {
         if (err) {
             console.error("--- UPLOAD ERROR LOGGED ---");

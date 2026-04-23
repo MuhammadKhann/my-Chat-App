@@ -10,6 +10,7 @@ const socket = io("http://localhost:5000", {
 function Chat({ user, setPage, setUser, dark, setDark }) {
   const [activeTab, setActiveTab] = useState("chats");
   const [selectedUser, setSelectedUser] = useState(null);
+  const selectedUserRef = useRef(null); // Ref mirror to avoid stale closures in socket handlers
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
 
@@ -77,6 +78,11 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
   const getRoomId = (id1, id2) => [id1, id2].sort().join("_");
 
   // --- 1. JOIN PERSONAL ROOM ON LOAD ---
+  // Keep the ref in sync with the latest selectedUser state
+  useEffect(() => {
+    selectedUserRef.current = selectedUser;
+  }, [selectedUser]);
+
   useEffect(() => {
     if (user) {
       socket.emit("join_personal", user.id);
@@ -143,15 +149,62 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
         status: incomingMsg.status || "delivered"
       };
 
-      setChatHistory((prev) => [...prev, normalizedMsg]);
+      // Read the LIVE value from the ref, not the stale closure
+      const currentSelectedUser = selectedUserRef.current;
 
-      // Optional: Tell the server we saw it so the sender gets double ticks!
-      if (selectedUser && normalizedMsg.sender === selectedUser._id) {
-        socket.emit("messages_seen", {
-          senderId: selectedUser._id,
-          receiverId: user.id
+      // If the sender's chat is currently open, mark as 'seen' instantly
+      if (currentSelectedUser && normalizedMsg.sender === currentSelectedUser._id) {
+        normalizedMsg.status = "seen";
+        setChatHistory((prev) => [...prev, normalizedMsg]);
+
+        // Tell the server so it updates the DB and notifies the sender (blue double ticks)
+        socket.emit("update_status", {
+          msgId: incomingMsg._id,
+          senderId: (incomingMsg.sender || incomingMsg.senderId).toString(),
+          status: "seen"
+        });
+      } else {
+        // Chat is not open — add as 'delivered' and tell the server
+        setChatHistory((prev) => [...prev, normalizedMsg]);
+
+        // Notify the server so the sender gets double ticks (✓✓)
+        socket.emit("update_status", {
+          msgId: incomingMsg._id,
+          senderId: (incomingMsg.sender || incomingMsg.senderId).toString(),
+          status: "delivered"
         });
       }
+
+      // --- REAL-TIME SIDEBAR UPDATE ---
+      const senderId = (incomingMsg.sender || incomingMsg.senderId).toString();
+      const isChatOpen = currentSelectedUser && senderId === currentSelectedUser._id;
+
+      setChatList((prev) => {
+        const existingIndex = prev.findIndex(chat => chat._id === senderId);
+
+        if (existingIndex !== -1) {
+          // Sender already in the list — update and bump to top
+          const updated = [...prev];
+          const entry = { ...updated[existingIndex] };
+          entry.lastMessage = incomingMsg.text || "📎 File";
+          entry.time = incomingMsg.createdAt || new Date().toISOString();
+          if (!isChatOpen) {
+            entry.unreadCount = (entry.unreadCount || 0) + 1;
+          }
+          updated.splice(existingIndex, 1); // Remove from old position
+          return [entry, ...updated];       // Place at top
+        } else {
+          // New conversation — add a fresh entry at the top
+          const newEntry = {
+            _id: senderId,
+            username: incomingMsg.senderUsername || senderId,
+            lastMessage: incomingMsg.text || "📎 File",
+            time: incomingMsg.createdAt || new Date().toISOString(),
+            unreadCount: isChatOpen ? 0 : 1
+          };
+          return [newEntry, ...prev];
+        }
+      });
     });
 
     socket.on("status_changed", ({ msgId, status }) => {
@@ -179,7 +232,8 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
 
     socket.on("user_typing", (data) => {
       // Only show the indicator if we are actually looking at their chat
-      if (selectedUser && data.senderId === selectedUser._id) {
+      const currentSelectedUser = selectedUserRef.current;
+      if (currentSelectedUser && data.senderId === currentSelectedUser._id) {
         setIsPartnerTyping(data.typing);
       }
     });
@@ -194,7 +248,7 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
       socket.off("user_status_change");
       socket.off("user_typing");
     };
-  }, [selectedUser, user.id]);
+  }, [user.id]);
 
   // 4. Auto-scroll to bottom
   useEffect(() => {
