@@ -29,6 +29,86 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
   const [uploadProgress, setUploadProgress] = useState(0); // --- NEW: Tracks 0 to 100
   const scrollRef = useRef();
 
+  // --- AVATAR UPLOAD STATE ---
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+
+  // --- PRIVACY STATE ---
+  const [showPrivacyMenu, setShowPrivacyMenu] = useState(false);
+
+  // --- PRIVACY UPDATE HANDLER ---
+  const handlePrivacyChange = async (level) => {
+      try {
+          const res = await fetch("http://localhost:5000/api/users/privacy", {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              credentials: "include",
+              body: JSON.stringify({ privacyLevel: level })
+          });
+          const data = await res.json();
+          if (res.ok) {
+              // Normalize ID
+              data.id = data._id || data.id;
+              setUser(data);
+              if (localStorage.getItem("nexusUser")) {
+                  localStorage.setItem("nexusUser", JSON.stringify(data));
+              }
+              setShowPrivacyMenu(false);
+              
+              // Emit real-time change to backend so presence updates instantly
+              socket.emit("privacy_changed", { userId: data.id, privacyLevel: level });
+          }
+      } catch (err) {
+          console.error(err);
+      }
+  };
+
+  // --- ENTERPRISE AVATAR UPLOAD HANDLER ---
+  const handleAvatarUpload = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      // 1. Client-Side Security: Enforce the 5MB limit before hitting the server
+      if (file.size > 5 * 1024 * 1024) {
+          alert("⚠️ Image too large. Please select a photo under 5MB.");
+          e.target.value = ""; // Clear the input
+          return;
+      }
+
+      setIsUploadingAvatar(true);
+      const formData = new FormData();
+      formData.append("avatar", file);
+
+      try {
+          const res = await fetch("http://localhost:5000/api/users/avatar", {
+              method: "POST",
+              credentials: "include", // Mandatory for the JWT Auth Guard
+              body: formData,
+          });
+
+          const data = await res.json();
+
+          if (res.ok) {
+              // Normalize data id in case backend returns _id
+              data.id = data._id || data.id;
+              
+              // 2. Update the React State so the UI changes instantly
+              setUser(data); 
+              
+              // 3. Update Storage so the image persists on refresh depending on rememberMe state
+              if (localStorage.getItem("nexusUser")) {
+                  localStorage.setItem("nexusUser", JSON.stringify(data));
+              }
+          } else {
+              alert(data.error || "Failed to upload avatar.");
+          }
+      } catch (error) {
+          console.error("Avatar Upload Error:", error);
+          alert("Network error. Could not upload avatar.");
+      } finally {
+          setIsUploadingAvatar(false);
+      }
+  };
+
   // --- CLOUDINARY DOWNLOAD HELPER ---
   const getDownloadUrl = (url, fallbackName) => {
     if (!url) return "#";
@@ -161,6 +241,7 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
         socket.emit("update_status", {
           msgId: incomingMsg._id,
           senderId: (incomingMsg.sender || incomingMsg.senderId).toString(),
+          receiverId: user.id,
           status: "seen"
         });
       } else {
@@ -171,6 +252,7 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
         socket.emit("update_status", {
           msgId: incomingMsg._id,
           senderId: (incomingMsg.sender || incomingMsg.senderId).toString(),
+          receiverId: user.id,
           status: "delivered"
         });
       }
@@ -211,8 +293,8 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
       setChatHistory(prev => prev.map(m => m._id === msgId ? { ...m, status } : m));
     });
 
-    socket.on("room_marked_seen", () => {
-      setChatHistory(prev => prev.map(m => ({ ...m, status: 'seen' })));
+    socket.on("room_marked_seen", ({ finalStatus }) => {
+      setChatHistory(prev => prev.map(m => ({ ...m, status: finalStatus || 'seen' })));
     });
 
     // Receive the full list when we first log in
@@ -507,13 +589,114 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
     <div style={{ height: "100vh", display: "flex", flexDirection: "column", background: "var(--bg)", color: "var(--ink)", transition: "background 0.3s" }}>
       {/* --- Top Navigation --- */}
       <nav style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 24px", background: "var(--card)", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 28, height: 28, borderRadius: 6, background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+        
+        <div style={{ display: "flex", alignItems: "center", gap: 15 }}>
+          {/* --- DYNAMIC CLICKABLE AVATAR --- */}
+          <label 
+            htmlFor="avatar-upload" 
+            style={{ 
+              cursor: isUploadingAvatar ? "wait" : "pointer", 
+              position: "relative",
+              display: "block"
+            }}
+            title="Click to change profile picture"
+          >
+            <input 
+              id="avatar-upload" 
+              type="file" 
+              accept="image/jpeg, image/png, image/webp" 
+              style={{ display: "none" }} 
+              onChange={handleAvatarUpload}
+              disabled={isUploadingAvatar}
+            />
+            
+            {/* 1. Show Cloudinary Image if it exists */}
+            {user?.avatar ? (
+              <img 
+                src={user.avatar} 
+                alt="Profile" 
+                style={{ 
+                  width: 40, height: 40, borderRadius: "50%", objectFit: "cover",
+                  border: "2px solid var(--accent)", opacity: isUploadingAvatar ? 0.5 : 1
+                }} 
+              />
+            ) : (
+              <div style={{ 
+                width: 40, height: 40, borderRadius: "50%", background: "var(--accent)", 
+                display: "flex", alignItems: "center", justifyContent: "center", 
+                color: "white", fontWeight: "bold", fontSize: "16px",
+                opacity: isUploadingAvatar ? 0.5 : 1
+              }}>
+                {user?.username?.[0]?.toUpperCase()}
+              </div>
+            )}
+
+            {/* Loading Spinner Overlay */}
+            {isUploadingAvatar && (
+              <div style={{
+                position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
+                display: "flex", alignItems: "center", justifyContent: "center"
+              }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ animation: "spin 1s linear infinite" }}>
+                  <circle cx="12" cy="12" r="10" stroke="#fff" strokeWidth="3" strokeDasharray="30"/>
+                </svg>
+              </div>
+            )}
+          </label>
+
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            <span style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 700, fontSize: 16 }}>{user?.username}</span>
+            <span style={{ fontSize: "11px", color: "var(--ink3)" }}>My Workspace</span>
           </div>
-          <span style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 700, fontSize: 16 }}>Nexus</span>
         </div>
+
         <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
+          {/* --- PRIVACY TOGGLE MENU --- */}
+          <div style={{ position: "relative" }}>
+              <button 
+                  onClick={() => setShowPrivacyMenu(!showPrivacyMenu)}
+                  style={{ cursor: "pointer", background: "var(--bg2)", border: "1px solid var(--border)", padding: "4px 10px", borderRadius: "6px", fontSize: "12px", color: "var(--ink)", display: "flex", alignItems: "center", gap: "6px" }}
+              >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                  Privacy
+              </button>
+
+              {showPrivacyMenu && (
+                  <div style={{ 
+                      position: "absolute", top: "110%", right: 0, width: "220px", 
+                      background: dark ? "#181818" : "#ffffff", 
+                      border: "1px solid var(--border)", borderRadius: "8px", boxShadow: "0 8px 24px rgba(0,0,0,0.4)", zIndex: 9999 
+                  }}>
+                      {[
+                          { id: 'standard', label: '🟢 Public (Default)', desc: 'Show online & blue ticks' },
+                          { id: 'hide_online', label: '🟡 Hide Online', desc: 'Hide typing & online status' },
+                          { id: 'hide_read', label: '🟠 Hide Blue Ticks', desc: 'Shows delivered (✓✓) only' },
+                          { id: 'ghost', label: '👻 Full Ghost Mode', desc: 'Shows sent (✓) only' }
+                      ].map(option => (
+                          <div 
+                              key={option.id}
+                              onClick={() => handlePrivacyChange(option.id)}
+                              style={{ 
+                                  padding: "12px", borderBottom: "1px solid var(--border)", cursor: "pointer",
+                                  background: user?.privacyLevel === option.id ? "var(--bg3)" : "transparent"
+                              }}
+                              onMouseOver={(e) => e.currentTarget.style.background = "var(--bg3)"}
+                              onMouseOut={(e) => e.currentTarget.style.background = user?.privacyLevel === option.id ? "var(--bg3)" : "transparent"}
+                          >
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                                  <div style={{ fontSize: "13px", fontWeight: "600", color: user?.privacyLevel === option.id ? "var(--accent)" : "var(--ink)" }}>
+                                      {option.label}
+                                  </div>
+                                  {user?.privacyLevel === option.id && (
+                                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                  )}
+                              </div>
+                              <div style={{ fontSize: "11px", color: "var(--ink3)", marginTop: "2px" }}>{option.desc}</div>
+                          </div>
+                      ))}
+                  </div>
+              )}
+          </div>
           <button onClick={() => setDark(!dark)} style={{ cursor: "pointer", background: "var(--bg2)", border: "1px solid var(--border)", padding: "4px 10px", borderRadius: "6px", fontSize: "12px", color: "var(--ink)" }}>
             {dark ? "Light Mode" : "Dark Mode"}
           </button>
@@ -589,9 +772,19 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
                         background: "var(--bg2)"
                       }}
                     >
-                      <div style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "bold" }}>
-                        {u.username[0].toUpperCase()}
-                      </div>
+                      {/* --- NEW: DYNAMIC SEARCH RESULT AVATAR --- */}
+                      {u.avatar ? (
+                        <img 
+                          src={u.avatar} 
+                          alt={u.username} 
+                          onError={(e) => { e.target.src = "https://ui-avatars.com/api/?name=" + u.username }}
+                          style={{ width: 34, height: 34, borderRadius: "50%", objectFit: "cover" }} 
+                        />
+                      ) : (
+                        <div style={{ width: 34, height: 34, borderRadius: "50%", background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "bold" }}>
+                          {u.username[0].toUpperCase()}
+                        </div>
+                      )}
                       <span style={{ fontWeight: 500 }}>{u.username}</span>
                     </div>
                   ))
@@ -615,9 +808,19 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
                       onMouseOver={(e) => e.currentTarget.style.background = "var(--bg3)"}
                       onMouseOut={(e) => e.currentTarget.style.background = selectedUser?._id === chat._id ? "var(--bg3)" : "transparent"}
                     >
-                      <div style={{ width: 40, height: 40, borderRadius: "50%", background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "bold" }}>
-                        {chat.username[0].toUpperCase()}
-                      </div>
+                      {/* --- NEW: DYNAMIC SIDEBAR AVATAR --- */}
+                      {chat.avatar ? (
+                        <img 
+                          src={chat.avatar} 
+                          alt={chat.username} 
+                          onError={(e) => { e.target.src = "https://ui-avatars.com/api/?name=" + chat.username }}
+                          style={{ width: 40, height: 40, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} 
+                        />
+                      ) : (
+                        <div style={{ width: 40, height: 40, borderRadius: "50%", background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "bold", flexShrink: 0 }}>
+                          {chat.username[0].toUpperCase()}
+                        </div>
+                      )}
                       <div style={{ flex: 1, overflow: "hidden" }}>
                         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2px" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "2px" }}>
@@ -684,9 +887,19 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
                 flexShrink: 0
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "12px", fontWeight: "bold" }}>
-                    {selectedUser?.username[0].toUpperCase()}
-                  </div>
+                  {/* --- NEW: DYNAMIC CHAT HEADER AVATAR --- */}
+                  {selectedUser?.avatar ? (
+                    <img 
+                      src={selectedUser.avatar} 
+                      alt={selectedUser.username} 
+                      onError={(e) => { e.target.src = "https://ui-avatars.com/api/?name=" + selectedUser.username }}
+                      style={{ width: 32, height: 32, borderRadius: "50%", objectFit: "cover" }} 
+                    />
+                  ) : (
+                    <div style={{ width: 32, height: 32, borderRadius: "50%", background: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: "12px", fontWeight: "bold" }}>
+                      {selectedUser?.username[0].toUpperCase()}
+                    </div>
+                  )}
                   <span style={{ fontWeight: 600 }}>{selectedUser?.username}</span>
                 </div>
 
@@ -719,6 +932,31 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
                   </button>
                 </div>
               </div>
+
+              {/* --- NEW: VISUAL PRIVACY BANNER --- */}
+              {user?.privacyLevel && user.privacyLevel !== 'standard' && (
+                  <div style={{
+                      background: user.privacyLevel === 'ghost' ? "rgba(168, 85, 247, 0.35)" :
+                                  user.privacyLevel === 'hide_read' ? "rgba(249, 115, 22, 0.35)" : 
+                                  "rgba(234, 179, 8, 0.35)",
+                      color: user.privacyLevel === 'ghost' ? "#c084fc" :
+                             user.privacyLevel === 'hide_read' ? "#fb923c" : 
+                             "#facc15",
+                      padding: "8px 24px",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "8px",
+                      borderBottom: "1px solid var(--border)",
+                      flexShrink: 0
+                  }}>
+                      {user.privacyLevel === 'ghost' ? "👻 Ghost Mode Active: You are completely invisible." :
+                       user.privacyLevel === 'hide_read' ? "🟠 Hide Blue Ticks Active: Read receipts are disabled." : 
+                       "🟡 Hide Online Active: Your online presence and typing is hidden."}
+                  </div>
+              )}
 
               {/* Messages Area */}
               <div style={{ flex: 1, overflowY: "auto", padding: "20px", display: "flex", flexDirection: "column", gap: "10px" }}>

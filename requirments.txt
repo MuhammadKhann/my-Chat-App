@@ -1,0 +1,40 @@
+
+
+## 1. Authentication & Identity
+* **Phone-based Onboarding:** Registration via OTP (SMS/WhatsApp/Voice).
+* **Profile Customization:** Display name, bio, animated avatars, and "Status" (24-hour disappearing updates).
+
+## 2. Core Messaging & Real-Time Sync
+* **Text Messaging:** 1-on-1 and Group chats with markdown support (bold, italics, code).
+* **Presence Indicators:** "Online," "Last Seen," and "Typing..." or "Recording..." status.
+* **Threaded Replies:** Replying to specific messages to maintain conversation flow.
+* **Message Editing/Deletion:** Edit sent messages (with history) or "Delete for Everyone."
+* **Starred/Pinned Messages:** Save important info or pin chats to the top of the list.
+
+## 3. Multimedia & File Handling
+* **Voice :** Audio snippets recorded instantly.
+* **Universal File Sharing:** Support for PDFs, ZIPs, APKs, etc., up to 100MB.
+* **In-App Media Player:** Play videos or audio files (with 1.5x/2x speed) without leaving the chat.
+* **Stickers & GIFs:** Integration with Giphy/Tenor and custom animated sticker packs.
+
+## 4. Voice & Video Communication (VoIP)
+* **HD Calling:** 1-on-1 crystal clear audio and video calls via WebRTC.
+* **Group Calling:** Large-scale video conferences with up to 100+ participants.
+* **Screen Sharing:** Ability to share your screen during mobile or desktop calls.
+* **Background Blur/Filters:** Virtual backgrounds or AR filters during video calls.
+* **Call Recording:** Server-side or local recording for meetings (with participant consent).
+
+## 5. Security & Privacy (The "Hard" Requirements)
+* **End-to-End Encryption (E2EE):** Signal Protocol implementation for all 1-on-1 and Group chats.
+* **Secret Chats:** Self-destructing messages with a countdown timer and screenshot alerts.
+* **Privacy Controls:** Blacklisting (Blocking), reporting users, and granular "Who can see my..." settings.
+* **Disappearing Media:** "View Once" photos and videos that delete after being opened.
+
+## 6. Advanced 2026 "Super App" Features
+* **Live Location:** Real-time location tracking for a specific duration (15m, 1h, 8h) .
+
+## 7. Business & Enterprise Tools
+* **Verified Accounts:** Blue/Green checkmarks for authenticated businesses.
+* **Chat Folders:** Organize chats into "Work," "Family," or "Unread" folders.
+
+---

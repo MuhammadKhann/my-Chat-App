@@ -1,0 +1,44 @@
+Here is your structured, production-ready Agile backlog. I have categorized these epics from **highest system criticality** (Security & Scaling) to **lowest** (Advanced Features), so we build on a solid foundation without having to rewrite code later.
+
+---
+
+### 🛡️ Phase 1: Security & Infrastructure (Critical)
+*These items ensure your app cannot be hacked, spammed, or easily broken by malicious users.*
+
+* **1.1 JWT Authentication & HTTP-Only Cookies:** * *Task:* Replace the current `localStorage` JSON saving mechanism with JSON Web Tokens (JWT) stored in secure, HTTP-only cookies to prevent identity spoofing and XSS attacks.
+* **1.2 Backend Rate Limiting:** * *Task:* Implement `express-rate-limit` on the `/login`, `/register`, and `/upload` routes to prevent bots from crashing your server or maxing out your Cloudinary storage.
+* **1.3 Deep File Validation (Magic Bytes):** * *Task:* Implement `multer` and `file-type` on the backend to inspect the actual binary signature of uploaded files, ensuring hackers cannot upload `.exe` viruses disguised as `.jpg` images.
+
+---
+
+### 🏗️ Phase 2: Architecture & Scaling (Performance)
+*These items prevent the browser from freezing when a chat gets too long or the internet drops.*
+
+* **2.1 Infinite Scrolling (Cursor Pagination):** * *Task:* Update the database queries and React state to only load the latest 50 messages on load. Automatically fetch the next 50 only when the user scrolls to the top of the chat window.
+* **2.2 Socket Reconnection Sync ("Catch-Up"):** * *Task:* Write a routine that triggers when a user loses Wi-Fi and reconnects. It will query the database for any messages they missed during the blackout period and inject them into the UI.
+
+---
+
+### ✨ Phase 3: Core UX Polish (The QA Leftovers)
+*These are the UI refinements that make the app feel like a premium, professional product like Slack or WhatsApp.*
+
+* **3.1 Image Loading Skeletons:** * *Task:* Add a CSS shimmer animation (placeholder) that displays while images are fetching from Cloudinary so the chat UI doesn't abruptly jump.
+* **3.2 Unread Message Badges:** * *Task:* Add red notification dots/counters (e.g., 🔴 3) to the user sidebar list so users know exactly who has messaged them without clicking.
+* **3.3 Date Separators:** * *Task:* Write a mapping function that detects when a message crosses midnight and injects a "Today", "Yesterday", or "April 22nd" divider in the chat feed.
+* **3.4 Smart Read Receipts (Visibility API):** * *Task:* Tie the "Seen" (✓✓) socket emission to the browser's `document.hidden` API, so a message is only marked "read" if the user is actually looking at the chat tab.
+
+---
+
+### 🚀 Phase 4: Advanced Features (The "Wow" Factor)
+*New capabilities to expand how users interact with the application.*
+
+* **4.1 Real-Time User Status Emojis:** * *Task:* Use the Socket connection list to display 🟢 (Online) or 🔴 (Offline) next to usernames in the sidebar.
+* **4.2 Message Replies (Context):** * *Task:* Allow users to click a "Reply" button on a specific message, embedding a mini-preview of that old message above their new text.
+* **4.3 Audio / Voice Notes:** * *Task:* Integrate the browser's Web Audio API to let users record microphone audio, convert it to a `.webm` blob, and upload it via the existing Cloudinary pipeline.
+
+---
+
+### 📋 Phase 5: Final QA & Deployment Test
+* **5.1 Session Persistence Test:** Manually verify that checking the "Remember Me" box survives a hard browser refresh and tab closure.
+* **5.2 Mobile Responsiveness:** Ensure the sidebar collapses properly into a hamburger menu on mobile screens and the chat input doesn't get hidden under mobile keyboards.
+

@@ -4,7 +4,6 @@ import Login from "./Login";
 import Chat from "./Chat"; // We will create this file next
 
 function App() {
-  const [page, setPage] = useState("login");
   // --- INDESTRUCTIBLE INITIALIZER ---
   const [user, setUser] = useState(() => {
     try {
@@ -37,6 +36,10 @@ function App() {
       return null;
     }
   }); // Stores the logged-in user's info
+
+  const [page, setPage] = useState(user ? "chat" : "login");
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+
   
   const [dark, setDark] = useState(() => {
     const savedTheme = localStorage.getItem("nexus-theme");
@@ -48,6 +51,17 @@ function App() {
   }, [dark]);
 
   useEffect(() => {
+    // If there is no local storage, the user explicitly didn't check "Remember Me".
+    // They want strict behavior: a page refresh should log them out.
+    const hasStorage = localStorage.getItem("nexusUser");
+    if (!hasStorage) {
+      setIsCheckingAuth(false);
+      // Fire a silent logout to ensure the backend cookie is securely destroyed 
+      // preventing the session from silently lingering in the background.
+      fetch("http://localhost:5000/api/logout", { method: "POST", credentials: "include" }).catch(() => {});
+      return;
+    }
+
     const checkAuth = async () => {
       try {
         const res = await fetch("http://localhost:5000/api/auth/check", {
@@ -66,14 +80,30 @@ function App() {
           // If cookie is invalid or missing, force logout/login
           setUser(null);
           setPage("login");
+          localStorage.removeItem("nexusUser");
         }
       } catch (error) {
         console.error("Auth Check failed:", error);
+      } finally {
+        setIsCheckingAuth(false);
       }
     };
 
     checkAuth();
   }, []);
+
+  if (isCheckingAuth) {
+    return (
+      <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: dark ? "#0c0e13" : "#eef0f4" }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 15 }}>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" style={{ animation: "spin 1s linear infinite" }}>
+            <circle cx="12" cy="12" r="10" stroke={dark ? "#3b74f8" : "#1a56f0"} strokeWidth="3" strokeDasharray="30"/>
+          </svg>
+          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: dark ? "#5c6480" : "#8590a6" }}>Authenticating secure session...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

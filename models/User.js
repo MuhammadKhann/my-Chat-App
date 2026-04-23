@@ -5,7 +5,12 @@ const UserSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   isPrivate: { type: Boolean, default: false }, // Instagram-like privacy
-  profilePic: { type: String, default: "" },    // We will use this later
+  privacyLevel: {
+      type: String,
+      enum: ['standard', 'hide_online', 'hide_read', 'ghost'],
+      default: 'standard'
+  },
+  avatar: { type: String, default: "" },        // Avatar URL from Cloudinary
   requests: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // Pending requests
   friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]   // Accepted connections
 });

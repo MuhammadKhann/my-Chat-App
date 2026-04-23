@@ -155,6 +155,13 @@ const upload = multer({
     limits: { fileSize: 10 * 1024 * 1024 } // 10 Megabytes
 });
 
+// --- MULTER CONFIGURATION (Memory Storage) ---
+// We hold the file in RAM instead of saving it to the server's hard drive
+const uploadAvatarMemory = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 } // Strict 5MB limit to prevent server overload
+});
+
 // --- 2. DATABASE CONNECTION ---
 // --- BULLETPROOF MONGODB CONNECTION ---
 const connectDB = async () => {
@@ -284,6 +291,30 @@ app.post("/api/logout", (req, res) => {
 // --- TRACK ONLINE USERS ---
 const onlineUsers = new Map(); // Maps userId to their current socket ID
 
+// --- PRIVACY TOGGLE ROUTE ---
+app.put("/api/users/privacy", protectRoute, async (req, res) => {
+    try {
+        const { privacyLevel } = req.body;
+        
+        // Validate the input
+        const validLevels = ['standard', 'hide_online', 'hide_read', 'ghost'];
+        if (!validLevels.includes(privacyLevel)) {
+            return res.status(400).json({ error: "Invalid privacy level." });
+        }
+
+        const updatedUser = await User.findByIdAndUpdate(
+            req.user.id,
+            { privacyLevel },
+            { returnDocument: 'after' }
+        ).select("-password");
+
+        res.status(200).json(updatedUser);
+    } catch (error) {
+        console.error("Privacy Update Error:", error);
+        res.status(500).json({ error: "Failed to update privacy settings." });
+    }
+});
+
 // --- SECURE SOCKET IDENTITY CHECK ---
 io.use((socket, next) => {
   try {
@@ -305,6 +336,9 @@ io.use((socket, next) => {
   }
 });
 
+// 1. Create a RAM Cache for lightning-fast privacy checks
+const privacyCache = new Map(); // Stores: userId -> privacyLevel
+
 // --- 4. REAL-TIME LOGIC (Socket.io) ---
 io.on("connection", (socket) => {
   // Use the SECURE ID we just extracted in the middleware
@@ -318,9 +352,19 @@ io.on("connection", (socket) => {
     socket.on("join_personal", async (userId) => {
         socket.join(userId);
 
-        // 1. Add user to the online list and tell everyone
-        onlineUsers.set(userId, socket.id);
-        io.emit("user_status_change", { userId, isOnline: true });
+        // 2. Load their privacy setting into RAM when they connect
+        const user = await User.findById(userId);
+        if (user) {
+            privacyCache.set(userId, user.privacyLevel);
+        }
+
+        // --- ONLINE PRESENCE INTERCEPTOR ---
+        // Only broadcast them as online if they are 'standard'
+        const level = privacyCache.get(userId);
+        if (!level || level === 'standard') {
+            onlineUsers.set(userId, socket.id);
+            io.emit("user_status_change", { userId, isOnline: true });
+        }
 
         // 2. Send the newly logged-in user the current list of online people
         socket.emit("online_users_list", Array.from(onlineUsers.keys()));
@@ -441,11 +485,14 @@ io.on("connection", (socket) => {
 
     // --- 1. TYPING INDICATOR RELAY ---
     socket.on("typing_start", (data) => {
-        // Broadcast specifically to the person they are chatting with
-        socket.to(data.receiver).emit("user_typing", { 
-            senderId: data.senderId, 
-            typing: true 
-        });
+        const level = privacyCache.get(data.senderId);
+        // Do not broadcast typing if they have any privacy mode active
+        if (!level || level === 'standard') {
+            socket.to(data.receiver).emit("user_typing", { 
+                senderId: data.senderId, 
+                typing: true 
+            });
+        }
     });
 
     socket.on("typing_stop", (data) => {
@@ -455,11 +502,28 @@ io.on("connection", (socket) => {
         });
     });
 
-    // 3. Status Handshake (Delivered / Seen)
-    socket.on("update_status", async ({ msgId, senderId, status }) => {
+    // 3. THE TICK DOWNGRADER (Intercepting read receipts)
+    socket.on("update_status", async ({ msgId, senderId, status, receiverId }) => {
         try {
-            await Message.findByIdAndUpdate(msgId, { status });
-            socket.to(senderId).emit("status_changed", { msgId, status });
+            // Check the privacy level of the person READING the message
+            const readerLevel = privacyCache.get(receiverId) || 'standard';
+            
+            let finalStatus = status;
+
+            // DOWNGRADE LOGIC
+            if (readerLevel === 'ghost') {
+                // Full Ghost: Force the sender to only ever see a single tick (sent)
+                finalStatus = 'sent'; 
+            } else if (readerLevel === 'hide_read' && status === 'seen') {
+                // Hide Blue Ticks: Force blue ticks down to double gray (delivered)
+                finalStatus = 'delivered';
+            }
+
+            // Only update the database and notify the sender IF the status is allowed to change
+            if (finalStatus !== 'sent') {
+                await Message.findByIdAndUpdate(msgId, { status: finalStatus });
+                socket.to(senderId).emit("status_changed", { msgId, status: finalStatus });
+            }
         } catch (err) {
             console.error("Status update error:", err);
         }
@@ -468,13 +532,42 @@ io.on("connection", (socket) => {
     // 4. Mark whole chat as seen when opened
     socket.on("mark_room_seen", async ({ room, userId, partnerId }) => {
         try {
-            await Message.updateMany(
-                { room, receiver: userId, status: { $ne: 'seen' } },
-                { status: 'seen' }
-            );
-            socket.to(partnerId).emit("room_marked_seen");
+            const readerLevel = privacyCache.get(userId) || 'standard';
+            let finalStatus = 'seen';
+            
+            if (readerLevel === 'ghost') finalStatus = 'sent';
+            else if (readerLevel === 'hide_read') finalStatus = 'delivered';
+
+            // Only perform DB updates if they are NOT in full ghost mode
+            if (finalStatus !== 'sent') {
+                // If standard ('seen'): upgrade everything not seen
+                // If hide_read ('delivered'): only upgrade 'sent' messages to 'delivered'
+                const filter = finalStatus === 'delivered' 
+                    ? { room, receiver: userId, status: 'sent' }
+                    : { room, receiver: userId, status: { $ne: 'seen' } };
+
+                await Message.updateMany(filter, { status: finalStatus });
+                socket.to(partnerId).emit("room_marked_seen", { finalStatus });
+            }
         } catch (err) {
             console.error("Error marking room seen:", err);
+        }
+    });
+
+    // --- NEW: REAL-TIME PRIVACY SYNCRONIZATION ---
+    socket.on("privacy_changed", ({ userId, privacyLevel }) => {
+        privacyCache.set(userId, privacyLevel);
+        
+        // If they enter a stealth mode, instantly drop them from the online map
+        if (privacyLevel !== 'standard') {
+            if (onlineUsers.has(userId)) {
+                onlineUsers.delete(userId);
+                io.emit("user_status_change", { userId, isOnline: false });
+            }
+        } else {
+            // If they return to public, instantly reconnect their presence
+            onlineUsers.set(userId, socket.id);
+            io.emit("user_status_change", { userId, isOnline: true });
         }
     });
 
@@ -493,6 +586,51 @@ io.on("connection", (socket) => {
 });
 
 // --- FILE UPLOAD ROUTE ---
+
+// --- ENTERPRISE AVATAR UPLOAD ROUTE ---
+app.post("/api/users/avatar", protectRoute, uploadAvatarMemory.single("avatar"), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: "No image file provided." });
+        }
+
+        // 1. Create a stream to upload directly from RAM to Cloudinary
+        const uploadStream = cloudinary.uploader.upload_stream(
+            { 
+                folder: "nexus_avatars", 
+                // We let Cloudinary crop and compress the image for us automatically!
+                transformation: [{ width: 250, height: 250, crop: "fill", gravity: "face" }] 
+            },
+            async (error, result) => {
+                if (error) {
+                    console.error("Cloudinary Upload Error:", error);
+                    return res.status(500).json({ error: "Failed to upload image to the cloud." });
+                }
+
+                // 2. Update the User document in MongoDB with the new secure URL
+                const updatedUser = await User.findByIdAndUpdate(
+                    req.user.id, // Extracted securely via protectRoute
+                    { avatar: result.secure_url },
+                    { returnDocument: 'after' }
+                ).select("-password"); // Never return the password!
+
+                // 3. Send the updated user object back to React
+                res.status(200).json(updatedUser);
+            }
+        );
+
+        // 4. Pipe the multer buffer into the Cloudinary stream
+        const readableStream = new Readable();
+        readableStream.push(req.file.buffer);
+        readableStream.push(null);
+        readableStream.pipe(uploadStream);
+
+    } catch (error) {
+        console.error("Avatar Route Error:", error);
+        res.status(500).json({ error: "Internal Server Error during avatar upload." });
+    }
+});
+
 // --- BULLETPROOF UPLOAD ROUTE ---
 app.post("/upload", uploadLimiter, (req, res) => {
     upload.single('file')(req, res, function (err) {
@@ -573,7 +711,7 @@ app.get("/users/search", protectRoute, async (req, res) => {
         // Broaden the search: This looks for any username starting with the letters
         const users = await User.find({
             username: { $regex: "^" + query, $options: "i" }
-        }).select("username _id");
+        }).select("username _id avatar");
 
         console.log("Users found:", users.length);
         res.json(users);
@@ -609,7 +747,7 @@ app.get("/chats/:userId", protectRoute, async (req, res) => {
 
             if (!seenPartners.has(partnerId)) {
                 seenPartners.add(partnerId);
-                const partner = await User.findById(partnerId).select("username");
+                const partner = await User.findById(partnerId).select("username avatar");
 
                 // --- NEW: Count unread messages from this specific partner ---
                 const unreadCount = await Message.countDocuments({
@@ -621,6 +759,7 @@ app.get("/chats/:userId", protectRoute, async (req, res) => {
                 chatPartners.push({
                     _id: partnerId,
                     username: partner.username,
+                    avatar: partner.avatar, // Send this to the frontend
                     lastMessage: msg.text,
                     time: msg.createdAt,
                     unreadCount: unreadCount // Send this to the frontend
