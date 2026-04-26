@@ -165,28 +165,28 @@ const uploadAvatarMemory = multer({
 // --- 2. DATABASE CONNECTION ---
 // --- BULLETPROOF MONGODB CONNECTION ---
 const connectDB = async () => {
-  try {
-    await mongoose.connect(process.env.MONGO_URI, {
-      // 1. Force IPv4 (This is the magic bullet for the EAI_AGAIN error)
-      family: 4, 
-      
-      // 2. How long to wait for a connection before failing (10 seconds)
-      serverSelectionTimeoutMS: 10000, 
-      
-      // 3. How long a socket stays open if there is network silence (45 seconds)
-      socketTimeoutMS: 45000, 
-    });
-    console.log("✅ MongoDB Connected Successfully!");
-  } catch (err) {
-    console.error("❌ Critical MongoDB Connection Error:", err);
-    // Exit the process with failure so process managers (like PM2) can restart it
-    process.exit(1); 
-  }
+    try {
+        await mongoose.connect(process.env.MONGO_URI, {
+            // 1. Force IPv4 (This is the magic bullet for the EAI_AGAIN error)
+            family: 4,
+
+            // 2. How long to wait for a connection before failing (10 seconds)
+            serverSelectionTimeoutMS: 10000,
+
+            // 3. How long a socket stays open if there is network silence (45 seconds)
+            socketTimeoutMS: 45000,
+        });
+        console.log("✅ MongoDB Connected Successfully!");
+    } catch (err) {
+        console.error("❌ Critical MongoDB Connection Error:", err);
+        // Exit the process with failure so process managers (like PM2) can restart it
+        process.exit(1);
+    }
 };
 
 // Listen for random network drops after initial connection
 mongoose.connection.on('error', err => {
-  console.error("⚠️ MongoDB Network Error after initial connection:", err);
+    console.error("⚠️ MongoDB Network Error after initial connection:", err);
 });
 
 connectDB();
@@ -274,7 +274,7 @@ app.post("/api/logout", (req, res) => {
     try {
         // We "clear" the cookie by sending a response that overwrites 
         // the 'jwt' cookie with an empty string and sets its expiration to 0.
-        res.cookie("jwt", "", { 
+        res.cookie("jwt", "", {
             maxAge: 0,
             httpOnly: true,
             sameSite: "strict",
@@ -295,7 +295,7 @@ const onlineUsers = new Map(); // Maps userId to their current socket ID
 app.put("/api/users/privacy", protectRoute, async (req, res) => {
     try {
         const { privacyLevel } = req.body;
-        
+
         // Validate the input
         const validLevels = ['standard', 'hide_online', 'hide_read', 'ghost'];
         if (!validLevels.includes(privacyLevel)) {
@@ -317,23 +317,23 @@ app.put("/api/users/privacy", protectRoute, async (req, res) => {
 
 // --- SECURE SOCKET IDENTITY CHECK ---
 io.use((socket, next) => {
-  try {
-    // 1. Manually grab the cookie from the handshake headers
-    const cookieHeader = socket.handshake.headers.cookie;
-    if (!cookieHeader) return next(new Error("Authentication error"));
+    try {
+        // 1. Manually grab the cookie from the handshake headers
+        const cookieHeader = socket.handshake.headers.cookie;
+        if (!cookieHeader) return next(new Error("Authentication error"));
 
-    // 2. Extract the 'jwt' value from the cookie string
-    const token = cookieHeader.split(';').find(c => c.trim().startsWith('jwt=')).split('=')[1];
-    
-    if (!token) return next(new Error("Authentication error"));
+        // 2. Extract the 'jwt' value from the cookie string
+        const token = cookieHeader.split(';').find(c => c.trim().startsWith('jwt=')).split('=')[1];
 
-    // 3. Verify the token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    socket.userId = decoded.id; // Attach the real User ID to the socket
-    next();
-  } catch (err) {
-    next(new Error("Authentication error"));
-  }
+        if (!token) return next(new Error("Authentication error"));
+
+        // 3. Verify the token
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        socket.userId = decoded.id; // Attach the real User ID to the socket
+        next();
+    } catch (err) {
+        next(new Error("Authentication error"));
+    }
 });
 
 // 1. Create a RAM Cache for lightning-fast privacy checks
@@ -341,16 +341,17 @@ const privacyCache = new Map(); // Stores: userId -> privacyLevel
 
 // --- 4. REAL-TIME LOGIC (Socket.io) ---
 io.on("connection", (socket) => {
-  // Use the SECURE ID we just extracted in the middleware
-  const userId = socket.userId; 
-  
-  if (userId) {
-    socket.join(userId.toString());
-    console.log(`✅ User ${userId} secured in private room`);
-  }
+    // Use the SECURE ID we just extracted in the middleware
+    const userId = socket.userId;
+
+    if (userId) {
+        socket.join(userId.toString());
+        console.log(`✅ User ${userId} secured in private room`);
+    }
     // 1. Every user joins their own personal room on login
     socket.on("join_personal", async (userId) => {
         socket.join(userId);
+        console.log(`User ${userId} joined their personal room`);
 
         // 2. Load their privacy setting into RAM when they connect
         const user = await User.findById(userId);
@@ -410,12 +411,12 @@ io.on("connection", (socket) => {
 
             try {
                 // Convert string IDs to proper MongoDB ObjectId format
-                senderId = typeof data.sender === 'string' 
-                    ? new mongoose.Types.ObjectId(data.sender) 
+                senderId = typeof data.sender === 'string'
+                    ? new mongoose.Types.ObjectId(data.sender)
                     : data.sender;
-                
-                receiverId = typeof data.receiver === 'string' 
-                    ? new mongoose.Types.ObjectId(data.receiver) 
+
+                receiverId = typeof data.receiver === 'string'
+                    ? new mongoose.Types.ObjectId(data.receiver)
                     : data.receiver;
             } catch (idError) {
                 console.error("❌ ObjectId conversion failed:", idError.message);
@@ -455,7 +456,7 @@ io.on("connection", (socket) => {
                 room: room,
                 status: "sent"
             });
-            
+
             const savedMessage = await newMessage.save();
 
             console.log("✅ MESSAGE SAVED TO DB:", savedMessage._id);
@@ -475,7 +476,7 @@ io.on("connection", (socket) => {
             messagePayload.senderUsername = senderUser?.username || "Unknown";
             socket.to(receiverId.toString()).emit("receive_message", messagePayload);
             console.log("📩 MESSAGE EMITTED to receiver's room:", receiverId.toString());
-            
+
         } catch (error) {
             console.error("❌ Real-time Save Error:", error.message);
             console.error("   Full Stack:", error.stack);
@@ -488,17 +489,17 @@ io.on("connection", (socket) => {
         const level = privacyCache.get(data.senderId);
         // Do not broadcast typing if they have any privacy mode active
         if (!level || level === 'standard') {
-            socket.to(data.receiver).emit("user_typing", { 
-                senderId: data.senderId, 
-                typing: true 
+            socket.to(data.receiver).emit("user_typing", {
+                senderId: data.senderId,
+                typing: true
             });
         }
     });
 
     socket.on("typing_stop", (data) => {
-        socket.to(data.receiver).emit("user_typing", { 
-            senderId: data.senderId, 
-            typing: false 
+        socket.to(data.receiver).emit("user_typing", {
+            senderId: data.senderId,
+            typing: false
         });
     });
 
@@ -507,13 +508,13 @@ io.on("connection", (socket) => {
         try {
             // Check the privacy level of the person READING the message
             const readerLevel = privacyCache.get(receiverId) || 'standard';
-            
+
             let finalStatus = status;
 
             // DOWNGRADE LOGIC
             if (readerLevel === 'ghost') {
                 // Full Ghost: Force the sender to only ever see a single tick (sent)
-                finalStatus = 'sent'; 
+                finalStatus = 'sent';
             } else if (readerLevel === 'hide_read' && status === 'seen') {
                 // Hide Blue Ticks: Force blue ticks down to double gray (delivered)
                 finalStatus = 'delivered';
@@ -534,7 +535,7 @@ io.on("connection", (socket) => {
         try {
             const readerLevel = privacyCache.get(userId) || 'standard';
             let finalStatus = 'seen';
-            
+
             if (readerLevel === 'ghost') finalStatus = 'sent';
             else if (readerLevel === 'hide_read') finalStatus = 'delivered';
 
@@ -542,7 +543,7 @@ io.on("connection", (socket) => {
             if (finalStatus !== 'sent') {
                 // If standard ('seen'): upgrade everything not seen
                 // If hide_read ('delivered'): only upgrade 'sent' messages to 'delivered'
-                const filter = finalStatus === 'delivered' 
+                const filter = finalStatus === 'delivered'
                     ? { room, receiver: userId, status: 'sent' }
                     : { room, receiver: userId, status: { $ne: 'seen' } };
 
@@ -557,7 +558,7 @@ io.on("connection", (socket) => {
     // --- NEW: REAL-TIME PRIVACY SYNCRONIZATION ---
     socket.on("privacy_changed", ({ userId, privacyLevel }) => {
         privacyCache.set(userId, privacyLevel);
-        
+
         // If they enter a stealth mode, instantly drop them from the online map
         if (privacyLevel !== 'standard') {
             if (onlineUsers.has(userId)) {
@@ -572,6 +573,35 @@ io.on("connection", (socket) => {
     });
 
     // --- NEW: HANDLE DISCONNECTS ---
+    // --- 📞 WEBRTC SIGNALING SERVER (Phase 5) ---
+
+    // 1. Caller initiates the ring
+    socket.on("call_user", ({ userToCall, signalData, from, callerName }) => {
+        // ADD THIS CONSOLE LOG:
+        console.log(`📞 SIGNAL RECEIVED: ${callerName} is calling ${userToCall}`);
+
+        io.to(userToCall).emit("incoming_call", {
+            signal: signalData,
+            from,
+            callerName
+        });
+    });
+
+    // 2. Receiver clicks "Answer"
+    socket.on("answer_call", ({ to, signal }) => {
+        io.to(to).emit("call_accepted", signal);
+    });
+
+    // 3. Either party clicks "Hang Up" or "Reject"
+    socket.on("end_call", ({ to }) => {
+        io.to(to).emit("call_ended");
+    });
+
+    // 4. Receiver explicitly clicks "Decline"
+    socket.on("decline_call", ({ to }) => {
+        io.to(to).emit("call_declined");
+    });
+
     socket.on("disconnect", () => {
         // Find which user just lost connection/closed the tab
         for (let [userId, socketId] of onlineUsers.entries()) {
@@ -596,10 +626,10 @@ app.post("/api/users/avatar", protectRoute, uploadAvatarMemory.single("avatar"),
 
         // 1. Create a stream to upload directly from RAM to Cloudinary
         const uploadStream = cloudinary.uploader.upload_stream(
-            { 
-                folder: "nexus_avatars", 
+            {
+                folder: "nexus_avatars",
                 // We let Cloudinary crop and compress the image for us automatically!
-                transformation: [{ width: 250, height: 250, crop: "fill", gravity: "face" }] 
+                transformation: [{ width: 250, height: 250, crop: "fill", gravity: "face" }]
             },
             async (error, result) => {
                 if (error) {
