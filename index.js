@@ -631,28 +631,37 @@ app.post("/api/users/avatar", protectRoute, uploadAvatarMemory.single("avatar"),
     }
 });
 
-// --- BULLETPROOF UPLOAD ROUTE ---
-app.post("/upload", uploadLimiter, (req, res) => {
-    upload.single('file')(req, res, function (err) {
-        if (err) {
-            console.error("--- UPLOAD ERROR LOGGED ---");
-            console.error(err); // This will show the real error in terminal
-            return res.status(400).json({
-                error: err.message || "File type not supported by Cloudinary"
-            });
-        }
+// --- ENTERPRISE UNIVERSAL UPLOAD ROUTE ---
+app.post("/upload", uploadLimiter, uploadAvatarMemory.single("file"), async (req, res) => {
+    try {
+        if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
-        if (!req.file) {
-            return res.status(400).json({ error: "No file received" });
-        }
+        // CRITICAL: resource_type "auto" allows Images, PDFs, AND Audio files!
+        const uploadStream = cloudinary.uploader.upload_stream(
+            { folder: "nexus_attachments", resource_type: "auto" },
+            (error, result) => {
+                if (error) {
+                    console.error("Cloudinary Error:", error);
+                    return res.status(500).json({ error: "Cloud Upload Failed" });
+                }
+                res.status(200).json({
+                    fileUrl: result.secure_url,
+                    fileName: req.file.originalname,
+                    fileType: req.file.mimetype
+                });
+            }
+        );
 
-        // Success!
-        res.json({
-            fileUrl: req.file.path,
-            fileName: req.file.originalname,
-            fileType: req.file.mimetype
-        });
-    });
+        const { Readable } = require('stream');
+        const readableStream = new Readable();
+        readableStream.push(req.file.buffer);
+        readableStream.push(null);
+        readableStream.pipe(uploadStream);
+
+    } catch (error) {
+        console.error("Upload Error:", error);
+        res.status(500).json({ error: "Server Error" });
+    }
 });
 
 // --- SECURE DOWNLOAD PROXY (WITH ANTI-BOT DISGUISE) ---

@@ -32,6 +32,13 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
   // --- AVATAR UPLOAD STATE ---
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
+  // --- VOICE NOTE STATES ---
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
+  const timerIntervalRef = useRef(null);
+
   // --- PRIVACY STATE ---
   const [showPrivacyMenu, setShowPrivacyMenu] = useState(false);
 
@@ -403,6 +410,89 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
 
     // 3. If it passes all checks, set the file
     setSelectedFile(file);
+  };
+
+  // --- 🎙️ START RECORDING ---
+  const startRecording = async () => {
+      try {
+          // 1. Request Microphone Access
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          
+          // 2. Initialize the MediaRecorder
+          mediaRecorderRef.current = new MediaRecorder(stream);
+          audioChunksRef.current = [];
+
+          // 3. Collect the audio data chunks as they stream in
+          mediaRecorderRef.current.ondataavailable = (event) => {
+              if (event.data.size > 0) {
+                  audioChunksRef.current.push(event.data);
+              }
+          };
+
+          // 4. Handle the Stop Event
+          mediaRecorderRef.current.onstop = () => {
+              // Combine chunks into a single binary Blob
+              const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+              
+              // Convert Blob to a File object (Makes it compatible with your existing upload logic!)
+              const audioFile = new File([audioBlob], `voice_note_${Date.now()}.webm`, {
+                  type: 'audio/webm',
+                  lastModified: Date.now()
+              });
+
+              // Set it as the selected file so the user can send it
+              setSelectedFile(audioFile);
+              
+              // Stop all microphone tracks to turn off the red recording light on the browser tab
+              stream.getTracks().forEach(track => track.stop());
+          };
+
+          // 5. Start the engine and the timer
+          mediaRecorderRef.current.start();
+          setIsRecording(true);
+          setRecordingTime(0);
+
+          timerIntervalRef.current = setInterval(() => {
+              setRecordingTime((prev) => prev + 1);
+          }, 1000);
+
+      } catch (err) {
+          console.error("Microphone access denied:", err);
+          alert("Please allow microphone permissions to send voice notes.");
+      }
+  };
+
+  // --- 🛑 STOP RECORDING ---
+  const stopRecording = () => {
+      if (mediaRecorderRef.current && isRecording) {
+          mediaRecorderRef.current.stop();
+          setIsRecording(false);
+          clearInterval(timerIntervalRef.current);
+      }
+  };
+
+  // --- ❌ CANCEL RECORDING ---
+  const cancelRecording = () => {
+      if (mediaRecorderRef.current && isRecording) {
+          // Remove the onstop listener so it doesn't create a file
+          mediaRecorderRef.current.onstop = null;
+          mediaRecorderRef.current.stop();
+          
+          // Kill the mic
+          mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+          
+          setIsRecording(false);
+          clearInterval(timerIntervalRef.current);
+          setRecordingTime(0);
+          audioChunksRef.current = [];
+      }
+  };
+
+  // Helper to format the timer (e.g., 01:05)
+  const formatTime = (seconds) => {
+      const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+      const s = (seconds % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
   };
 
   // 6. Send Message Function - With TempId for No Duplicates
@@ -1012,7 +1102,7 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
                         )}
 
                         {/* 3. DOCUMENT LAYER (Renders below text) - Uses our Proxy Download from earlier */}
-                        {msg.fileUrl && !msg.fileType?.startsWith('image/') && (
+                        {msg.fileUrl && !msg.fileType?.startsWith('image/') && !msg.fileType?.startsWith('audio/') && (
                           <a
                             href={`http://localhost:5000/download?url=${encodeURIComponent(msg.fileUrl)}&filename=${encodeURIComponent(msg.fileName || 'document.pdf')}`}
                             style={{
@@ -1036,6 +1126,22 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
                               {msg.fileName || "Download Document"}
                             </span>
                           </a>
+                        )}
+
+                        {/* 4. AUDIO LAYER (Native HTML5 Player) */}
+                        {msg.fileUrl && msg.fileType?.startsWith('audio/') && (
+                            <div style={{ marginTop: "4px" }}>
+                                <audio 
+                                    controls 
+                                    src={msg.fileUrl} 
+                                    style={{ 
+                                        height: "40px", 
+                                        width: "250px", 
+                                        outline: "none",
+                                        borderRadius: "20px"
+                                    }} 
+                                />
+                            </div>
                         )}
                       </div>
 
@@ -1121,33 +1227,63 @@ function Chat({ user, setPage, setUser, dark, setDark }) {
               )}
 
               {/* Input Area */}
-              <form onSubmit={sendMessage} style={{ padding: "20px", borderTop: "1px solid var(--border)", display: "flex", gap: "10px" }}>
+              <form onSubmit={sendMessage} style={{ padding: "20px", borderTop: "1px solid var(--border)", display: "flex", gap: "10px", alignItems: "center" }}>
 
-                {/* --- NEW: ATTACHMENT BUTTON --- */}
-                <label style={{ cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 10px", color: "var(--ink3)" }}>
-                  <input
-                    type="file"
-                    style={{ display: "none" }}
-                    onChange={handleFileSelect}
-                    disabled={isUploading}
-                  />
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
-                  </svg>
-                </label>
+                  {/* --- CONDITIONAL UI: RECORDING MODE vs TYPING MODE --- */}
+                  {isRecording ? (
+                      // 🎙️ RECORDING ACTIVE UI
+                      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--bg2)", padding: "10px 20px", borderRadius: "25px", border: "1px solid #ef4444" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "10px", color: "#ef4444", fontWeight: "600" }}>
+                              <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#ef4444", animation: "pulse 1.5s infinite" }}></div>
+                              Recording... {formatTime(recordingTime)}
+                          </div>
+                          <div style={{ display: "flex", gap: "15px" }}>
+                              <button type="button" onClick={cancelRecording} style={{ color: "var(--ink3)", background: "none", border: "none", cursor: "pointer", fontWeight: "600" }}>Cancel</button>
+                              <button type="button" onClick={stopRecording} style={{ color: "white", background: "#ef4444", border: "none", padding: "6px 16px", borderRadius: "20px", cursor: "pointer", fontWeight: "600" }}>Stop & Attach</button>
+                          </div>
+                      </div>
+                  ) : (
+                      // ⌨️ NORMAL TYPING UI
+                      <>
+                          {/* Attachment Button */}
+                          <label style={{ cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 10px", color: "var(--ink3)" }}>
+                              <input type="file" style={{ display: "none" }} onChange={handleFileSelect} disabled={isUploading} />
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+                          </label>
 
-                <input
-                  type="text"
-                  value={message}
-                  onChange={(e) => {
-                    setMessage(e.target.value);
-                    handleKeystroke();
-                  }}
-                  placeholder={isUploading ? "Uploading file..." : "Type a message..."}
-                  disabled={isUploading}
-                  style={{ flex: 1, padding: "12px", borderRadius: "25px", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--ink)", outline: "none" }}
-                />
-                <button type="submit" disabled={isUploading} style={{ padding: "10px 20px", borderRadius: "25px", border: "none", background: "var(--accent)", color: "white", fontWeight: 600, cursor: isUploading ? "not-allowed" : "pointer" }}>{isUploading ? "..." : "Send"}</button>
+                          {/* Text Input */}
+                          <input
+                              type="text"
+                              value={message}
+                              onChange={(e) => { setMessage(e.target.value); handleKeystroke(); }}
+                              placeholder={isUploading ? "Uploading file..." : selectedFile ? "Add a message to your file..." : "Type a message..."}
+                              disabled={isUploading}
+                              style={{ flex: 1, padding: "12px", borderRadius: "25px", border: "1px solid var(--border)", background: "var(--bg)", color: "var(--ink)", outline: "none" }}
+                          />
+
+                          {/* Mic / Send Button Logic */}
+                          {!message.trim() && !selectedFile ? (
+                              // Show Mic button if text input is empty and no file is attached
+                              <button type="button" onClick={startRecording} style={{ padding: "10px", borderRadius: "50%", border: "none", background: "var(--bg2)", color: "var(--accent)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }} title="Record Voice Note">
+                                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="22"></line></svg>
+                              </button>
+                          ) : (
+                              // Show Send button if there is text OR a file attached
+                              <button type="submit" disabled={isUploading} style={{ padding: "10px 20px", borderRadius: "25px", border: "none", background: "var(--accent)", color: "white", fontWeight: 600, cursor: isUploading ? "not-allowed" : "pointer" }}>
+                                  {isUploading ? "..." : "Send"}
+                              </button>
+                          )}
+                      </>
+                  )}
+                  
+                  {/* Optional: Add this tiny CSS keyframe for the blinking recording dot to your FontLoader/GlobalStyles */}
+                  <style>{`
+                      @keyframes pulse {
+                          0% { opacity: 1; transform: scale(1); }
+                          50% { opacity: 0.4; transform: scale(1.2); }
+                          100% { opacity: 1; transform: scale(1); }
+                      }
+                  `}</style>
               </form>
             </>
           ) : (
