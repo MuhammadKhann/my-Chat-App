@@ -219,7 +219,8 @@ app.post("/register", authLimiter, async (req, res) => {
         res.status(201).json({
             _id: newUser._id,
             username: newUser.username,
-            email: newUser.email
+            email: newUser.email,
+            avatar: newUser.avatar
         });
     } catch (err) {
         // --- NEW: SURGICAL ERROR INTERCEPTION ---
@@ -262,7 +263,8 @@ app.post("/login", authLimiter, async (req, res) => {
         res.status(200).json({
             _id: user._id,
             username: user.username,
-            email: user.email
+            email: user.email,
+            avatar: user.avatar
         });
     } catch (err) {
         res.status(500).json({ error: err.message });

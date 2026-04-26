@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Register from "./Register";
 import Login from "./Login";
 import Chat from "./Chat"; // We will create this file next
+import { GlobalStyles, FontLoader } from "./GlobalStyles";
 
 function App() {
   // --- INDESTRUCTIBLE INITIALIZER ---
@@ -46,9 +47,17 @@ function App() {
     return savedTheme === "dark";
   });
 
+  const [themeId, setThemeId] = useState(() => {
+    return localStorage.getItem("nexus-color-theme") || "cosmic";
+  });
+
   useEffect(() => {
     localStorage.setItem("nexus-theme", dark ? "dark" : "light");
   }, [dark]);
+
+  useEffect(() => {
+    localStorage.setItem("nexus-color-theme", themeId);
+  }, [themeId]);
 
   useEffect(() => {
     // If there is no local storage, the user explicitly didn't check "Remember Me".
@@ -106,7 +115,9 @@ function App() {
   }
 
   return (
-    <div>
+    <>
+      <FontLoader />
+      <GlobalStyles dark={dark} themeId={themeId} />
       {/* 1. If no user is logged in, show Login or Register */}
       {!user ? (
         <>
@@ -119,12 +130,12 @@ function App() {
         </>
       ) : page === "chat" && user ? (
         /* 2. If a user is logged in, show the Chat Dashboard */
-        <Chat user={user} setPage={setPage} setUser={setUser} dark={dark} setDark={setDark} />
+        <Chat user={user} setPage={setPage} setUser={setUser} dark={dark} setDark={setDark} themeId={themeId} setThemeId={setThemeId} />
       ) : page === "chat" && !user ? (
         /* Safety Fallback: if somehow on chat page without a user, force redirect to login */
         setPage("login")
       ) : null}
-    </div>
+    </>
   );
 }
 

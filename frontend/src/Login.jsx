@@ -1,84 +1,6 @@
 import { useState, useEffect } from "react";
 
-// ─── Google Fonts ─────────────────────────────────────────────────────────────
-const FontLoader = () => (
-  <style>{`
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Bricolage+Grotesque:wght@400;500;600;700&display=swap');
-  `}</style>
-);
-
-// ─── Global styles ────────────────────────────────────────────────────────────
-const GlobalStyles = ({ dark }) => (
-  <style>{`
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --bg:       #eef0f4;
-      --bg2:      #e6e9ef;
-      --bg3:      #dde1e9;
-      --card:     #f4f5f8;
-      --card2:    #eceef3;
-      --ink:      #181c26;
-      --ink2:     #424857;
-      --ink3:     #8590a6;
-      --border:   #d4d8e2;
-      --border2:  #bcc2d0;
-      --accent:   #1a56f0;
-      --accent2:  #dce6fd;
-      --accent-h: #1344d4;
-      --shadow:   0 2px 12px rgba(20,30,60,0.08), 0 0 0 1px rgba(20,30,60,0.05);
-      --r:        12px;
-      --rs:       8px;
-    }
-
-    ${dark ? `
-    :root {
-      --bg:       #0c0e13;
-      --bg2:      #13161d;
-      --bg3:      #1a1e27;
-      --card:     #13161d;
-      --card2:    #1a1e27;
-      --ink:      #f0f2f8;
-      --ink2:     #a8b0c4;
-      --ink3:     #5c6480;
-      --border:   #21263a;
-      --border2:  #2e364d;
-      --accent:   #3b74f8;
-      --accent2:  #0f1a38;
-      --accent-h: #5588ff;
-      --shadow:   0 2px 16px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04);
-    }` : ""}
-
-    html, body, #root {
-      min-height: 100vh;
-      font-family: 'Inter', sans-serif;
-      background: var(--bg);
-      color: var(--ink);
-      transition: background 0.3s, color 0.3s;
-    }
-
-    input:-webkit-autofill,
-    input:-webkit-autofill:hover,
-    input:-webkit-autofill:focus {
-      -webkit-box-shadow: 0 0 0px 1000px var(--bg2) inset !important;
-      -webkit-text-fill-color: var(--ink) !important;
-      transition: background-color 5000s ease-in-out 0s;
-    }
-
-    @keyframes rise {
-      from { opacity: 0; transform: translateY(24px) scale(0.98); }
-      to   { opacity: 1; transform: translateY(0)   scale(1);    }
-    }
-    @keyframes spin {
-      from { transform: rotate(0deg);   }
-      to   { transform: rotate(360deg); }
-    }
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to   { opacity: 1; }
-    }
-  `}</style>
-);
+// GlobalStyles and FontLoader are now imported in App.jsx
 
 function useViewport() {
   const [vw, setVw] = useState(typeof window !== "undefined" ? window.innerWidth : 1200);
@@ -265,8 +187,6 @@ function Login({ setPage, dark, setDark, setUser }) {
 
   return (
     <>
-      <FontLoader />
-      <GlobalStyles dark={dark} />
       <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "var(--bg)", transition: "background 0.3s" }}>
         
         {/* 3. TOPBAR NOW USES setDark(!dark) GLOBALLY */}
