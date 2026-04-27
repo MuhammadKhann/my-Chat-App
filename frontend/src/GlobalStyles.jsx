@@ -38,8 +38,8 @@ export const GlobalStyles = ({ dark, themeId = "cosmic" }) => {
       --border:    rgba(0,0,0,0.08);
       --border2:   rgba(0,0,0,0.14);
       --accent:    ${theme.accent};
-      --accent2:   #E8EFFE;
       --accent-h:  ${theme.accentH};
+      --accent2:   color-mix(in srgb, ${theme.accent} 13%, #ffffff);
       --gradient-start: ${theme.start};
       --gradient-end: ${theme.end};
       --shadow:   0 2px 12px rgba(20,30,60,0.08), 0 0 0 1px rgba(20,30,60,0.05);
@@ -59,7 +59,7 @@ export const GlobalStyles = ({ dark, themeId = "cosmic" }) => {
       --ink3:      #56566A;
       --border:    rgba(255,255,255,0.07);
       --border2:   rgba(255,255,255,0.13);
-      --accent2:   #0D1A38;
+      --accent2:   color-mix(in srgb, ${theme.accent} 18%, #000000);
       --shadow:   0 2px 16px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04);
     }` : ""}
 

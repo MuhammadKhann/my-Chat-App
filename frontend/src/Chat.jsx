@@ -99,6 +99,14 @@ const ChatStyles = () => (
     }
     .action-btn:active { transform: scale(0.93); }
     .action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .gradient-btn {
+      background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+      transition: opacity 0.15s, transform 0.1s, box-shadow 0.15s;
+    }
+    .gradient-btn:hover  { opacity: 0.88; }
+    .gradient-btn:active { transform: scale(0.95); opacity: 1; }
+    .gradient-btn:disabled { opacity: 0.5; cursor: not-allowed; }
   `}</style>
 );
 
@@ -622,10 +630,30 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
 
   // ─── Tick renderer ──────────────────────────────────────────────────────────
   const renderTicks = (status) => {
-    if (status === 'seen') return <span style={{ color: "var(--accent)", fontSize: 11, fontWeight: 700 }}>✓✓</span>;
-    if (status === 'delivered') return <span style={{ color: "var(--ink3)", fontSize: 11 }}>✓✓</span>;
-    return <span style={{ color: "var(--ink3)", fontSize: 11 }}>✓</span>;
+    // "seen" ticks are always blue — universally recognised, never
+    // clashes with any accent colour, visible on every theme.
+    if (status === 'seen') return (
+      <svg width="18" height="11" viewBox="0 0 20 11" fill="none" style={{ flexShrink: 0 }}>
+        <path d="M1 5.5l3.5 3.5L12 1"   stroke="#3b82f6" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M7 5.5l3.5 3.5L18 1"   stroke="#3b82f6" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    );
+    // "delivered" — double grey ticks, always visible against the
+    // gradient bubble because we use rgba(255,255,255,0.75)
+    if (status === 'delivered') return (
+      <svg width="18" height="11" viewBox="0 0 20 11" fill="none" style={{ flexShrink: 0 }}>
+        <path d="M1 5.5l3.5 3.5L12 1"   stroke="rgba(255,255,255,0.75)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M7 5.5l3.5 3.5L18 1"   stroke="rgba(255,255,255,0.75)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    );
+    // "sent" — single white tick on the gradient bubble
+    return (
+      <svg width="12" height="11" viewBox="0 0 12 11" fill="none" style={{ flexShrink: 0 }}>
+        <path d="M1 5.5l3.5 3.5L11 1" stroke="rgba(255,255,255,0.75)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
+    );
   };
+ 
 
   // ─── Privacy badge label ────────────────────────────────────────────────────
   const privacyBadge = {
@@ -924,7 +952,9 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                 onClick={() => setActiveTab(tab)}
                 style={{
                   flex: 1, padding: "8px 0",
-                  background: activeTab === tab ? "var(--accent2)" : "transparent",
+                  background: activeTab === tab
+                    ? "color-mix(in srgb, var(--accent) 14%, transparent)"
+                    : "transparent",
                   border: "none",
                   borderRadius: 8,
                   cursor: "pointer",
@@ -932,6 +962,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                   color: activeTab === tab ? "var(--accent)" : "var(--ink3)",
                   textTransform: "capitalize",
                   letterSpacing: "0.02em",
+                  transition: "background 0.15s, color 0.15s",
                 }}
               >
                 {tab === "chats" ? "Chats" : "Search"}
@@ -965,15 +996,13 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                       const data = await response.json();
                       setSearchResults(data);
                     }}
+                    className="gradient-btn"
                     style={{
                       padding: "9px 14px", borderRadius: 9,
-                      background: "var(--accent)", color: "#fff",
-                      border: "none", cursor: "pointer",
+                      color: "#fff", border: "none", cursor: "pointer",
                       fontSize: 12, fontWeight: 600,
-                      transition: "opacity 0.15s",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
                     }}
-                    onMouseOver={(e) => e.currentTarget.style.opacity = "0.88"}
-                    onMouseOut={(e) => e.currentTarget.style.opacity = "1"}
                   >
                     Find
                   </button>
@@ -1025,8 +1054,12 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                         style={{
                           padding: "10px 10px", borderRadius: 10, cursor: "pointer",
                           display: "flex", alignItems: "center", gap: 10,
-                          background: isActive ? "var(--accent2)" : "transparent",
-                          border: isActive ? "1px solid var(--accent2)" : "1px solid transparent",
+                          background: isActive
+                            ? "color-mix(in srgb, var(--accent) 12%, transparent)"
+                            : "transparent",
+                          border: isActive
+                            ? "1px solid color-mix(in srgb, var(--accent) 25%, transparent)"
+                            : "1px solid transparent",
                           transition: "background 0.15s",
                         }}
                       >
@@ -1143,18 +1176,16 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                   <button
                     onClick={initiateCall}
                     title="Start Video Call"
+                    className="gradient-btn"
                     style={{
-                      height: 34, padding: isMobile ? 0 : "0 14px", 
+                      height: 34, padding: isMobile ? 0 : "0 14px",
                       width: isMobile ? 34 : "auto", justifyContent: "center",
                       borderRadius: 9,
-                      background: "var(--accent)", color: "#fff",
-                      border: "none", cursor: "pointer",
+                      color: "#fff", border: "none", cursor: "pointer",
                       fontSize: 12, fontWeight: 600,
                       display: "flex", alignItems: "center", gap: 6,
-                      transition: "opacity 0.15s",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
                     }}
-                    onMouseOver={(e) => e.currentTarget.style.opacity = "0.88"}
-                    onMouseOut={(e) => e.currentTarget.style.opacity = "1"}
                   >
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
@@ -1221,10 +1252,10 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                         borderRadius: isMe ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
                         padding: "10px 14px",
                         display: "flex", flexDirection: "column", gap: 8,
-                        border: isMe ? "none" : "1px solid var(--border)",
+                        border: isMe ? "none" : "1px solid var(--border2)",
                         boxShadow: isMe
-                          ? "0 2px 8px rgba(59, 130, 246, 0.25)"
-                          : "0 2px 8px rgba(0,0,0,0.04)",
+                          ? "0 2px 10px rgba(0,0,0,0.18)"
+                          : "0 1px 4px rgba(0,0,0,0.06)",
                       }}>
 
                         {/* Text */}
@@ -1382,9 +1413,17 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                   ) : (
                     <>
                       {/* Attachment */}
-                      <label style={{ cursor: "pointer", color: "var(--ink3)", display: "flex", alignItems: "center", justifyContent: "center", width: 36, height: 36, borderRadius: 9, border: "1px solid var(--border)", background: "var(--bg2)", flexShrink: 0, transition: "color 0.15s, background 0.15s" }}
-                        onMouseOver={(e) => { e.currentTarget.style.color = "var(--accent)"; e.currentTarget.style.background = "var(--accent2)"; }}
-                        onMouseOut={(e) => { e.currentTarget.style.color = "var(--ink3)"; e.currentTarget.style.background = "var(--bg2)"; }}>
+                      <label style={{ cursor: "pointer", color: "var(--ink3)", display: "flex", alignItems: "center", justifyContent: "center", width: 36, height: 36, borderRadius: 9, border: "1px solid var(--border)", background: "var(--bg2)", flexShrink: 0, transition: "color 0.15s, background 0.15s, border-color 0.15s" }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.color = "#fff";
+                          e.currentTarget.style.background = "linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%)";
+                          e.currentTarget.style.borderColor = "transparent";
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.color = "var(--ink3)";
+                          e.currentTarget.style.background = "var(--bg2)";
+                          e.currentTarget.style.borderColor = "var(--border)";
+                        }}>
                         <input type="file" style={{ display: "none" }} onChange={handleFileSelect} disabled={isUploading} />
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
@@ -1417,10 +1456,18 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                             border: "1px solid var(--border)", background: "var(--bg2)",
                             color: "var(--accent)", cursor: "pointer",
                             display: "flex", alignItems: "center", justifyContent: "center",
-                            transition: "background 0.15s",
+                            transition: "background 0.15s, color 0.15s, border-color 0.15s",
                           }}
-                          onMouseOver={(e) => e.currentTarget.style.background = "var(--accent2)"}
-                          onMouseOut={(e) => e.currentTarget.style.background = "var(--bg2)"}
+                          onMouseOver={(e) => {
+                            e.currentTarget.style.background = "linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%)";
+                            e.currentTarget.style.color = "#fff";
+                            e.currentTarget.style.borderColor = "transparent";
+                          }}
+                          onMouseOut={(e) => {
+                            e.currentTarget.style.background = "var(--bg2)";
+                            e.currentTarget.style.color = "var(--accent)";
+                            e.currentTarget.style.borderColor = "var(--border)";
+                          }}
                         >
                           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M12 2a3 3 0 00-3 3v7a3 3 0 006 0V5a3 3 0 00-3-3Z" /><path d="M19 10v2a7 7 0 01-14 0v-2" /><line x1="12" y1="19" x2="12" y2="22" />
@@ -1428,16 +1475,16 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                         </button>
                       ) : (
                         <button type="submit" disabled={isUploading}
+                          className="gradient-btn"
                           style={{
                             width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
-                            border: "none", background: "var(--accent)", color: "#fff",
+                            border: "none", color: "#fff",
                             cursor: isUploading ? "not-allowed" : "pointer",
                             display: "flex", alignItems: "center", justifyContent: "center",
                             opacity: isUploading ? 0.6 : 1,
-                            transition: "opacity 0.15s, transform 0.1s",
-                            boxShadow: "0 2px 8px rgba(26,86,240,0.28)",
+                            boxShadow: "0 2px 10px rgba(0,0,0,0.22)",
                           }}
-                          onMouseOver={(e) => { if (!isUploading) e.currentTarget.style.transform = "scale(1.06)"; }}
+                          onMouseOver={(e) => { if (!isUploading) e.currentTarget.style.transform = "scale(1.07)"; }}
                           onMouseOut={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
                         >
                           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1462,13 +1509,13 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
               {isMobile && (
                 <button
                   onClick={() => setIsSidebarOpen(true)}
+                  className="gradient-btn"
                   style={{
                     position: "absolute", top: 14, left: 14,
                     width: 38, height: 38, borderRadius: 10,
-                    background: "var(--accent)", color: "#fff",
-                    border: "none", cursor: "pointer",
+                    color: "#fff", border: "none", cursor: "pointer",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    boxShadow: "0 4px 12px rgba(26,86,240,0.3)",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.22)",
                   }}
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
@@ -1527,11 +1574,12 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
               transition: "background 0.15s",
             }}>Decline</button>
             <button onClick={answerCall} style={{
-              background: "#22c55e", color: "#fff",
-              border: "none", padding: "10px 22px",
+              background: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
+              color: "#fff", border: "none", padding: "10px 22px",
               borderRadius: 9, fontWeight: 600, fontSize: 13, cursor: "pointer",
-              boxShadow: "0 2px 8px rgba(34,197,94,0.3)",
+              boxShadow: "0 2px 10px rgba(34,197,94,0.35)",
               animation: "pulse 1.5s infinite",
+              transition: "opacity 0.15s",
             }}>Answer</button>
           </div>
         </div>
