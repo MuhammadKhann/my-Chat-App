@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import io from "socket.io-client";
 import Peer from "simple-peer/simplepeer.min.js";
 import { THEMES } from "./GlobalStyles";
@@ -82,6 +82,10 @@ const ChatStyles = () => (
     .privacy-item { transition: background 0.12s; cursor: pointer; }
     .privacy-item:hover { background: var(--bg3) !important; }
 
+    /* Theme menu item */
+    .theme-item { transition: background 0.12s; cursor: pointer; }
+    .theme-item:hover { background: var(--bg3) !important; }
+
     /* Message bubble animation */
     .msg-bubble { animation: msgIn 0.22s cubic-bezier(0.22,1,0.36,1) both; }
 
@@ -145,6 +149,25 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   const [searchResults, setSearchResults] = useState([]);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showThemeMenu, setShowThemeMenu] = useState(false);
+  const [showPrivacyMenu, setShowPrivacyMenu] = useState(false);
+
+  // Refs for dropdown containers to detect click-outside
+  const themeMenuRef = useRef(null);
+  const privacyMenuRef = useRef(null);
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (themeMenuRef.current && !themeMenuRef.current.contains(e.target)) {
+        setShowThemeMenu(false);
+      }
+      if (privacyMenuRef.current && !privacyMenuRef.current.contains(e.target)) {
+        setShowPrivacyMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -171,6 +194,187 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   const [uploadProgress, setUploadProgress] = useState(0);
   const scrollRef = useRef();
 
+  // ─── Smart Read Receipts (Enterprise) ───────────────────────────────────────
+  const messagesViewportRef = useRef(null);
+  const messageNodeMapRef = useRef(new Map()); // msgId -> HTMLElement
+  const intersectionObserverRef = useRef(null);
+  const visibleIncomingMsgIdsRef = useRef(new Set()); // msgIds intersecting viewport
+  const emittedSeenMsgIdsRef = useRef(new Set()); // msgIds already emitted as seen
+  const chatHistoryByIdRef = useRef(new Map()); // msgId -> msg
+  const scrollRafRef = useRef(null);
+  const lastInteractionAtRef = useRef(Date.now());
+  const ATTENTION_WINDOW_MS = 30_000;
+
+  const markInteractionNow = useCallback(() => {
+    lastInteractionAtRef.current = Date.now();
+  }, []);
+
+  const isAttentionGateOpen = useCallback(() => {
+    if (document.visibilityState !== "visible") return false;
+    if (!document.hasFocus()) return false;
+    return (Date.now() - lastInteractionAtRef.current) <= ATTENTION_WINDOW_MS;
+  }, []);
+
+  const tryMarkSeen = useCallback((msgId, senderId) => {
+    if (!msgId || !senderId) return;
+    if (!selectedUserRef.current?._id) return;
+    if (senderId !== selectedUserRef.current._id) return;
+    if (!isAttentionGateOpen()) return;
+    if (emittedSeenMsgIdsRef.current.has(msgId)) return;
+
+    emittedSeenMsgIdsRef.current.add(msgId);
+    socket.emit("update_status", {
+      msgId,
+      senderId: senderId.toString(),
+      receiverId: user.id,
+      status: "seen",
+    });
+
+    // Optimistically update local UI + stop observing this node to reduce work.
+    setChatHistory((prev) => prev.map((m) => (m?._id === msgId ? { ...m, status: "seen" } : m)));
+    const node = messageNodeMapRef.current.get(msgId);
+    if (node && intersectionObserverRef.current) {
+      try { intersectionObserverRef.current.unobserve(node); } catch { /* ignore */ }
+    }
+  }, [isAttentionGateOpen, user.id]);
+
+  const flushVisibleIncoming = useCallback(() => {
+    if (!isAttentionGateOpen()) return;
+    const currentSelectedUser = selectedUserRef.current;
+    if (!currentSelectedUser?._id) return;
+
+    visibleIncomingMsgIdsRef.current.forEach((msgId) => {
+      const msg = chatHistoryByIdRef.current.get(msgId);
+      if (!msg) return;
+      if ((msg.sender || msg.senderId) !== currentSelectedUser._id) return;
+      if (msg.status === "seen") return;
+      tryMarkSeen(msgId, currentSelectedUser._id);
+    });
+  }, [isAttentionGateOpen, tryMarkSeen]);
+
+  // Maintain O(1) lookup for seen checks.
+  useEffect(() => {
+    const next = new Map();
+    for (const m of chatHistory) {
+      if (m?._id) next.set(m._id, m);
+    }
+    chatHistoryByIdRef.current = next;
+  }, [chatHistory]);
+
+  // Track user interaction (attention gate)
+  useEffect(() => {
+    const onPointer = () => markInteractionNow();
+    const onKeydown = () => markInteractionNow();
+    const onWheel = () => markInteractionNow();
+    const onTouch = () => markInteractionNow();
+    window.addEventListener("pointerdown", onPointer, { passive: true });
+    window.addEventListener("keydown", onKeydown);
+    window.addEventListener("wheel", onWheel, { passive: true });
+    window.addEventListener("touchstart", onTouch, { passive: true });
+    return () => {
+      window.removeEventListener("pointerdown", onPointer);
+      window.removeEventListener("keydown", onKeydown);
+      window.removeEventListener("wheel", onWheel);
+      window.removeEventListener("touchstart", onTouch);
+    };
+  }, [markInteractionNow]);
+
+  // React to visibility/focus changes by re-checking visible messages
+  useEffect(() => {
+    const onVisibility = () => flushVisibleIncoming();
+    const onFocus = () => flushVisibleIncoming();
+    window.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("focus", onFocus);
+    return () => {
+      window.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [flushVisibleIncoming]);
+
+  // IntersectionObserver setup (per selected chat)
+  useEffect(() => {
+    // Reset tracking per conversation switch
+    visibleIncomingMsgIdsRef.current = new Set();
+    emittedSeenMsgIdsRef.current = new Set();
+
+    if (intersectionObserverRef.current) {
+      intersectionObserverRef.current.disconnect();
+      intersectionObserverRef.current = null;
+    }
+
+    if (!selectedUser?._id) return;
+    const root = messagesViewportRef.current;
+    if (!root) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          const msgId = entry.target?.dataset?.msgid;
+          const isIncoming = entry.target?.dataset?.incoming === "1";
+          if (!msgId || !isIncoming) continue;
+
+          if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
+            visibleIncomingMsgIdsRef.current.add(msgId);
+            tryMarkSeen(msgId, selectedUser._id);
+          } else {
+            visibleIncomingMsgIdsRef.current.delete(msgId);
+          }
+        }
+      },
+      { root, threshold: [0, 0.6] }
+    );
+
+    intersectionObserverRef.current = observer;
+
+    // Observe already-mounted nodes
+    for (const [msgId, node] of messageNodeMapRef.current.entries()) {
+      if (!node) continue;
+      if (node.dataset?.incoming !== "1") continue;
+      observer.observe(node);
+    }
+
+    // If chat opens while already focused, mark what’s already visible
+    flushVisibleIncoming();
+
+    return () => {
+      observer.disconnect();
+      if (intersectionObserverRef.current === observer) {
+        intersectionObserverRef.current = null;
+      }
+    };
+  }, [selectedUser?._id, flushVisibleIncoming, tryMarkSeen]);
+
+  const registerMessageNode = useCallback((msgId, shouldObserve, node) => {
+    if (!msgId) return;
+    const prev = messageNodeMapRef.current.get(msgId);
+    if (prev && prev !== node && intersectionObserverRef.current) {
+      try { intersectionObserverRef.current.unobserve(prev); } catch { /* ignore */ }
+    }
+
+    if (!node) {
+      messageNodeMapRef.current.delete(msgId);
+      return;
+    }
+
+    node.dataset.msgid = msgId;
+    node.dataset.incoming = shouldObserve ? "1" : "0";
+    messageNodeMapRef.current.set(msgId, node);
+
+    if (intersectionObserverRef.current && shouldObserve) {
+      intersectionObserverRef.current.observe(node);
+    }
+  }, []);
+
+  const onMessagesScroll = useCallback(() => {
+    // Throttle to once per frame.
+    if (scrollRafRef.current) return;
+    scrollRafRef.current = window.requestAnimationFrame(() => {
+      scrollRafRef.current = null;
+      markInteractionNow();
+      flushVisibleIncoming();
+    });
+  }, [flushVisibleIncoming, markInteractionNow]);
+
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   const [isRecording, setIsRecording] = useState(false);
@@ -189,8 +393,6 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   const userVideoRef = useRef(null);
   const connectionRef = useRef(null);
 
-  const [showPrivacyMenu, setShowPrivacyMenu] = useState(false);
-
   // ─── All original logic (untouched) ────────────────────────────────────────
   const handlePrivacyChange = async (level) => {
     try {
@@ -207,7 +409,6 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
         if (localStorage.getItem("nexusUser")) {
           localStorage.setItem("nexusUser", JSON.stringify(data));
         }
-        setShowPrivacyMenu(false);
         socket.emit("privacy_changed", { userId: data.id, privacyLevel: level });
       }
     } catch (err) { console.error(err); }
@@ -285,10 +486,6 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
         .then(res => res.json())
         .then(data => setChatHistory(data))
         .catch(err => console.error(err));
-      socket.emit("mark_room_seen", { room, userId: user.id, partnerId: selectedUser._id });
-      setChatList(prev => prev.map(chat =>
-        chat._id === selectedUser._id ? { ...chat, unreadCount: 0 } : chat
-      ));
     }
   }, [selectedUser, user.id]);
 
@@ -318,12 +515,14 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       };
       const currentSelectedUser = selectedUserRef.current;
       if (currentSelectedUser && normalizedMsg.sender === currentSelectedUser._id) {
-        normalizedMsg.status = "seen";
+        // Smart read receipts will upgrade to "seen" only when the message is
+        // actually visible + tab focused + user recently interacted.
+        normalizedMsg.status = "delivered";
         setChatHistory((prev) => [...prev, normalizedMsg]);
         socket.emit("update_status", {
           msgId: incomingMsg._id,
           senderId: (incomingMsg.sender || incomingMsg.senderId).toString(),
-          receiverId: user.id, status: "seen"
+          receiverId: user.id, status: "delivered"
         });
       } else {
         setChatHistory((prev) => [...prev, normalizedMsg]);
@@ -353,9 +552,6 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
 
     socket.on("status_changed", ({ msgId, status }) => {
       setChatHistory(prev => prev.map(m => m._id === msgId ? { ...m, status } : m));
-    });
-    socket.on("room_marked_seen", ({ finalStatus }) => {
-      setChatHistory(prev => prev.map(m => ({ ...m, status: finalStatus || 'seen' })));
     });
     socket.on("online_users_list", (users) => { setOnlineUsers(new Set(users)); });
     socket.on("user_status_change", ({ userId, isOnline }) => {
@@ -391,7 +587,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
     return () => {
       socket.off("message_confirmed"); socket.off("send_error");
       socket.off("receive_message"); socket.off("status_changed");
-      socket.off("room_marked_seen"); socket.off("online_users_list");
+      socket.off("online_users_list");
       socket.off("user_status_change"); socket.off("user_typing");
       socket.off("incoming_call"); socket.off("call_ended"); socket.off("call_declined");
     };
@@ -638,18 +834,19 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
         <path d="M7 5.5l3.5 3.5L18 1"   stroke="#3b82f6" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     );
-    // "delivered" — double grey ticks, always visible against the
-    // gradient bubble because we use rgba(255,255,255,0.75)
+    // "delivered" & "sent" — use currentColor to inherit the message bubble's
+    // text color. This works on ALL themes (light/dark) without hardcoding.
+    // Sender bubbles have white text (#fff), so ticks are white.
     if (status === 'delivered') return (
-      <svg width="18" height="11" viewBox="0 0 20 11" fill="none" style={{ flexShrink: 0 }}>
-        <path d="M1 5.5l3.5 3.5L12 1"   stroke="rgba(255,255,255,0.75)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M7 5.5l3.5 3.5L18 1"   stroke="rgba(255,255,255,0.75)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+      <svg width="18" height="11" viewBox="0 0 20 11" fill="none" style={{ flexShrink: 0, opacity: 0.75 }}>
+        <path d="M1 5.5l3.5 3.5L12 1"   stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M7 5.5l3.5 3.5L18 1"   stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     );
-    // "sent" — single white tick on the gradient bubble
+    // "sent" — single tick
     return (
-      <svg width="12" height="11" viewBox="0 0 12 11" fill="none" style={{ flexShrink: 0 }}>
-        <path d="M1 5.5l3.5 3.5L11 1" stroke="rgba(255,255,255,0.75)" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+      <svg width="12" height="11" viewBox="0 0 12 11" fill="none" style={{ flexShrink: 0, opacity: 0.75 }}>
+        <path d="M1 5.5l3.5 3.5L11 1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
     );
   };
@@ -740,7 +937,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
 
           {/* Theme menu */}
-          <div style={{ position: "relative" }}>
+          <div ref={themeMenuRef} style={{ position: "relative" }}>
             <button
               className="nav-icon-btn"
               onClick={() => { setShowThemeMenu(!showThemeMenu); setShowPrivacyMenu(false); }}
@@ -754,7 +951,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
             {showThemeMenu && (
               <div style={{
                 position: "absolute", top: "calc(100% + 8px)", right: 0,
-                width: 180, background: "var(--card)",
+                width: 232, background: "var(--card)",
                 border: "1px solid var(--border)",
                 borderRadius: 12,
                 boxShadow: "0 12px 36px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.06)",
@@ -764,26 +961,34 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                 <div style={{ padding: "10px 14px 8px", fontSize: 10, fontWeight: 600, letterSpacing: "0.09em", textTransform: "uppercase", color: "var(--ink3)", borderBottom: "1px solid var(--border)" }}>
                   Select Theme
                 </div>
-                {Object.entries(THEMES).map(([id, t]) => (
+                {Object.entries(THEMES).map(([id, t], i, arr) => (
                   <div
                     key={id}
-                    onClick={() => { setThemeId(id); setShowThemeMenu(false); }}
+                    className="theme-item"
+                    onClick={() => setThemeId(id)}
                     style={{
-                      padding: "10px 14px", display: "flex", alignItems: "center", gap: 10,
-                      cursor: "pointer", borderBottom: "1px solid var(--border)",
-                      background: themeId === id ? "var(--bg2)" : "transparent",
+                      padding: "11px 14px",
+                      borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none",
+                      background: themeId === id ? "var(--accent2)" : "transparent",
+                      display: "flex", alignItems: "center", gap: 10,
+                      cursor: "pointer",
                     }}
-                    onMouseOver={(e) => { e.currentTarget.style.background = "var(--bg2)"; }}
-                    onMouseOut={(e) => { e.currentTarget.style.background = themeId === id ? "var(--bg2)" : "transparent"; }}
                   >
                     <div style={{
                       width: 16, height: 16, borderRadius: "50%", flexShrink: 0,
                       background: `linear-gradient(135deg, ${t.start} 0%, ${t.end} 100%)`,
                       boxShadow: "inset 0 1px 1px rgba(255,255,255,0.2)"
                     }} />
-                    <div style={{ fontSize: 13, fontWeight: 500, color: themeId === id ? "var(--accent)" : "var(--ink)" }}>
-                      {t.name}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: themeId === id ? "var(--accent)" : "var(--ink)" }}>
+                        {t.name}
+                      </div>
                     </div>
+                    {themeId === id && (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
                   </div>
                 ))}
               </div>
@@ -791,7 +996,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
           </div>
 
           {/* Privacy menu */}
-          <div style={{ position: "relative" }}>
+          <div ref={privacyMenuRef} style={{ position: "relative" }}>
             <button
               className="nav-icon-btn"
               onClick={() => { setShowPrivacyMenu(!showPrivacyMenu); setShowThemeMenu(false); }}
@@ -928,20 +1133,6 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
           boxShadow: isMobile && isSidebarOpen ? "6px 0 24px rgba(0,0,0,0.12)" : "none",
           flexShrink: 0,
         }}>
-
-          {/* Mobile close button */}
-          {isMobile && (
-            <div style={{ padding: "10px 12px 0", display: "flex", justifyContent: "flex-end" }}>
-              <button
-                onClick={() => setIsSidebarOpen(false)}
-                className="nav-icon-btn"
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              </button>
-            </div>
-          )}
 
           {/* Tabs: Chats | Search */}
           <div style={{ display: "flex", padding: "12px 12px 0", gap: 4 }}>
@@ -1096,10 +1287,11 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                               <div style={{
                                 background: "var(--accent)", color: "#fff",
                                 fontSize: 10, fontWeight: 700,
-                                padding: "2px 7px", borderRadius: 20,
-                                minWidth: 18, textAlign: "center", flexShrink: 0,
+                                width: 20, height: 20, borderRadius: "50%",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                flexShrink: 0,
                               }}>
-                                {chat.unreadCount}
+                                {chat.unreadCount > 9 ? "9+" : chat.unreadCount}
                               </div>
                             )}
                           </div>
@@ -1224,19 +1416,31 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
               })()}
 
               {/* ── Messages Area ── */}
-              <div style={{
+              <div
+                ref={messagesViewportRef}
+                onScroll={onMessagesScroll}
+                style={{
                 flex: 1, overflowY: "auto",
                 padding: "24px 20px 8px",
                 display: "flex", flexDirection: "column", gap: 4,
               }}>
                 {chatHistory.map((msg, index) => {
                   const isMe = msg.sender === user.id;
-                  const timeStr = new Date(msg.createdAt || msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                  const msgId = (typeof msg._id === "string")
+                    ? msg._id
+                    : (msg._id?.toString ? msg._id.toString() : "");
+                  const timeStr = new Date(msg.createdAt || msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
                   return (
                     <div
-                      key={index}
+                      key={msgId || index}
                       className="msg-bubble"
+                      ref={(node) => {
+                        // Observe only real incoming messages (server IDs),
+                        // never optimistic temp IDs / local placeholders.
+                        const shouldObserve = !isMe && !!msgId && !msgId.startsWith("temp_") && msg.status !== "seen";
+                        registerMessageNode(msgId, shouldObserve, node);
+                      }}
                       style={{
                         display: "flex",
                         flexDirection: "column",

@@ -5,18 +5,21 @@ export const FontLoader = () => (
 );
 
 export const THEMES = {
-  sunrise:   { name: "Sunrise", start: "#f97316", end: "#ea580c", accent: "#fbbf24", accentH: "#d97706" },
-  sunset:    { name: "Sunset", start: "#f97316", end: "#ec4899", accent: "#F35D58", accentH: "#D34945" },
-  oceanic:   { name: "Oceanic", start: "#06b6d4", end: "#3b82f6", accent: "#1A84E8", accentH: "#1468B8" },
-  emerald:   { name: "Emerald", start: "#0f766e", end: "#10b981", accent: "#34d399", accentH: "#115e59" },
+  // ─── Dark themes (darkest to lighter) ────────────────────────
+  midnight:  { name: "Midnight", start: "#020617", end: "#0f172a", accent: "#818cf8", accentH: "#4338ca" },
+  nebula:    { name: "Nebula", start: "#0b1120", end: "#7c3aed", accent: "#22d3ee", accentH: "#0f172a" },
+  aurora:    { name: "Aurora", start: "#0f172a", end: "#0d9488", accent: "#38bdf8", accentH: "#0f766e" },
+  slate:     { name: "Slate", start: "#475569", end: "#1e293b", accent: "#475569", accentH: "#1e293b" },
   sapphire:  { name: "Sapphire", start: "#172554", end: "#2563eb", accent: "#1E44A0", accentH: "#153075" },
+  // ─── Mid / vibrant themes ───────────────────────────────────
+  cyberpunk: { name: "Cyberpunk", start: "#06b6d4", end: "#d946ef", accent: "#A24EEF", accentH: "#8B3CD6" },
   cosmic:    { name: "Cosmic", start: "#3B82F6", end: "#8B5CF6", accent: "#5C6BF6", accentH: "#4956D6" },
   orchid:    { name: "Orchid", start: "#6d28d9", end: "#ec4899", accent: "#f472b6", accentH: "#9333ea" },
-  aurora:    { name: "Aurora", start: "#0f172a", end: "#0d9488", accent: "#38bdf8", accentH: "#0f766e" },
-  cyberpunk: { name: "Cyberpunk", start: "#06b6d4", end: "#d946ef", accent: "#A24EEF", accentH: "#8B3CD6" },
-  nebula:    { name: "Nebula", start: "#0b1120", end: "#7c3aed", accent: "#22d3ee", accentH: "#0f172a" },
-  midnight:  { name: "Midnight", start: "#020617", end: "#0f172a", accent: "#818cf8", accentH: "#4338ca" },
-  slate:     { name: "Slate", start: "#475569", end: "#1e293b", accent: "#475569", accentH: "#1e293b" },
+  oceanic:   { name: "Oceanic", start: "#06b6d4", end: "#3b82f6", accent: "#1A84E8", accentH: "#1468B8" },
+  emerald:   { name: "Emerald", start: "#0f766e", end: "#10b981", accent: "#34d399", accentH: "#115e59" },
+  // ─── Light / warm themes ────────────────────────────────────
+  sunset:    { name: "Sunset", start: "#f97316", end: "#ec4899", accent: "#F35D58", accentH: "#D34945" },
+  sunrise:   { name: "Sunrise", start: "#f97316", end: "#ea580c", accent: "#fbbf24", accentH: "#d97706" },
 };
 
 export const GlobalStyles = ({ dark, themeId = "cosmic" }) => {

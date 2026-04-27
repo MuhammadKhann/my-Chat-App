@@ -508,6 +508,10 @@ io.on("connection", (socket) => {
     // 3. THE TICK DOWNGRADER (Intercepting read receipts)
     socket.on("update_status", async ({ msgId, senderId, status, receiverId }) => {
         try {
+            // Defensive validation: only allow updates for real messages that belong
+            // to (senderId -> receiverId). Prevents a client from spoofing msgId.
+            if (!msgId || !senderId || !receiverId || !status) return;
+
             // Check the privacy level of the person READING the message
             const readerLevel = privacyCache.get(receiverId) || 'standard';
 
@@ -524,6 +528,20 @@ io.on("connection", (socket) => {
 
             // Only update the database and notify the sender IF the status is allowed to change
             if (finalStatus !== 'sent') {
+                const msg = await Message.findOne({
+                    _id: msgId,
+                    sender: senderId,
+                    receiver: receiverId
+                }).select("status");
+
+                if (!msg) return;
+
+                // Monotonic status: never downgrade (e.g. delivered after seen).
+                const rank = { sent: 0, delivered: 1, seen: 2 };
+                const currentRank = rank[msg.status] ?? 0;
+                const nextRank = rank[finalStatus] ?? 0;
+                if (nextRank <= currentRank) return;
+
                 await Message.findByIdAndUpdate(msgId, { status: finalStatus });
                 socket.to(senderId).emit("status_changed", { msgId, status: finalStatus });
             }
