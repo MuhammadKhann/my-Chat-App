@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import io from "socket.io-client";
 import Peer from "simple-peer/simplepeer.min.js";
 import { THEMES } from "./GlobalStyles";
@@ -111,6 +111,30 @@ const ChatStyles = () => (
     .gradient-btn:hover  { opacity: 0.88; }
     .gradient-btn:active { transform: scale(0.95); opacity: 1; }
     .gradient-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    @keyframes shimmer {
+      100% { transform: translateX(100%); }
+    }
+    .skeleton-container {
+      position: relative;
+      overflow: hidden;
+      background-color: var(--bg2);
+      border-radius: 12px;
+    }
+    .skeleton-container::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      transform: translateX(-100%);
+      background-image: linear-gradient(
+        90deg,
+        rgba(255,255,255,0) 0,
+        rgba(255,255,255,0.05) 20%,
+        rgba(255,255,255,0.1) 60%,
+        rgba(255,255,255,0) 100%
+      );
+      animation: shimmer 1.5s infinite;
+    }
   `}</style>
 );
 
@@ -139,6 +163,76 @@ function Avatar({ src, name, size = 38, border = false, accent = false }) {
     </div>
   );
 }
+
+// ─── SmartImage ───────────────────────────────────────────────────────────────
+function SmartImage({ src, alt, style, onClick }) {
+  const [status, setStatus] = useState("loading");
+  return (
+    <div
+      className={status === "loading" ? "skeleton-container" : ""}
+      style={{
+        position: "relative",
+        maxWidth: "100%",
+        minHeight: 120,
+        borderRadius: 12,
+        overflow: "hidden",
+        cursor: onClick ? "pointer" : "default",
+        ...style,
+      }}
+      onClick={onClick}
+    >
+      {status === "error" && (
+        <div style={{
+          position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
+          display: "flex", flexDirection: "column", alignItems: "center",
+          justifyContent: "center", background: "var(--bg2)",
+          color: "var(--ink2)", fontSize: 12, gap: 8, padding: 16,
+        }}>
+          <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+          Image unavailable
+        </div>
+      )}
+      {status !== "error" && (
+        <img
+          src={src}
+          alt={alt || "chat-media"}
+          onLoad={() => setStatus("loaded")}
+          onError={() => setStatus("error")}
+          style={{
+            display: "block",
+            width: "100%",
+            maxHeight: 260,
+            objectFit: "cover",
+            opacity: status === "loaded" ? 1 : 0,
+            transition: "opacity 0.4s cubic-bezier(0.4,0,0.2,1)",
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Date separator utilities ─────────────────────────────────────────────────
+const formatSeparatorDate = (dateString) => {
+  const messageDate = new Date(dateString);
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+  if (messageDate.toDateString() === today.toDateString()) return "Today";
+  if (messageDate.toDateString() === yesterday.toDateString()) return "Yesterday";
+  const options = { month: "short", day: "numeric" };
+  if (messageDate.getFullYear() !== today.getFullYear()) options.year = "numeric";
+  return messageDate.toLocaleDateString(undefined, options);
+};
+
+const shouldShowDateSeparator = (messages, index) => {
+  if (index === 0) return true;
+  const cur = new Date(messages[index].createdAt || messages[index].timestamp);
+  const prev = new Date(messages[index - 1].createdAt || messages[index - 1].timestamp);
+  return cur.toDateString() !== prev.toDateString();
+};
 
 // ─── Main Chat Component ──────────────────────────────────────────────────────
 function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
@@ -1430,10 +1524,33 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                     ? msg._id
                     : (msg._id?.toString ? msg._id.toString() : "");
                   const timeStr = new Date(msg.createdAt || msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                  const showSeparator = shouldShowDateSeparator(chatHistory, index);
 
                   return (
+                    <React.Fragment key={msgId || index}>
+                      {showSeparator && (
+                        <div style={{
+                          display: "flex", justifyContent: "center",
+                          margin: "24px 0 16px 0",
+                          position: "sticky", top: 10, zIndex: 50,
+                        }}>
+                          <span style={{
+                            background: "var(--bg2)",
+                            opacity: 0.85,
+                            backdropFilter: "blur(8px)",
+                            padding: "4px 14px",
+                            borderRadius: 14,
+                            fontSize: 12, fontWeight: 600,
+                            color: "var(--ink2)",
+                            border: "1px solid var(--border)",
+                            boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+                            animation: "fadeIn 0.3s ease",
+                          }}>
+                            {formatSeparatorDate(msg.createdAt || msg.timestamp)}
+                          </span>
+                        </div>
+                      )}
                     <div
-                      key={msgId || index}
                       className="msg-bubble"
                       ref={(node) => {
                         // Observe only real incoming messages (server IDs),
@@ -1471,14 +1588,10 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
 
                         {/* Image */}
                         {msg.fileUrl && msg.fileType?.startsWith('image/') && (
-                          <img
+                          <SmartImage
                             src={msg.fileUrl}
                             alt="Attached"
-                            style={{
-                              maxWidth: "100%", maxHeight: 260, objectFit: "cover",
-                              borderRadius: 10, cursor: "pointer",
-                              border: isMe ? "1px solid rgba(255,255,255,0.15)" : "1px solid var(--border)",
-                            }}
+                            style={{ border: isMe ? "1px solid rgba(255,255,255,0.15)" : "1px solid var(--border)" }}
                             onClick={() => window.open(msg.fileUrl, "_blank")}
                           />
                         )}
@@ -1521,6 +1634,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                         {isMe && renderTicks(msg.status)}
                       </div>
                     </div>
+                    </React.Fragment>
                   );
                 })}
 
