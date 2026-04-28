@@ -20,8 +20,10 @@ const User = require("./models/User"); // Added User model
 const app = express();
 
 // --- ENTERPRISE SECURITY MIDDLEWARE ---
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
+
 app.use(cors({
-    origin: "http://localhost:5173", // Exact Vite dev-server URL
+    origin: FRONTEND_URL,
     credentials: true                // Required for cookies to flow cross-origin
 }));
 app.use(express.json());
@@ -122,7 +124,7 @@ const server = http.createServer(app);
 // --- 1. INITIALIZE SOCKET.IO ---
 const io = new Server(server, {
     cors: {
-        origin: "http://localhost:5173",
+        origin: FRONTEND_URL,
         methods: ["GET", "POST"],
         credentials: true
     }

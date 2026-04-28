@@ -112,6 +112,11 @@ const ChatStyles = () => (
     .gradient-btn:active { transform: scale(0.95); opacity: 1; }
     .gradient-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+    @keyframes scaleUp {
+      from { opacity: 0; transform: scale(0.9); }
+      to   { opacity: 1; transform: scale(1); }
+    }
+
     @keyframes shimmer {
       100% { transform: translateX(100%); }
     }
@@ -138,8 +143,9 @@ const ChatStyles = () => (
   `}</style>
 );
 
-// ─── Socket (unchanged) ───────────────────────────────────────────────────────
-const socket = io("http://localhost:5000", {
+// ─── Socket Connection ────────────────────────────────────────────────────────
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
+const socket = io(BACKEND_URL, {
   withCredentials: true,
   transports: ["websocket"]
 });
@@ -176,7 +182,7 @@ function SmartImage({ src, alt, style, onClick }) {
         minHeight: 120,
         borderRadius: 12,
         overflow: "hidden",
-        cursor: onClick ? "pointer" : "default",
+        cursor: onClick ? "zoom-in" : "default",
         ...style,
       }}
       onClick={onClick}
@@ -214,6 +220,257 @@ function SmartImage({ src, alt, style, onClick }) {
   );
 }
 
+// ─── Blob downloader ─────────────────────────────────────────────────────────
+const forceDownloadMedia = async (url, customFilename, setDownloading) => {
+  try {
+    setDownloading(true);
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("Network response was not ok");
+    const blob = await response.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.style.display = "none";
+    a.href = blobUrl;
+    const ext = url.split(".").pop().split("?")[0] || "file";
+    a.download = customFilename ? `${customFilename}.${ext}` : `Nexus_Media_${Date.now()}.${ext}`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => {
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(blobUrl);
+      setDownloading(false);
+    }, 100);
+  } catch (err) {
+    console.error("Download failed:", err);
+    setDownloading(false);
+  }
+};
+
+// ─── Download Button ──────────────────────────────────────────────────────────
+function DownloadButton({ url, filename }) {
+  const [isDownloading, setIsDownloading] = useState(false);
+  return (
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        if (!isDownloading) forceDownloadMedia(url, filename, setIsDownloading);
+      }}
+      title="Download"
+      style={{
+        background: isDownloading ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.1)",
+        border: "none", color: "#fff",
+        width: 44, height: 44, borderRadius: "50%",
+        cursor: isDownloading ? "not-allowed" : "pointer",
+        display: "flex", justifyContent: "center", alignItems: "center",
+        transition: "background 0.2s, transform 0.2s",
+      }}
+      onMouseOver={(e) => { if (!isDownloading) { e.currentTarget.style.background = "rgba(255,255,255,0.2)"; e.currentTarget.style.transform = "scale(1.05)"; } }}
+      onMouseOut={(e) => { if (!isDownloading) { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.transform = "scale(1)"; } }}
+    >
+      {isDownloading ? (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: "spin 1s linear infinite" }}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" />
+        </svg>
+      ) : (
+        <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
+// ─── Image Viewer Modal ───────────────────────────────────────────────────────
+function ImageViewerModal({ src, onClose }) {
+  useEffect(() => {
+    const handleKeyDown = (e) => { if (e.key === "Escape") onClose(); };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = "unset";
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: "rgba(0,0,0,0.85)",
+        backdropFilter: "blur(5px)",
+        zIndex: 99999,
+        display: "flex", justifyContent: "center", alignItems: "center",
+        animation: "fadeIn 0.2s ease-out",
+      }}
+    >
+      <div style={{ position: "absolute", top: 20, right: 20, zIndex: 10, display: "flex", gap: 10 }}>
+        <DownloadButton url={src} filename="Nexus_Image" />
+        <button
+          onClick={onClose}
+          style={{
+            background: "rgba(255,255,255,0.1)", border: "none", color: "#fff",
+            width: 44, height: 44, borderRadius: "50%",
+            cursor: "pointer", display: "flex", justifyContent: "center", alignItems: "center",
+            transition: "background 0.2s, transform 0.2s",
+          }}
+          onMouseOver={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.2)"; e.currentTarget.style.transform = "scale(1.05)"; }}
+          onMouseOut={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.transform = "scale(1)"; }}
+        >
+          <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <img
+        src={src}
+        alt="Full screen view"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          maxHeight: "90vh", maxWidth: "90vw",
+          objectFit: "contain",
+          borderRadius: 8,
+          boxShadow: "0 10px 40px rgba(0,0,0,0.5)",
+          animation: "scaleUp 0.3s cubic-bezier(0.175,0.885,0.32,1.275)",
+        }}
+      />
+    </div>
+  );
+}
+
+// ─── Video Player Modal ───────────────────────────────────────────────────────
+function VideoPlayerModal({ src, onClose }) {
+  const videoRef = useRef(null);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => { if (e.key === "Escape") onClose(); };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = "unset";
+      window.removeEventListener("keydown", handleKeyDown);
+      if (videoRef.current) {
+        videoRef.current.pause();
+        videoRef.current.removeAttribute("src");
+        videoRef.current.load();
+      }
+    };
+  }, [onClose]);
+
+  const toggleSpeed = (e) => {
+    e.stopPropagation();
+    if (!videoRef.current) return;
+    const next = playbackSpeed === 1 ? 1.5 : playbackSpeed === 1.5 ? 2 : 1;
+    videoRef.current.playbackRate = next;
+    setPlaybackSpeed(next);
+  };
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+        backgroundColor: "rgba(0,0,0,0.9)",
+        backdropFilter: "blur(8px)",
+        zIndex: 99999,
+        display: "flex", justifyContent: "center", alignItems: "center",
+        animation: "fadeIn 0.2s ease-out",
+      }}
+    >
+      <div style={{ position: "absolute", top: 20, right: 20, zIndex: 10, display: "flex", gap: 10 }}>
+        <DownloadButton url={src} filename="Nexus_Video" />
+        <button
+          onClick={onClose}
+          style={{
+            background: "rgba(255,255,255,0.1)", border: "none", color: "#fff",
+            width: 44, height: 44, borderRadius: "50%",
+            cursor: "pointer", display: "flex", justifyContent: "center", alignItems: "center",
+            transition: "background 0.2s, transform 0.2s",
+          }}
+          onMouseOver={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.2)"; e.currentTarget.style.transform = "scale(1.05)"; }}
+          onMouseOut={(e) => { e.currentTarget.style.background = "rgba(255,255,255,0.1)"; e.currentTarget.style.transform = "scale(1)"; }}
+        >
+          <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ position: "relative", animation: "scaleUp 0.3s cubic-bezier(0.175,0.885,0.32,1.275)" }}
+      >
+        <button
+          onClick={toggleSpeed}
+          style={{
+            position: "absolute", top: 16, left: 16, zIndex: 10,
+            background: "rgba(0,0,0,0.6)", color: "#fff",
+            border: "1px solid rgba(255,255,255,0.2)",
+            padding: "6px 14px", borderRadius: 20,
+            fontSize: 14, fontWeight: 600,
+            backdropFilter: "blur(4px)", cursor: "pointer", transition: "background 0.2s",
+          }}
+          onMouseOver={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.8)")}
+          onMouseOut={(e) => (e.currentTarget.style.background = "rgba(0,0,0,0.6)")}
+        >
+          {playbackSpeed}x
+        </button>
+        <video
+          ref={videoRef}
+          src={src}
+          autoPlay
+          controls
+          controlsList="nodownload"
+          onContextMenu={(e) => e.preventDefault()}
+          style={{
+            maxHeight: "85vh", maxWidth: "90vw",
+            borderRadius: 12,
+            boxShadow: "0 10px 40px rgba(0,0,0,0.6)",
+            outline: "none",
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─── Smart Video Preview ──────────────────────────────────────────────────────
+function SmartVideo({ src, onClick, isMe }) {
+  return (
+    <div
+      onClick={onClick}
+      style={{
+        position: "relative",
+        width: 250,
+        borderRadius: 12,
+        overflow: "hidden",
+        border: isMe ? "1px solid rgba(255,255,255,0.15)" : "1px solid var(--border)",
+        cursor: "pointer",
+        backgroundColor: "#000",
+      }}
+    >
+      <video
+        src={src}
+        preload="metadata"
+        style={{ display: "block", width: "100%", objectFit: "cover", opacity: 0.8 }}
+      />
+      <div style={{
+        position: "absolute", top: "50%", left: "50%",
+        transform: "translate(-50%, -50%)",
+        background: "rgba(255,255,255,0.2)", backdropFilter: "blur(4px)",
+        borderRadius: "50%", padding: 12,
+        display: "flex", justifyContent: "center", alignItems: "center",
+        pointerEvents: "none",
+      }}>
+        <svg width="28" height="28" fill="white" viewBox="0 0 24 24">
+          <path d="M8 5v14l11-7z" />
+        </svg>
+      </div>
+    </div>
+  );
+}
+
 // ─── Date separator utilities ─────────────────────────────────────────────────
 const formatSeparatorDate = (dateString) => {
   const messageDate = new Date(dateString);
@@ -242,6 +499,8 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [viewingMedia, setViewingMedia] = useState(null);
+  const [viewingVideo, setViewingVideo] = useState(null);
   const [showThemeMenu, setShowThemeMenu] = useState(false);
   const [showPrivacyMenu, setShowPrivacyMenu] = useState(false);
 
@@ -270,7 +529,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
     const handleResize = () => {
       setIsMobile(window.innerWidth < 900);
       // Auto-close the sidebar if they resize back to a desktop view
-      if (window.innerWidth >= 900) setIsSidebarOpen(false); 
+      if (window.innerWidth >= 900) setIsSidebarOpen(false);
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
@@ -902,7 +1161,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       if (res.ok) {
         setChatHistory([]);
         setChatList(chatList.filter(item => item._id !== selectedUser._id));
-        setSelectedUser(null); 
+        setSelectedUser(null);
         setShowClearConfirm(false);
       }
     } catch (err) { console.error("Delete failed", err); }
@@ -924,8 +1183,8 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
     // clashes with any accent colour, visible on every theme.
     if (status === 'seen') return (
       <svg width="18" height="11" viewBox="0 0 20 11" fill="none" style={{ flexShrink: 0 }}>
-        <path d="M1 5.5l3.5 3.5L12 1"   stroke="#3b82f6" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M7 5.5l3.5 3.5L18 1"   stroke="#3b82f6" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M1 5.5l3.5 3.5L12 1" stroke="#3b82f6" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M7 5.5l3.5 3.5L18 1" stroke="#3b82f6" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     );
     // "delivered" & "sent" — use currentColor to inherit the message bubble's
@@ -933,18 +1192,18 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
     // Sender bubbles have white text (#fff), so ticks are white.
     if (status === 'delivered') return (
       <svg width="18" height="11" viewBox="0 0 20 11" fill="none" style={{ flexShrink: 0, opacity: 0.75 }}>
-        <path d="M1 5.5l3.5 3.5L12 1"   stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M7 5.5l3.5 3.5L18 1"   stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M1 5.5l3.5 3.5L12 1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M7 5.5l3.5 3.5L18 1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     );
     // "sent" — single tick
     return (
       <svg width="12" height="11" viewBox="0 0 12 11" fill="none" style={{ flexShrink: 0, opacity: 0.75 }}>
-        <path d="M1 5.5l3.5 3.5L11 1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M1 5.5l3.5 3.5L11 1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
       </svg>
     );
   };
- 
+
 
   // ─── Privacy badge label ────────────────────────────────────────────────────
   const privacyBadge = {
@@ -1427,10 +1686,10 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
               }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <button
-                    onClick={() => { 
-                      setSelectedUser(null); 
-                      setChatHistory([]); 
-                      if (isMobile) setIsSidebarOpen(true); 
+                    onClick={() => {
+                      setSelectedUser(null);
+                      setChatHistory([]);
+                      if (isMobile) setIsSidebarOpen(true);
                     }}
                     title="Close chat"
                     className="nav-icon-btn"
@@ -1514,10 +1773,10 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                 ref={messagesViewportRef}
                 onScroll={onMessagesScroll}
                 style={{
-                flex: 1, overflowY: "auto",
-                padding: "24px 20px 8px",
-                display: "flex", flexDirection: "column", gap: 4,
-              }}>
+                  flex: 1, overflowY: "auto",
+                  padding: "24px 20px 8px",
+                  display: "flex", flexDirection: "column", gap: 4,
+                }}>
                 {chatHistory.map((msg, index) => {
                   const isMe = msg.sender === user.id;
                   const msgId = (typeof msg._id === "string")
@@ -1550,90 +1809,99 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                           </span>
                         </div>
                       )}
-                    <div
-                      className="msg-bubble"
-                      ref={(node) => {
-                        // Observe only real incoming messages (server IDs),
-                        // never optimistic temp IDs / local placeholders.
-                        const shouldObserve = !isMe && !!msgId && !msgId.startsWith("temp_") && msg.status !== "seen";
-                        registerMessageNode(msgId, shouldObserve, node);
-                      }}
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: isMe ? "flex-end" : "flex-start",
-                        marginBottom: 6,
-                      }}
-                    >
-                      {/* Bubble */}
-                      <div style={{
-                        maxWidth: "min(72%, 520px)",
-                        background: isMe ? "linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%)" : "var(--card)",
-                        color: isMe ? "#fff" : "var(--ink)",
-                        borderRadius: isMe ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
-                        padding: "10px 14px",
-                        display: "flex", flexDirection: "column", gap: 8,
-                        border: isMe ? "none" : "1px solid var(--border2)",
-                        boxShadow: isMe
-                          ? "0 2px 10px rgba(0,0,0,0.18)"
-                          : "0 1px 4px rgba(0,0,0,0.06)",
-                      }}>
+                      <div
+                        className="msg-bubble"
+                        ref={(node) => {
+                          // Observe only real incoming messages (server IDs),
+                          // never optimistic temp IDs / local placeholders.
+                          const shouldObserve = !isMe && !!msgId && !msgId.startsWith("temp_") && msg.status !== "seen";
+                          registerMessageNode(msgId, shouldObserve, node);
+                        }}
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: isMe ? "flex-end" : "flex-start",
+                          marginBottom: 6,
+                        }}
+                      >
+                        {/* Bubble */}
+                        <div style={{
+                          maxWidth: "min(72%, 520px)",
+                          background: isMe ? "linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%)" : "var(--card)",
+                          color: isMe ? "#fff" : "var(--ink)",
+                          borderRadius: isMe ? "16px 16px 4px 16px" : "16px 16px 16px 4px",
+                          padding: "10px 14px",
+                          display: "flex", flexDirection: "column", gap: 8,
+                          border: isMe ? "none" : "1px solid var(--border2)",
+                          boxShadow: isMe
+                            ? "0 2px 10px rgba(0,0,0,0.18)"
+                            : "0 1px 4px rgba(0,0,0,0.06)",
+                        }}>
 
-                        {/* Text */}
-                        {msg.text && (
-                          <span style={{ wordBreak: "break-word", lineHeight: 1.5, fontSize: 14 }}>
-                            {msg.text}
-                          </span>
-                        )}
-
-                        {/* Image */}
-                        {msg.fileUrl && msg.fileType?.startsWith('image/') && (
-                          <SmartImage
-                            src={msg.fileUrl}
-                            alt="Attached"
-                            style={{ border: isMe ? "1px solid rgba(255,255,255,0.15)" : "1px solid var(--border)" }}
-                            onClick={() => window.open(msg.fileUrl, "_blank")}
-                          />
-                        )}
-
-                        {/* Document */}
-                        {msg.fileUrl && !msg.fileType?.startsWith('image/') && !msg.fileType?.startsWith('audio/') && (
-                          <a
-                            href={`http://localhost:5000/download?url=${encodeURIComponent(msg.fileUrl)}&filename=${encodeURIComponent(msg.fileName || 'document.pdf')}`}
-                            style={{
-                              display: "flex", alignItems: "center", gap: 8,
-                              color: isMe ? "rgba(255,255,255,0.9)" : "var(--accent)",
-                              textDecoration: "none",
-                              background: isMe ? "rgba(255,255,255,0.12)" : "var(--bg2)",
-                              padding: "9px 12px", borderRadius: 9, fontSize: 13, fontWeight: 500,
-                            }}
-                          >
-                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z" /><polyline points="13 2 13 9 20 9" />
-                            </svg>
-                            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                              {msg.fileName || "Download Document"}
+                          {/* Text */}
+                          {msg.text && (
+                            <span style={{ wordBreak: "break-word", lineHeight: 1.5, fontSize: 14 }}>
+                              {msg.text}
                             </span>
-                          </a>
-                        )}
+                          )}
 
-                        {/* Audio */}
-                        {msg.fileUrl && msg.fileType?.startsWith('audio/') && (
-                          <audio controls src={msg.fileUrl}
-                            style={{ height: 36, width: 240, maxWidth: "100%", borderRadius: 20, outline: "none" }}
-                          />
-                        )}
-                      </div>
+                          {/* Image */}
+                          {msg.fileUrl && msg.fileType?.startsWith('image/') && (
+                            <SmartImage
+                              src={msg.fileUrl}
+                              alt="Attached"
+                              style={{ border: isMe ? "1px solid rgba(255,255,255,0.15)" : "1px solid var(--border)" }}
+                              onClick={() => setViewingMedia(msg.fileUrl)}
+                            />
+                          )}
 
-                      {/* Time + status */}
-                      <div style={{
-                        display: "flex", alignItems: "center", gap: 4,
-                        marginTop: 3, fontSize: 11, color: "var(--ink3)",
-                      }}>
-                        <span>{timeStr}</span>
-                        {isMe && renderTicks(msg.status)}
+                          {/* Video */}
+                          {msg.fileUrl && msg.fileType?.startsWith('video/') && (
+                            <SmartVideo
+                              src={msg.fileUrl}
+                              isMe={isMe}
+                              onClick={() => setViewingVideo(msg.fileUrl)}
+                            />
+                          )}
+
+                          {/* Document */}
+                          {msg.fileUrl && !msg.fileType?.startsWith('image/') && !msg.fileType?.startsWith('audio/') && !msg.fileType?.startsWith('video/') && (
+                            <a
+                              href={`http://localhost:5000/download?url=${encodeURIComponent(msg.fileUrl)}&filename=${encodeURIComponent(msg.fileName || 'document.pdf')}`}
+                              style={{
+                                display: "flex", alignItems: "center", gap: 8,
+                                color: isMe ? "rgba(255,255,255,0.9)" : "var(--accent)",
+                                textDecoration: "none",
+                                background: isMe ? "rgba(255,255,255,0.12)" : "var(--bg2)",
+                                padding: "9px 12px", borderRadius: 9, fontSize: 13, fontWeight: 500,
+                              }}
+                            >
+                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z" /><polyline points="13 2 13 9 20 9" />
+                              </svg>
+                              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {msg.fileName || "Download Document"}
+                              </span>
+                            </a>
+                          )}
+
+                          {/* Audio */}
+                          {msg.fileUrl && msg.fileType?.startsWith('audio/') && (
+                            <audio controls src={msg.fileUrl}
+                              style={{ height: 36, width: 240, maxWidth: "100%", borderRadius: 20, outline: "none" }}
+                            />
+                          )}
+                        </div>
+
+                        {/* Time + status */}
+                        <div style={{
+                          display: "flex", alignItems: "center", gap: 4,
+                          marginTop: 3, fontSize: 11, color: "var(--ink3)",
+                        }}>
+                          <span>{timeStr}</span>
+                          {isMe && renderTicks(msg.status)}
+                        </div>
                       </div>
-                    </div>
                     </React.Fragment>
                   );
                 })}
@@ -1996,7 +2264,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
           }}>
             <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: "var(--ink)" }}>Clear Conversation</h3>
             <p style={{ fontSize: 14, color: "var(--ink3)", lineHeight: 1.5, marginBottom: 24 }}>
-              Are you sure you want to permanently delete all messages with <span style={{fontWeight: 600, color: "var(--ink)"}}>{selectedUser?.username}</span>? This action cannot be undone.
+              Are you sure you want to permanently delete all messages with <span style={{ fontWeight: 600, color: "var(--ink)" }}>{selectedUser?.username}</span>? This action cannot be undone.
             </p>
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
               <button
@@ -2029,6 +2297,16 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Full-screen image viewer */}
+      {viewingMedia && (
+        <ImageViewerModal src={viewingMedia} onClose={() => setViewingMedia(null)} />
+      )}
+
+      {/* Full-screen video viewer */}
+      {viewingVideo && (
+        <VideoPlayerModal src={viewingVideo} onClose={() => setViewingVideo(null)} />
       )}
     </div>
   );

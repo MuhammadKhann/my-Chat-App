@@ -11,13 +11,20 @@ Here is your structured roadmap:
 * **Image Loading Skeletons:** CSS shimmer animations while Cloudinary fetches media.
 * **Date Separators:** Visual UI dividers in the chat bubble list for "Today," "Yesterday," or specific dates.
 
-### 💬 Phase 2: Core Messaging Expansion
-*Upgrading the actual texting experience.*
+### 🚀 Phase 2: Core Messaging Expansion (Extended)
+
 * **Message Replies:** Embedding previews of the original message inside a reply bubble.
-* **Message Controls:** Logic for editing and deleting messages (and updating the Socket state).
-* **Markdown Support:** Allowing bold, italics, and code blocks in text.
 * **Rich Content Previews:** Fetching OpenGraph metadata (Image, Title, Description) when someone sends a URL.
-* **In-App Media Player:** Universal interactive `<video>` tag for shared video files with variable playback speeds.
+* **Message Reactions:** Emoji-based reactions with live aggregation and optimistic UI updates.
+* **Threaded Conversations:** Expanding replies into full threads with optional inline or side-panel views.
+* **Message Pinning:** Allow users to pin important messages at the top of a chat for quick reference.
+* **Voice Notes:** Record and send audio messages with waveform visualization and playback controls.
+* **Soft Delete / Hard Delete:** Flexible deletion logic with optional audit/history support.
+* **Edit History:** Track and optionally display previous versions of edited messages.
+* **Full-Text Search:** Search messages by keyword, sender, or date using indexed queries.
+* **Jump to Message:** Deep linking to specific messages with contextual loading.
+* **Pagination & Infinite Scroll:** Cursor-based message loading for scalable chat history.
+* **Message Virtualization:** Render only visible messages to optimize performance in long chats.
 
 ### 🏗️ Phase 3: Architecture & Scale
 *Ensuring the app doesn't crash when a user has thousands of messages.*
