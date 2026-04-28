@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { api } from "./api";
 
 // GlobalStyles and FontLoader are now imported in App.jsx
 
@@ -168,7 +169,7 @@ function Register({ setPage, dark, setDark }) {
     setBtnState("loading");
 
     try {
-        const response = await fetch("http://localhost:5000/register", {
+        const response = await fetch(api("/register"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: 'include',

@@ -3,6 +3,7 @@ import Register from "./Register";
 import Login from "./Login";
 import Chat from "./Chat"; // We will create this file next
 import { GlobalStyles, FontLoader } from "./GlobalStyles";
+import { api } from "./api";
 
 function App() {
   // --- INDESTRUCTIBLE INITIALIZER ---
@@ -67,13 +68,13 @@ function App() {
       setIsCheckingAuth(false);
       // Fire a silent logout to ensure the backend cookie is securely destroyed 
       // preventing the session from silently lingering in the background.
-      fetch("http://localhost:5000/api/logout", { method: "POST", credentials: "include" }).catch(() => {});
+      fetch(api("/api/logout"), { method: "POST", credentials: "include" }).catch(() => {});
       return;
     }
 
     const checkAuth = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/auth/check", {
+        const res = await fetch(api("/api/auth/check"), {
           method: "GET",
           credentials: "include", // Mandatory to send the JWT cookie
         });

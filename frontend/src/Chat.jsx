@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import io from "socket.io-client";
 import Peer from "simple-peer";
 import { THEMES } from "./GlobalStyles";
+import { BACKEND_URL, api } from "./api";
 
 // ─── CSS Design System (injected once via Login's GlobalStyles) ───────────────
 // All CSS variables (--bg, --card, --accent, --ink, --border, etc.) come from
@@ -144,7 +145,6 @@ const ChatStyles = () => (
 );
 
 // ─── Socket Connection ────────────────────────────────────────────────────────
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:5000";
 const socket = io(BACKEND_URL, {
   withCredentials: true,
   transports: ["websocket"]
@@ -749,7 +749,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   // ─── All original logic (untouched) ────────────────────────────────────────
   const handlePrivacyChange = async (level) => {
     try {
-      const res = await fetch("http://localhost:5000/api/users/privacy", {
+      const res = await fetch(api("/api/users/privacy"), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -779,7 +779,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
     const formData = new FormData();
     formData.append("avatar", file);
     try {
-      const res = await fetch("http://localhost:5000/api/users/avatar", {
+      const res = await fetch(api("/api/users/avatar"), {
         method: "POST", credentials: "include", body: formData,
       });
       const data = await res.json();
@@ -835,7 +835,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   useEffect(() => {
     if (selectedUser) {
       const room = getRoomId(user.id, selectedUser._id);
-      fetch(`http://localhost:5000/messages/${room}`, { credentials: 'include' })
+      fetch(api(`/messages/${room}`), { credentials: 'include' })
         .then(res => res.json())
         .then(data => setChatHistory(data))
         .catch(err => console.error(err));
@@ -963,7 +963,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
 
   const fetchChatList = async () => {
     try {
-      const res = await fetch(`http://localhost:5000/chats/${user.id}`, { credentials: 'include' });
+      const res = await fetch(api(`/chats/${user.id}`), { credentials: 'include' });
       const data = await res.json();
       setChatList(data);
     } catch (err) { console.error(err); }
@@ -1120,7 +1120,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       try {
         const data = await new Promise((resolve, reject) => {
           const xhr = new XMLHttpRequest();
-          xhr.open("POST", "http://localhost:5000/upload");
+          xhr.open("POST", api("/upload"));
           xhr.upload.onprogress = (event) => {
             if (event.lengthComputable) { setUploadProgress(Math.round((event.loaded / event.total) * 100)); }
           };
@@ -1157,7 +1157,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
     if (!selectedUser) return;
     const room = getRoomId(user.id, selectedUser._id);
     try {
-      const res = await fetch(`http://localhost:5000/messages/delete/${room}`, { method: "DELETE", credentials: 'include' });
+      const res = await fetch(api(`/messages/delete/${room}`), { method: "DELETE", credentials: 'include' });
       if (res.ok) {
         setChatHistory([]);
         setChatList(chatList.filter(item => item._id !== selectedUser._id));
@@ -1169,7 +1169,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
 
   const handleLogout = async () => {
     try {
-      await fetch("http://localhost:5000/api/logout", { method: "POST", credentials: 'include' });
+      await fetch(api("/api/logout"), { method: "POST", credentials: 'include' });
     } catch { /* ignore */ }
     if (socket) { socket.disconnect(); }
     setUser(null); setSelectedUser(null); setChatHistory([]);
@@ -1536,7 +1536,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                   />
                   <button
                     onClick={async () => {
-                      const response = await fetch(`http://localhost:5000/users/search?q=${searchQuery}`, { credentials: 'include' });
+                      const response = await fetch(api(`/users/search?q=${searchQuery}`), { credentials: 'include' });
                       const data = await response.json();
                       setSearchResults(data);
                     }}
@@ -1867,7 +1867,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                           {/* Document */}
                           {msg.fileUrl && !msg.fileType?.startsWith('image/') && !msg.fileType?.startsWith('audio/') && !msg.fileType?.startsWith('video/') && (
                             <a
-                              href={`http://localhost:5000/download?url=${encodeURIComponent(msg.fileUrl)}&filename=${encodeURIComponent(msg.fileName || 'document.pdf')}`}
+                              href={api(`/download?url=${encodeURIComponent(msg.fileUrl)}&filename=${encodeURIComponent(msg.fileName || 'document.pdf')}`)}
                               style={{
                                 display: "flex", alignItems: "center", gap: 8,
                                 color: isMe ? "rgba(255,255,255,0.9)" : "var(--accent)",

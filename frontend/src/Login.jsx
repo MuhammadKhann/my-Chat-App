@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { api } from "./api";
 
 // GlobalStyles and FontLoader are now imported in App.jsx
 
@@ -122,7 +123,7 @@ function Login({ setPage, dark, setDark, setUser }) {
     e.preventDefault();
     setBtnState("loading");
     try {
-      const response = await fetch("http://localhost:5000/login", {
+      const response = await fetch(api("/login"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: 'include',  // ✅ Lets the browser store the httpOnly JWT cookie
