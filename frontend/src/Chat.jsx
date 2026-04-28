@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import io from "socket.io-client";
-import Peer from "simple-peer/simplepeer.min.js";
+import Peer from "simple-peer";
 import { THEMES } from "./GlobalStyles";
 
 // ─── CSS Design System (injected once via Login's GlobalStyles) ───────────────
