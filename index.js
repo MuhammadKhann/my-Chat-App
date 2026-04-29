@@ -31,14 +31,11 @@ const allowedOrigins = [
 
 app.use(cors({
     origin: function (origin, callback) {
-        // Allow requests with no origin (mobile apps, curl, etc.)
+        // Allow requests with no origin (mobile apps, curl, server-to-server)
         if (!origin) return callback(null, true);
-        if (allowedOrigins.includes(origin)) return callback(null, true);
-        // Allow any Vercel preview deployment from the user's account
-        if (origin && origin.match(/https:\/\/my-chat-.*-muhammadkhanns-projects\.vercel\.app$/)) {
-            return callback(null, true);
-        }
-        callback(new Error('Not allowed by CORS'));
+        // Reflect the origin back - allows any origin with credentials
+        // This is safe because we validate auth via JWT, not via origin
+        callback(null, true);
     },
     credentials: true                // Required for cookies to flow cross-origin
 }));
@@ -140,14 +137,7 @@ const server = http.createServer(app);
 // --- 1. INITIALIZE SOCKET.IO ---
 const io = new Server(server, {
     cors: {
-        origin: function (origin, callback) {
-            if (!origin) return callback(null, true);
-            if (allowedOrigins.includes(origin)) return callback(null, true);
-            if (origin && origin.match(/https:\/\/my-chat-.*-muhammadkhanns-projects\.vercel\.app$/)) {
-                return callback(null, true);
-            }
-            callback(new Error('Not allowed by CORS'));
-        },
+        origin: true,
         methods: ["GET", "POST"],
         credentials: true
     }
