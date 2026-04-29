@@ -22,8 +22,24 @@ const app = express();
 // --- ENTERPRISE SECURITY MIDDLEWARE ---
 const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:5173";
 
+// Support multiple origins (local dev + production + Vercel preview deployments)
+const allowedOrigins = [
+    FRONTEND_URL,
+    "http://localhost:5173",
+    "https://my-chat-9bft0ek9q-muhammadkhanns-projects.vercel.app"
+];
+
 app.use(cors({
-    origin: FRONTEND_URL,
+    origin: function (origin, callback) {
+        // Allow requests with no origin (mobile apps, curl, etc.)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.includes(origin)) return callback(null, true);
+        // Allow any Vercel preview deployment from the user's account
+        if (origin && origin.match(/https:\/\/my-chat-.*-muhammadkhanns-projects\.vercel\.app$/)) {
+            return callback(null, true);
+        }
+        callback(new Error('Not allowed by CORS'));
+    },
     credentials: true                // Required for cookies to flow cross-origin
 }));
 app.use(express.json());
@@ -124,7 +140,14 @@ const server = http.createServer(app);
 // --- 1. INITIALIZE SOCKET.IO ---
 const io = new Server(server, {
     cors: {
-        origin: FRONTEND_URL,
+        origin: function (origin, callback) {
+            if (!origin) return callback(null, true);
+            if (allowedOrigins.includes(origin)) return callback(null, true);
+            if (origin && origin.match(/https:\/\/my-chat-.*-muhammadkhanns-projects\.vercel\.app$/)) {
+                return callback(null, true);
+            }
+            callback(new Error('Not allowed by CORS'));
+        },
         methods: ["GET", "POST"],
         credentials: true
     }
