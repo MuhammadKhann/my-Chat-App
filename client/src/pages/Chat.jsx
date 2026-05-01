@@ -744,6 +744,9 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   const [callerInfo, setCallerInfo] = useState({ id: "", name: "", signal: null });
   const [callNotification, setCallNotification] = useState(null);
   const [isCameraOn, setIsCameraOn] = useState(true);
+  const [videoDevices, setVideoDevices] = useState([]);
+  const [activeVideoDeviceId, setActiveVideoDeviceId] = useState(null);
+  const [isSwitchingCamera, setIsSwitchingCamera] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const callContainerRef = useRef(null);
 
@@ -1058,7 +1061,8 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
         return;
       }
       
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        await enumerateVideoInputs();
+      const stream = await getLocalMediaStream();
       setLocalStream(stream); setCallStatus("ringing");
       setTimeout(() => { if (myVideoRef.current) myVideoRef.current.srcObject = stream; }, 100);
       const peer = new Peer({ initiator: true, trickle: false, stream: stream });
@@ -1088,7 +1092,8 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       setCallStatus("active");
       setCallNotification({ text: "Connected", type: "success" });
       setTimeout(() => { setCallNotification(null); }, 3000);
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      await enumerateVideoInputs();
+      const stream = await getLocalMediaStream();
       setLocalStream(stream);
       setTimeout(() => { if (myVideoRef.current) myVideoRef.current.srcObject = stream; }, 100);
       const peer = new Peer({ initiator: false, trickle: false, stream: stream });
@@ -1125,6 +1130,101 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   const declineCall = () => {
     if (callerInfo.id) { socket.emit("decline_call", { to: callerInfo.id }); }
     setCallStatus("idle"); setCallerInfo({ id: "", name: "", signal: null });
+  };
+
+  const enumerateVideoInputs = useCallback(async () => {
+    if (!navigator?.mediaDevices?.enumerateDevices) return [];
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const cams = devices.filter((device) => device.kind === "videoinput");
+      setVideoDevices(cams);
+      setActiveVideoDeviceId((currentId) => currentId || (cams[0]?.deviceId || null));
+      return cams;
+    } catch (err) {
+      console.error("Could not enumerate video devices:", err);
+      return [];
+    }
+  }, []);
+
+  useEffect(() => {
+    enumerateVideoInputs();
+    const handleDeviceChange = async () => {
+      const cams = await enumerateVideoInputs();
+      if (cams.length > 0 && activeVideoDeviceId && !cams.some((d) => d.deviceId === activeVideoDeviceId)) {
+        setActiveVideoDeviceId(cams[0].deviceId);
+      }
+    };
+    navigator?.mediaDevices?.addEventListener("devicechange", handleDeviceChange);
+    return () => navigator?.mediaDevices?.removeEventListener("devicechange", handleDeviceChange);
+  }, [enumerateVideoInputs, activeVideoDeviceId]);
+
+  const getLocalMediaStream = async () => {
+    const videoConstraints = activeVideoDeviceId
+      ? { deviceId: { exact: activeVideoDeviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
+      : { width: { ideal: 1280 }, height: { ideal: 720 } };
+
+    return navigator.mediaDevices.getUserMedia({
+      audio: true,
+      video: videoConstraints,
+    });
+  };
+
+  const switchCamera = async () => {
+    if (!navigator?.mediaDevices) {
+      alert("Camera switching is not supported in this browser.");
+      return;
+    }
+
+    setIsSwitchingCamera(true);
+    try {
+      const cams = await enumerateVideoInputs();
+      if (cams.length <= 1) {
+        alert("No additional camera found.");
+        return;
+      }
+
+      const currentIndex = cams.findIndex((device) => device.deviceId === activeVideoDeviceId);
+      const nextDevice = cams[(currentIndex + 1) % cams.length] || cams[0];
+      if (!nextDevice) return;
+
+      const newVideoStream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: { deviceId: { exact: nextDevice.deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } },
+      });
+      const newVideoTrack = newVideoStream.getVideoTracks()[0];
+      if (!newVideoTrack) throw new Error("No camera track available.");
+
+      if (localStream) {
+        const oldVideoTrack = localStream.getVideoTracks()[0];
+        const audioTracks = localStream.getAudioTracks();
+        const updatedStream = new MediaStream([...audioTracks, newVideoTrack]);
+
+        setLocalStream(updatedStream);
+        setIsCameraOn(true);
+        setActiveVideoDeviceId(nextDevice.deviceId);
+        if (myVideoRef.current) myVideoRef.current.srcObject = updatedStream;
+
+        if (connectionRef.current) {
+          if (typeof connectionRef.current.replaceTrack === "function") {
+            connectionRef.current.replaceTrack(oldVideoTrack, newVideoTrack, localStream);
+          } else if (connectionRef.current._pc?.getSenders) {
+            const sender = connectionRef.current._pc.getSenders().find((s) => s.track?.kind === "video");
+            if (sender && typeof sender.replaceTrack === "function") {
+              sender.replaceTrack(newVideoTrack);
+            }
+          }
+        }
+
+        oldVideoTrack?.stop();
+      } else {
+        setActiveVideoDeviceId(nextDevice.deviceId);
+      }
+    } catch (err) {
+      console.error("Camera switch failed:", err);
+      alert("Unable to switch cameras. Please check permissions and try again.");
+    } finally {
+      setIsSwitchingCamera(false);
+    }
   };
 
   const toggleCamera = () => {
@@ -2259,6 +2359,33 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                 ) : (
                   <><line x1="1" y1="1" x2="23" y2="23"/><path d="M17 17h-6v-6l-4 4-6-6 8-8 4 4v-2h6z"/></>
                 )}
+              </svg>
+            </button>
+
+            {/* Camera switch */}
+            <button
+              onClick={switchCamera}
+              disabled={isSwitchingCamera || videoDevices.length <= 1}
+              title={videoDevices.length > 1 ? "Switch camera" : "No alternate camera detected"}
+              style={{
+                background: "rgba(255,255,255,0.18)", color: "#fff", border: "none",
+                width: isMobile ? 40 : 46, height: isMobile ? 40 : 46, borderRadius: "50%",
+                cursor: isSwitchingCamera ? "not-allowed" : "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+                opacity: isSwitchingCamera || videoDevices.length <= 1 ? 0.55 : 1,
+                transition: "transform 0.1s, opacity 0.15s",
+              }}
+              onMouseOver={(e) => { if (!isSwitchingCamera) e.currentTarget.style.transform = "scale(1.07)"; }}
+              onMouseOut={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 7V4h3" />
+                <path d="M21 17v3h-3" />
+                <path d="M21 7l-3 3" />
+                <path d="M3 17l3-3" />
+                <path d="M8 7a5 5 0 017-1.5" />
+                <path d="M16 17a5 5 0 01-7 1.5" />
               </svg>
             </button>
 
