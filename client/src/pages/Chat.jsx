@@ -742,6 +742,9 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   const [callStatus, setCallStatus] = useState("idle");
   const [callerInfo, setCallerInfo] = useState({ id: "", name: "", signal: null });
   const [callNotification, setCallNotification] = useState(null);
+  const [isCameraOn, setIsCameraOn] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const callContainerRef = useRef(null);
 
   const myVideoRef = useRef(null);
   const userVideoRef = useRef(null);
@@ -1121,6 +1124,27 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   const declineCall = () => {
     if (callerInfo.id) { socket.emit("decline_call", { to: callerInfo.id }); }
     setCallStatus("idle"); setCallerInfo({ id: "", name: "", signal: null });
+  };
+
+  const toggleCamera = () => {
+    if (localStream) {
+      const videoTrack = localStream.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.enabled = !videoTrack.enabled;
+        setIsCameraOn(videoTrack.enabled);
+      }
+    }
+  };
+
+  const toggleFullscreen = () => {
+    if (!callContainerRef.current) return;
+    if (!document.fullscreenElement) {
+      callContainerRef.current.requestFullscreen().catch(() => {});
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen().catch(() => {});
+      setIsFullscreen(false);
+    }
   };
 
   const sendMessage = async (e) => {
@@ -2153,12 +2177,14 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       {/* Incoming call modal */}
       {callStatus === "receiving" && (
         <div style={{
-          position: "fixed", top: 24, left: "50%", transform: "translateX(-50%)",
-          background: "var(--card)", padding: "24px 32px", borderRadius: 16,
+          position: "fixed", top: isMobile ? 80 : 24, left: "50%", transform: "translateX(-50%)",
+          background: "var(--card)", padding: isMobile ? "16px 20px" : "24px 32px", borderRadius: 16,
           boxShadow: "0 16px 48px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)",
-          zIndex: 1000, display: "flex", flexDirection: "column", alignItems: "center", gap: 16,
+          zIndex: 1000, display: "flex", flexDirection: "column", alignItems: "center", gap: isMobile ? 12 : 16,
           border: "1px solid var(--accent)", animation: "rise 0.3s cubic-bezier(0.22,1,0.36,1) both",
-          minWidth: 280,
+          minWidth: isMobile ? 260 : 280,
+          maxWidth: "90vw",
+          width: isMobile ? "calc(100vw - 40px)" : "auto",
         }}>
           <div style={{
             width: 52, height: 52, borderRadius: "50%", background: "var(--accent2)",
@@ -2169,23 +2195,25 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
             </svg>
           </div>
           <div style={{ textAlign: "center" }}>
-            <div style={{ fontWeight: 700, fontSize: 16, color: "var(--ink)", marginBottom: 4 }}>Incoming Video Call</div>
-            <div style={{ fontSize: 13, color: "var(--ink3)" }}>{callerInfo.name} is calling…</div>
+            <div style={{ fontWeight: 700, fontSize: isMobile ? 14 : 16, color: "var(--ink)", marginBottom: 4 }}>Incoming Video Call</div>
+            <div style={{ fontSize: isMobile ? 12 : 13, color: "var(--ink3)" }}>{callerInfo.name} is calling…</div>
           </div>
           <div style={{ display: "flex", gap: 12 }}>
             <button onClick={declineCall} style={{
               background: "rgba(239,68,68,0.1)", color: "#ef4444",
-              border: "1px solid rgba(239,68,68,0.2)", padding: "10px 22px",
-              borderRadius: 9, fontWeight: 600, fontSize: 13, cursor: "pointer",
+              border: "1px solid rgba(239,68,68,0.2)", padding: isMobile ? "10px 18px" : "10px 22px",
+              borderRadius: 9, fontWeight: 600, fontSize: isMobile ? 12 : 13, cursor: "pointer",
               transition: "background 0.15s",
+              flex: 1,
             }}>Decline</button>
             <button onClick={answerCall} style={{
               background: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
-              color: "#fff", border: "none", padding: "10px 22px",
-              borderRadius: 9, fontWeight: 600, fontSize: 13, cursor: "pointer",
+              color: "#fff", border: "none", padding: isMobile ? "10px 18px" : "10px 22px",
+              borderRadius: 9, fontWeight: 600, fontSize: isMobile ? 12 : 13, cursor: "pointer",
               boxShadow: "0 2px 10px rgba(34,197,94,0.35)",
               animation: "pulse 1.5s infinite",
               transition: "opacity 0.15s",
+              flex: 1,
             }}>Answer</button>
           </div>
         </div>
@@ -2193,10 +2221,13 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
 
       {/* Active / ringing video window */}
       {(callStatus === "active" || callStatus === "ringing") && (
-        <div style={{
-          position: "fixed", bottom: 28, right: 28,
-          width: 340, height: 440,
-          background: "#000", borderRadius: 18, overflow: "hidden",
+        <div ref={callContainerRef} style={{
+          position: "fixed", bottom: isMobile ? 20 : 28, right: isMobile ? "50%" : 28,
+          transform: isMobile ? "translateX(50%)" : "none",
+          width: isMobile ? "calc(100vw - 32px)" : 340,
+          height: isMobile ? "calc(100vh - 100px)" : 440,
+          maxWidth: 480,
+          background: "#000", borderRadius: isMobile ? 12 : 18, overflow: "hidden",
           boxShadow: "0 20px 60px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.2)",
           zIndex: 999, border: "1px solid rgba(255,255,255,0.1)",
         }}>
@@ -2213,19 +2244,68 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
 
           {/* PiP local video */}
           <div style={{
-            position: "absolute", bottom: 70, right: 14,
-            width: 90, height: 120, background: "#1a1a1a",
+            position: "absolute", bottom: isMobile ? 80 : 70, right: isMobile ? 10 : 14,
+            width: isMobile ? 80 : 90, height: isMobile ? 106 : 120, background: isCameraOn ? "#1a1a1a" : "#333",
             borderRadius: 10, overflow: "hidden",
             border: "1.5px solid rgba(255,255,255,0.15)",
+            display: "flex", alignItems: "center", justifyContent: "center",
           }}>
-            <video playsInline muted ref={myVideoRef} autoPlay style={{ width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)" }} />
+            {!isCameraOn && (
+              <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 12 }}>Camera Off</div>
+            )}
+            <video playsInline muted ref={myVideoRef} autoPlay style={{ 
+              width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)",
+              opacity: isCameraOn ? 1 : 0,
+              position: isCameraOn ? "relative" : "absolute",
+            }} />
           </div>
 
-          {/* Hang up */}
-          <div style={{ position: "absolute", bottom: 16, left: "50%", transform: "translateX(-50%)" }}>
+          {/* Controls: Camera toggle, Fullscreen, Hang up */}
+          <div style={{ position: "absolute", bottom: isMobile ? 12 : 16, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 12, alignItems: "center" }}>
+            {/* Camera toggle */}
+            <button onClick={toggleCamera} style={{
+              background: isCameraOn ? "rgba(255,255,255,0.2)" : "#ef4444", color: "#fff", border: "none",
+              width: isMobile ? 40 : 46, height: isMobile ? 40 : 46, borderRadius: "50%",
+              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+              transition: "transform 0.1s",
+            }}
+              onMouseOver={(e) => e.currentTarget.style.transform = "scale(1.07)"}
+              onMouseOut={(e) => e.currentTarget.style.transform = "scale(1)"}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                {isCameraOn ? (
+                  <><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></>
+                ) : (
+                  <><line x1="1" y1="1" x2="23" y2="23"/><path d="M17 17h-6v-6l-4 4-6-6 8-8 4 4v-2h6z"/></>
+                )}
+              </svg>
+            </button>
+
+            {/* Fullscreen toggle */}
+            <button onClick={toggleFullscreen} style={{
+              background: "rgba(255,255,255,0.2)", color: "#fff", border: "none",
+              width: isMobile ? 40 : 46, height: isMobile ? 40 : 46, borderRadius: "50%",
+              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+              transition: "transform 0.1s",
+            }}
+              onMouseOver={(e) => e.currentTarget.style.transform = "scale(1.07)"}
+              onMouseOut={(e) => e.currentTarget.style.transform = "scale(1)"}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                {isFullscreen ? (
+                  <><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></>
+                ) : (
+                  <><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></>
+                )}
+              </svg>
+            </button>
+
+            {/* Hang up */}
             <button onClick={() => endCall(true)} style={{
               background: "#ef4444", color: "#fff", border: "none",
-              width: 46, height: 46, borderRadius: "50%",
+              width: isMobile ? 40 : 46, height: isMobile ? 40 : 46, borderRadius: "50%",
               cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
               boxShadow: "0 4px 16px rgba(239,68,68,0.45)",
               transition: "transform 0.1s",
