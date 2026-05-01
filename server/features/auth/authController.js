@@ -10,8 +10,8 @@ const generateTokenAndSetCookie = (userId, res) => {
     res.cookie("jwt", token, {
         maxAge: 15 * 24 * 60 * 60 * 1000,
         httpOnly: true,
-        sameSite: "strict",
-        secure: process.env.NODE_ENV !== "development",
+        sameSite: "none",
+        secure: true,
     });
 
     return token;
@@ -93,8 +93,8 @@ const logout = (req, res) => {
         res.cookie("jwt", "", {
             maxAge: 0,
             httpOnly: true,
-            sameSite: "strict",
-            secure: process.env.NODE_ENV !== "development"
+            sameSite: "none",
+            secure: true
         });
         res.status(200).json({ message: "Logged out successfully" });
     } catch (err) {
