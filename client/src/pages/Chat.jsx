@@ -1139,7 +1139,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       try {
         const data = await new Promise((resolve, reject) => {
           const xhr = new XMLHttpRequest();
-          xhr.open("POST", api("/upload"));
+          xhr.open("POST", api("/api/uploads/file"));
           xhr.upload.onprogress = (event) => {
             if (event.lengthComputable) { setUploadProgress(Math.round((event.loaded / event.total) * 100)); }
           };
