@@ -1816,6 +1816,109 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
           background: "var(--bg)", position: "relative", minWidth: 0,
         }}>
 
+          {callStatus === "receiving" && (
+            <div style={{
+              position: "absolute",
+              top: 16,
+              left: 16,
+              right: 16,
+              zIndex: 50,
+              background: "var(--card)",
+              border: "1px solid var(--accent)",
+              borderRadius: 16,
+              boxShadow: "0 18px 48px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)",
+              padding: "14px 16px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 12,
+              width: "auto",
+              minWidth: 280,
+              maxWidth: "calc(100% - 32px)",
+              boxSizing: "border-box",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--accent2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+                  </svg>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: "var(--ink)", marginBottom: 2 }}>Incoming Video Call</div>
+                  <div style={{ fontSize: 13, color: "var(--ink3)", overflowWrap: "anywhere", wordBreak: "break-word" }}>
+                    {callerInfo.name} is calling…
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button onClick={declineCall} style={{
+                  flex: "1 1 120px",
+                  minWidth: 120,
+                  background: "rgba(239,68,68,0.1)",
+                  color: "#ef4444",
+                  border: "1px solid rgba(239,68,68,0.2)",
+                  padding: "10px 16px",
+                  borderRadius: 10,
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: "pointer",
+                }}>
+                  Decline
+                </button>
+                <button onClick={answerCall} style={{
+                  flex: "1 1 120px",
+                  minWidth: 120,
+                  background: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
+                  color: "#fff",
+                  border: "none",
+                  padding: "10px 16px",
+                  borderRadius: 10,
+                  fontWeight: 600,
+                  fontSize: 13,
+                  cursor: "pointer",
+                  boxShadow: "0 2px 10px rgba(34,197,94,0.35)",
+                }}>
+                  Answer
+                </button>
+              </div>
+            </div>
+          )}
+
+          {callNotification && (
+            <div style={{
+              position: "absolute",
+              bottom: 16,
+              left: 16,
+              right: 16,
+              zIndex: 50,
+              background: callNotification.type === "success" ? "rgba(22,163,74,0.96)" : "rgba(220,38,38,0.96)",
+              backdropFilter: "blur(8px)",
+              color: "#fff",
+              padding: "10px 16px",
+              borderRadius: 24,
+              fontWeight: 600,
+              fontSize: 13,
+              boxShadow: callNotification.type === "success"
+                ? "0 8px 24px rgba(22,163,74,0.3)"
+                : "0 8px 24px rgba(220,38,38,0.3)",
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              justifyContent: "center",
+              textAlign: "center",
+              maxWidth: "calc(100% - 32px)",
+              boxSizing: "border-box",
+              overflowWrap: "anywhere",
+              wordBreak: "break-word",
+            }}>
+              {callNotification.type === "success" ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+              )}
+              {callNotification.text}
+            </div>
+          )}
+
           {selectedUser ? (
             <>
               {/* ── Chat Header ── */}
@@ -2264,59 +2367,6 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
           WEBRTC OVERLAYS (unchanged logic, refined visuals)
       ══════════════════════════════════════════════════════════════════ */}
 
-      {/* Incoming call modal */}
-      {callStatus === "receiving" && (
-        <div style={{
-          position: "fixed", top: isMobile ? 16 : 24, left: "50%", transform: "translateX(-50%)",
-          background: "var(--card)", padding: isMobile ? "14px 16px" : "20px 24px", borderRadius: 16,
-          boxShadow: "0 16px 48px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)",
-          zIndex: 1000, display: "flex", flexDirection: "column", alignItems: "stretch", gap: isMobile ? 10 : 14,
-          border: "1px solid var(--accent)", animation: "rise 0.3s cubic-bezier(0.22,1,0.36,1) both",
-          width: isMobile ? "calc(100vw - 24px)" : 420,
-          minWidth: 260,
-          maxWidth: "100%",
-          maxHeight: "calc(100vh - 40px)",
-          boxSizing: "border-box",
-        }}>
-          <div style={{
-            width: 52, height: 52, borderRadius: "50%", background: "var(--accent2)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-            </svg>
-          </div>
-          <div style={{ textAlign: "center", overflowWrap: "anywhere", wordBreak: "break-word" }}>
-            <div style={{ fontWeight: 700, fontSize: isMobile ? 14 : 16, color: "var(--ink)", marginBottom: 4 }}>Incoming Video Call</div>
-            <div style={{ fontSize: isMobile ? 12 : 13, color: "var(--ink3)" }}>{callerInfo.name} is calling…</div>
-          </div>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", width: "100%", justifyContent: "center" }}>
-            <button onClick={declineCall} style={{
-              background: "rgba(239,68,68,0.1)", color: "#ef4444",
-              border: "1px solid rgba(239,68,68,0.2)", padding: isMobile ? "10px 16px" : "10px 18px",
-              borderRadius: 9, fontWeight: 600, fontSize: isMobile ? 12 : 13, cursor: "pointer",
-              transition: "background 0.15s",
-              flex: "1 1 120px",
-              minWidth: 120,
-              maxWidth: "100%",
-              boxSizing: "border-box",
-            }}>Decline</button>
-            <button onClick={answerCall} style={{
-              background: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
-              color: "#fff", border: "none", padding: isMobile ? "10px 16px" : "10px 18px",
-              borderRadius: 9, fontWeight: 600, fontSize: isMobile ? 12 : 13, cursor: "pointer",
-              boxShadow: "0 2px 10px rgba(34,197,94,0.35)",
-              animation: "pulse 1.5s infinite",
-              transition: "opacity 0.15s",
-              flex: "1 1 120px",
-              minWidth: 120,
-              maxWidth: "100%",
-              boxSizing: "border-box",
-            }}>Answer</button>
-          </div>
-        </div>
-      )}
-
       {/* Active / ringing video window */}
       {(callStatus === "active" || callStatus === "ringing") && (
         <div ref={callContainerRef} style={{
@@ -2444,37 +2494,6 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
               </svg>
             </button>
           </div>
-        </div>
-      )}
-
-      {/* Toast notification */}
-      {callNotification && (
-        <div style={{
-          position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)",
-          background: callNotification.type === "success" ? "rgba(22,163,74,0.96)" : "rgba(220,38,38,0.96)",
-          backdropFilter: "blur(8px)",
-          color: "#fff", padding: "10px 18px",
-          borderRadius: 30, fontWeight: 600, fontSize: 13,
-          boxShadow: callNotification.type === "success"
-            ? "0 8px 24px rgba(22,163,74,0.3)"
-            : "0 8px 24px rgba(220,38,38,0.3)",
-          zIndex: 9999,
-          display: "flex", alignItems: "center", gap: 8,
-          animation: "rise 0.35s cubic-bezier(0.22,1,0.36,1) both",
-          width: "calc(100vw - 24px)",
-          maxWidth: 480,
-          justifyContent: "center",
-          textAlign: "center",
-          boxSizing: "border-box",
-          overflowWrap: "anywhere",
-          wordBreak: "break-word",
-        }}>
-          {callNotification.type === "success" ? (
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-          ) : (
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-          )}
-          {callNotification.text}
         </div>
       )}
       {/* Clear Chat Confirmation Modal */}
