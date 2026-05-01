@@ -523,12 +523,14 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   }, []);
 
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
+  const [isNarrowMobile, setIsNarrowMobile] = useState(window.innerWidth < 430);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth < 900;
       setIsMobile(mobile);
+      setIsNarrowMobile(window.innerWidth < 430);
       setIsSidebarOpen(!mobile || !selectedUser);
     };
     window.addEventListener("resize", handleResize);
@@ -2137,8 +2139,12 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                   <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
                 </svg>
               </div>
-              <p style={{ fontSize: 15, fontWeight: 600, color: "var(--ink2)" }}>Select a conversation</p>
-              <p style={{ fontSize: 13 }}>Choose from your chats or search for someone new.</p>
+              {!isNarrowMobile ? (
+                <>
+                  <p style={{ fontSize: 15, fontWeight: 600, color: "var(--ink2)" }}>Select a conversation</p>
+                  <p style={{ fontSize: 13 }}>Choose from your chats or search for someone new.</p>
+                </>
+              ) : null}
             </div>
           )}
         </div>
