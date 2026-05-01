@@ -2181,6 +2181,8 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                       {!message.trim() && !selectedFile ? (
                         <button type="button" onClick={startRecording}
                           title="Record voice note"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onTouchStart={(e) => e.preventDefault()}
                           style={{
                             width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
                             border: "1px solid var(--border)", background: "var(--bg2)",
@@ -2206,6 +2208,8 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                       ) : (
                         <button type="submit" disabled={isUploading}
                           className="gradient-btn"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onTouchStart={(e) => e.preventDefault()}
                           style={{
                             width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
                             border: "none", color: "#fff",
@@ -2263,14 +2267,16 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       {/* Incoming call modal */}
       {callStatus === "receiving" && (
         <div style={{
-          position: "fixed", top: isMobile ? 20 : 24, left: "50%", transform: "translateX(-50%)",
+          position: "fixed", top: isMobile ? 16 : 24, left: "50%", transform: "translateX(-50%)",
           background: "var(--card)", padding: isMobile ? "14px 16px" : "20px 24px", borderRadius: 16,
           boxShadow: "0 16px 48px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)",
-          zIndex: 1000, display: "flex", flexDirection: "column", alignItems: "center", gap: isMobile ? 10 : 14,
+          zIndex: 1000, display: "flex", flexDirection: "column", alignItems: "stretch", gap: isMobile ? 10 : 14,
           border: "1px solid var(--accent)", animation: "rise 0.3s cubic-bezier(0.22,1,0.36,1) both",
-          width: "min(100vw - 24px, 420px)",
+          width: isMobile ? "calc(100vw - 24px)" : 420,
+          minWidth: 260,
           maxWidth: "100%",
           maxHeight: "calc(100vh - 40px)",
+          boxSizing: "border-box",
         }}>
           <div style={{
             width: 52, height: 52, borderRadius: "50%", background: "var(--accent2)",
@@ -2280,27 +2286,32 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
               <polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
             </svg>
           </div>
-          <div style={{ textAlign: "center" }}>
+          <div style={{ textAlign: "center", overflowWrap: "anywhere", wordBreak: "break-word" }}>
             <div style={{ fontWeight: 700, fontSize: isMobile ? 14 : 16, color: "var(--ink)", marginBottom: 4 }}>Incoming Video Call</div>
             <div style={{ fontSize: isMobile ? 12 : 13, color: "var(--ink3)" }}>{callerInfo.name} is calling…</div>
           </div>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", width: "100%" }}>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", width: "100%", justifyContent: "center" }}>
             <button onClick={declineCall} style={{
               background: "rgba(239,68,68,0.1)", color: "#ef4444",
               border: "1px solid rgba(239,68,68,0.2)", padding: isMobile ? "10px 16px" : "10px 18px",
               borderRadius: 9, fontWeight: 600, fontSize: isMobile ? 12 : 13, cursor: "pointer",
               transition: "background 0.15s",
-              flex: "1 1 140px",
+              flex: "1 1 120px",
               minWidth: 120,
+              maxWidth: "100%",
+              boxSizing: "border-box",
             }}>Decline</button>
             <button onClick={answerCall} style={{
               background: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
-              color: "#fff", border: "none", padding: isMobile ? "10px 18px" : "10px 22px",
+              color: "#fff", border: "none", padding: isMobile ? "10px 16px" : "10px 18px",
               borderRadius: 9, fontWeight: 600, fontSize: isMobile ? 12 : 13, cursor: "pointer",
               boxShadow: "0 2px 10px rgba(34,197,94,0.35)",
               animation: "pulse 1.5s infinite",
               transition: "opacity 0.15s",
-              flex: 1,
+              flex: "1 1 120px",
+              minWidth: 120,
+              maxWidth: "100%",
+              boxSizing: "border-box",
             }}>Answer</button>
           </div>
         </div>
@@ -2450,10 +2461,13 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
           zIndex: 9999,
           display: "flex", alignItems: "center", gap: 8,
           animation: "rise 0.35s cubic-bezier(0.22,1,0.36,1) both",
-          width: "min(100vw - 24px, 480px)",
-          maxWidth: "100%",
+          width: "calc(100vw - 24px)",
+          maxWidth: 480,
           justifyContent: "center",
           textAlign: "center",
+          boxSizing: "border-box",
+          overflowWrap: "anywhere",
+          wordBreak: "break-word",
         }}>
           {callNotification.type === "success" ? (
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
