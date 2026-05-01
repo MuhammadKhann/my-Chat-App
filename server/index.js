@@ -41,28 +41,44 @@ app.use(globalLimiter);
 // Database Connection
 connectDB();
 
-// Routes
+// Routes - New API structure
 app.use('/api/auth', authRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/uploads', uploadRoutes);
 app.use('/api/users/privacy', privacyRoutes);
 app.use('/api/users/settings', privacyRoutes);
 app.use('/api/chats', chatRoutes);
+
+// Legacy routes for backward compatibility
 app.use('/chats', chatRoutes);
 app.use('/messages', messageRoutes);
 app.use('/users/search', privacyRoutes);
 app.use('/upload', uploadRoutes);
 app.use('/download', uploadRoutes);
 
+// Legacy auth endpoints (frontend calls these directly)
+const { register, login, logout, checkAuth } = require('./features/auth/authController');
+const { authLimiter } = require('./middleware/rateLimiters');
+const { protectRoute } = require('./features/auth/authMiddleware');
+app.post('/register', authLimiter, register);
+app.post('/login', authLimiter, login);
+app.post('/logout', logout);
+app.get('/api/auth/check', protectRoute, checkAuth);
+
 const server = http.createServer(app);
 
 // Socket.IO Setup
 const io = new Server(server, {
     cors: {
-        origin: true,
+        origin: function(origin, callback) {
+            // Allow all origins in production
+            callback(null, true);
+        },
         methods: ["GET", "POST"],
-        credentials: true
-    }
+        credentials: true,
+        allowedHeaders: ["Cookie", "Authorization"]
+    },
+    transports: ['websocket', 'polling']
 });
 
 // Socket Authentication Middleware
