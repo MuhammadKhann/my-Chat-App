@@ -1,0 +1,7 @@
+node_modules
+server
+*.zip
+.env
+.env.local
+.git
+index.js.backup
