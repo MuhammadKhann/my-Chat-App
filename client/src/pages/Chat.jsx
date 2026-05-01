@@ -963,7 +963,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
 
   const fetchChatList = async () => {
     try {
-      const res = await fetch(api(`/chats/${user.id}`), { credentials: 'include' });
+      const res = await fetch(api(`/chats/list/${user.id}`), { credentials: 'include' });
       const data = await res.json();
       setChatList(data);
     } catch (err) { console.error(err); }

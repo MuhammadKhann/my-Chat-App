@@ -9,6 +9,7 @@ const {
 } = require('./messageController');
 
 router.get('/', protectRoute, getAllMessages);
+router.get('/list/:userId', protectRoute, getUserChats);
 router.get('/:room', protectRoute, getRoomMessages);
 router.delete('/delete/:room', protectRoute, deleteRoomMessages);
 
