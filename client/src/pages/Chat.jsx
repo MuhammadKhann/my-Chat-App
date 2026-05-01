@@ -523,13 +523,14 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   }, []);
 
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  // Sidebar always open on mobile, always open on desktop
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth < 900);
-      // Auto-close the sidebar if they resize back to a desktop view
-      if (window.innerWidth >= 900) setIsSidebarOpen(false);
+      // Keep sidebar always open regardless of screen size
+      setIsSidebarOpen(true);
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
