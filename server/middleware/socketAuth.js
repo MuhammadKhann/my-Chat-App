@@ -4,7 +4,10 @@ const socketAuthMiddleware = (socket, next) => {
     try {
         // 1. Manually grab the cookie from the handshake headers
         const cookieHeader = socket.handshake.headers.cookie;
-        if (!cookieHeader) return next(new Error("Authentication error"));
+        if (!cookieHeader) {
+            console.error("❌ Socket auth: No cookie header in handshake");
+            return next(new Error("Authentication error"));
+        }
 
         // 2. Extract the 'jwt' value from the cookie string
         const jwtCookie = cookieHeader.split(';').find(c => c.trim().startsWith('jwt='));
@@ -18,6 +21,7 @@ const socketAuthMiddleware = (socket, next) => {
         socket.userId = decoded.id; // Attach the real User ID to the socket
         next();
     } catch (err) {
+        console.error("❌ Socket auth error:", err.message);
         next(new Error("Authentication error"));
     }
 };
