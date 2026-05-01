@@ -753,6 +753,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   const myVideoRef = useRef(null);
   const userVideoRef = useRef(null);
   const connectionRef = useRef(null);
+  const messageInputRef = useRef(null);
 
   // ─── All original logic (untouched) ────────────────────────────────────────
   const handlePrivacyChange = async (level) => {
@@ -1296,6 +1297,9 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       fileSize: selectedFile?.size || null, room, status: "sent"
     });
     setMessage(""); setSelectedFile(null);
+    requestAnimationFrame(() => {
+      messageInputRef.current?.focus();
+    });
   };
 
   const executeClearChat = async () => {
@@ -2156,14 +2160,16 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
 
                       {/* Text input */}
                       <input
+                        ref={messageInputRef}
                         type="text"
+                        autoComplete="off"
                         className="nexus-input"
                         value={message}
                         onChange={(e) => { setMessage(e.target.value); handleKeystroke(); }}
                         placeholder={isUploading ? "Uploading…" : selectedFile ? "Add a caption…" : "Type a message…"}
                         disabled={isUploading}
                         style={{
-                          flex: 1, padding: "10px 16px",
+                          flex: 1, minWidth: 0, padding: "10px 16px",
                           borderRadius: 24, border: "1px solid var(--border)",
                           background: "var(--bg2)", color: "var(--ink)",
                           fontSize: 14, outline: "none",
@@ -2257,14 +2263,14 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       {/* Incoming call modal */}
       {callStatus === "receiving" && (
         <div style={{
-          position: "fixed", top: isMobile ? 80 : 24, left: "50%", transform: "translateX(-50%)",
-          background: "var(--card)", padding: isMobile ? "16px 20px" : "24px 32px", borderRadius: 16,
+          position: "fixed", top: isMobile ? 20 : 24, left: "50%", transform: "translateX(-50%)",
+          background: "var(--card)", padding: isMobile ? "14px 16px" : "20px 24px", borderRadius: 16,
           boxShadow: "0 16px 48px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08)",
-          zIndex: 1000, display: "flex", flexDirection: "column", alignItems: "center", gap: isMobile ? 12 : 16,
+          zIndex: 1000, display: "flex", flexDirection: "column", alignItems: "center", gap: isMobile ? 10 : 14,
           border: "1px solid var(--accent)", animation: "rise 0.3s cubic-bezier(0.22,1,0.36,1) both",
-          minWidth: isMobile ? 260 : 280,
-          maxWidth: "90vw",
-          width: isMobile ? "calc(100vw - 40px)" : "auto",
+          width: "min(100vw - 24px, 420px)",
+          maxWidth: "100%",
+          maxHeight: "calc(100vh - 40px)",
         }}>
           <div style={{
             width: 52, height: 52, borderRadius: "50%", background: "var(--accent2)",
@@ -2278,13 +2284,14 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
             <div style={{ fontWeight: 700, fontSize: isMobile ? 14 : 16, color: "var(--ink)", marginBottom: 4 }}>Incoming Video Call</div>
             <div style={{ fontSize: isMobile ? 12 : 13, color: "var(--ink3)" }}>{callerInfo.name} is calling…</div>
           </div>
-          <div style={{ display: "flex", gap: 12 }}>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", width: "100%" }}>
             <button onClick={declineCall} style={{
               background: "rgba(239,68,68,0.1)", color: "#ef4444",
-              border: "1px solid rgba(239,68,68,0.2)", padding: isMobile ? "10px 18px" : "10px 22px",
+              border: "1px solid rgba(239,68,68,0.2)", padding: isMobile ? "10px 16px" : "10px 18px",
               borderRadius: 9, fontWeight: 600, fontSize: isMobile ? 12 : 13, cursor: "pointer",
               transition: "background 0.15s",
-              flex: 1,
+              flex: "1 1 140px",
+              minWidth: 120,
             }}>Decline</button>
             <button onClick={answerCall} style={{
               background: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
@@ -2432,10 +2439,10 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       {/* Toast notification */}
       {callNotification && (
         <div style={{
-          position: "fixed", top: 36, left: "50%", transform: "translateX(-50%)",
+          position: "fixed", top: 16, left: "50%", transform: "translateX(-50%)",
           background: callNotification.type === "success" ? "rgba(22,163,74,0.96)" : "rgba(220,38,38,0.96)",
           backdropFilter: "blur(8px)",
-          color: "#fff", padding: "10px 22px",
+          color: "#fff", padding: "10px 18px",
           borderRadius: 30, fontWeight: 600, fontSize: 13,
           boxShadow: callNotification.type === "success"
             ? "0 8px 24px rgba(22,163,74,0.3)"
@@ -2443,6 +2450,10 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
           zIndex: 9999,
           display: "flex", alignItems: "center", gap: 8,
           animation: "rise 0.35s cubic-bezier(0.22,1,0.36,1) both",
+          width: "min(100vw - 24px, 480px)",
+          maxWidth: "100%",
+          justifyContent: "center",
+          textAlign: "center",
         }}>
           {callNotification.type === "success" ? (
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
