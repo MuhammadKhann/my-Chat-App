@@ -3,6 +3,20 @@ const Message = require('../../models/Message');
 const User = require('../../models/User');
 const { onlineUsers, privacyCache } = require('../../utils/onlineState');
 
+// Helper: Get list of online users that should be visible to others
+// (excludes users with hide_online or ghost privacy settings)
+const getVisibleOnlineUsers = () => {
+    const visible = [];
+    for (const [userId] of onlineUsers) {
+        const privacyLevel = privacyCache.get(userId);
+        // Only show users with standard or hide_read privacy (not hide_online or ghost)
+        if (!privacyLevel || privacyLevel === 'standard' || privacyLevel === 'hide_read') {
+            visible.push(userId);
+        }
+    }
+    return visible;
+};
+
 const setupMessageHandlers = (io, socket) => {
     // Handle joining personal room and loading privacy settings
     socket.on("join_personal", async (userId) => {
@@ -20,7 +34,7 @@ const setupMessageHandlers = (io, socket) => {
             io.emit("user_status_change", { userId, isOnline: true });
         }
 
-        socket.emit("online_users_list", Array.from(onlineUsers.keys()));
+        socket.emit("online_users_list", getVisibleOnlineUsers());
 
         try {
             const pendingMessages = await Message.find({ receiver: userId, status: 'sent' });
@@ -70,7 +84,7 @@ const setupMessageHandlers = (io, socket) => {
             }
 
             console.log(`📊 Total online users: ${onlineUsers.size}`);
-            socket.emit("online_users_list", Array.from(onlineUsers.keys()));
+            socket.emit("online_users_list", getVisibleOnlineUsers());
 
             const pendingMessages = await Message.find({ receiver: userId, status: 'sent' });
             console.log(`📨 ${pendingMessages.length} pending messages for ${userId}`);
