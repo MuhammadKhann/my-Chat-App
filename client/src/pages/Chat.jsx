@@ -523,18 +523,17 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   }, []);
 
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
-  // Sidebar always open on mobile, always open on desktop
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth < 900);
-      // Keep sidebar always open regardless of screen size
-      setIsSidebarOpen(true);
+      const mobile = window.innerWidth < 900;
+      setIsMobile(mobile);
+      setIsSidebarOpen(!mobile || !selectedUser);
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  }, [selectedUser]);
 
   const [message, setMessage] = useState("");
   const [chatHistory, setChatHistory] = useState([]);
@@ -1504,16 +1503,17 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
 
 
         {/* ── SIDEBAR ── */}
-        <div style={{
-          width: isMobile ? 288 : 260,
-          height: "100%",
-          background: "var(--card)",
-          borderRight: "1px solid var(--border)",
-          display: "flex", flexDirection: "column",
-          position: "relative",
-          zIndex: 100,
-          flexShrink: 0,
-        }}>
+        {(!isMobile || isSidebarOpen) && (
+          <div style={{
+            width: isMobile ? 288 : 260,
+            height: "100%",
+            background: "var(--card)",
+            borderRight: "1px solid var(--border)",
+            display: "flex", flexDirection: "column",
+            position: "relative",
+            zIndex: 100,
+            flexShrink: 0,
+          }}>
 
           {/* Tabs: Chats | Search */}
           <div style={{ display: "flex", padding: "12px 12px 0", gap: 4 }}>
@@ -1585,7 +1585,12 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                     <div
                       key={u._id}
                       className="chat-item"
-                      onClick={() => { setSelectedUser(u); setActiveTab("chats"); setSearchQuery(""); }}
+                      onClick={() => {
+                        setSelectedUser(u);
+                        setActiveTab("chats");
+                        setSearchQuery("");
+                        if (isMobile) setIsSidebarOpen(false);
+                      }}
                       style={{
                         padding: "10px 10px", borderRadius: 10, cursor: "pointer",
                         display: "flex", alignItems: "center", gap: 10,
@@ -1622,7 +1627,10 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                       <div
                         key={chat._id}
                         className="chat-item"
-                        onClick={() => { setSelectedUser(chat); }}
+                        onClick={() => {
+                          setSelectedUser(chat);
+                          if (isMobile) setIsSidebarOpen(false);
+                        }}
                         style={{
                           padding: "10px 10px", borderRadius: 10, cursor: "pointer",
                           display: "flex", alignItems: "center", gap: 10,
@@ -1692,7 +1700,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
               </div>
             )}
           </div>
-        </div>
+        </div>)}
 
         {/* ══════════════════════════════════════════════════════════════════
             CHAT WINDOW — the palace room
@@ -1717,6 +1725,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                     onClick={() => {
                       setSelectedUser(null);
                       setChatHistory([]);
+                      setIsSidebarOpen(true);
                     }}
                     title="Close chat"
                     className="nav-icon-btn"
