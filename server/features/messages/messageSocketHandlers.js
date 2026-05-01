@@ -43,6 +43,56 @@ const setupMessageHandlers = (io, socket) => {
         }
     });
 
+    // Legacy: frontend emits "add_user" instead of "join_personal"
+    socket.on("add_user", async (userId) => {
+        console.log(`📥 ADD_USER EVENT RECEIVED for: ${userId}`);
+        try {
+            socket.join(userId);
+            console.log(`✅ User ${userId} joined room`);
+
+            const user = await User.findById(userId);
+            if (user) {
+                privacyCache.set(userId, user.privacyLevel);
+                console.log(`✅ User ${userId} privacy level: ${user.privacyLevel}`);
+            } else {
+                console.log(`⚠️ User ${userId} not found in DB`);
+            }
+
+            const level = privacyCache.get(userId);
+            console.log(`📊 Privacy level for ${userId}: ${level}`);
+            
+            if (!level || level === 'standard') {
+                onlineUsers.set(userId, socket.id);
+                io.emit("user_status_change", { userId, isOnline: true });
+                console.log(`✅ User ${userId} added to onlineUsers, socket: ${socket.id}`);
+            } else {
+                console.log(`🔒 User ${userId} not added (privacy: ${level})`);
+            }
+
+            console.log(`📊 Total online users: ${onlineUsers.size}`);
+            socket.emit("online_users_list", Array.from(onlineUsers.keys()));
+
+            const pendingMessages = await Message.find({ receiver: userId, status: 'sent' });
+            console.log(`📨 ${pendingMessages.length} pending messages for ${userId}`);
+
+            if (pendingMessages.length > 0) {
+                await Message.updateMany(
+                    { receiver: userId, status: 'sent' },
+                    { $set: { status: 'delivered' } }
+                );
+
+                pendingMessages.forEach(msg => {
+                    socket.to(msg.sender.toString()).emit("status_changed", {
+                        msgId: msg._id,
+                        status: 'delivered'
+                    });
+                });
+            }
+        } catch (error) {
+            console.error("❌ Error in add_user handler:", error.message);
+        }
+    });
+
     // Handle sending messages
     socket.on("send_message", async (data) => {
         try {
@@ -111,6 +161,16 @@ const setupMessageHandlers = (io, socket) => {
             const senderUser = await User.findById(senderId).select("username");
             const messagePayload = savedMessage.toObject();
             messagePayload.senderUsername = senderUser?.username || "Unknown";
+            
+            // Debug: Check if receiver is online
+            const receiverSocketId = onlineUsers.get(receiverId.toString());
+            console.log("📊 RECEIVER STATUS:", {
+                receiverId: receiverId.toString(),
+                isOnline: !!receiverSocketId,
+                socketId: receiverSocketId,
+                onlineUsersCount: onlineUsers.size
+            });
+            
             socket.to(receiverId.toString()).emit("receive_message", messagePayload);
             console.log("📩 MESSAGE EMITTED to receiver's room:", receiverId.toString());
 

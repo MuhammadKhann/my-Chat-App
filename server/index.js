@@ -8,6 +8,7 @@ const cookieParser = require('cookie-parser');
 const connectDB = require('./config/db');
 const { globalLimiter } = require('./middleware/rateLimiters');
 const socketAuthMiddleware = require('./middleware/socketAuth');
+const { protectRoute } = require('./features/auth/authMiddleware');
 
 // Feature Routes
 const authRoutes = require('./features/auth/authRoutes');
@@ -56,13 +57,17 @@ app.use('/users/search', privacyRoutes);
 app.use('/upload', uploadRoutes);
 app.use('/download', uploadRoutes);
 
+// Direct search route (frontend calls this directly)
+const { searchUsers } = require('./features/privacy/privacyController');
+app.get('/users/search', protectRoute, searchUsers);
+
 // Legacy auth endpoints (frontend calls these directly)
 const { register, login, logout, checkAuth } = require('./features/auth/authController');
 const { authLimiter } = require('./middleware/rateLimiters');
-const { protectRoute } = require('./features/auth/authMiddleware');
 app.post('/register', authLimiter, register);
 app.post('/login', authLimiter, login);
 app.post('/logout', logout);
+app.post('/api/logout', logout);
 app.get('/api/auth/check', protectRoute, checkAuth);
 
 const server = http.createServer(app);

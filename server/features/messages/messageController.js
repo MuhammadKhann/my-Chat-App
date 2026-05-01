@@ -22,9 +22,13 @@ const getRoomMessages = async (req, res) => {
 const getUserChats = async (req, res) => {
     try {
         const { userId } = req.params;
+        console.log("📋 FETCHING CHAT LIST for user:", userId);
+        
         const messages = await Message.find({
             $or: [{ sender: userId }, { receiver: userId }]
         }).sort({ createdAt: -1 });
+        
+        console.log(`📋 Found ${messages.length} messages`);
 
         const chatPartners = [];
         const seenPartners = new Set();
@@ -52,8 +56,10 @@ const getUserChats = async (req, res) => {
                 });
             }
         }
+        console.log(`📋 Returning ${chatPartners.length} chat partners`);
         res.json(chatPartners);
     } catch (err) {
+        console.error("❌ Chat list error:", err.message);
         res.status(500).json({ error: "Failed to load chat list" });
     }
 };

@@ -1035,11 +1035,30 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
 
   const initiateCall = async () => {
     try {
+      // DEBUG: Check if calling self
+      console.log("📞 INITIATE CALL DEBUG:", {
+        currentUserId: user?.id,
+        selectedUserId: selectedUser?._id,
+        selectedUserName: selectedUser?.username,
+        isCallingSelf: user?.id === selectedUser?._id
+      });
+      
+      if (!selectedUser?._id) {
+        alert("Please select a user to call");
+        return;
+      }
+      
+      if (user?.id === selectedUser?._id) {
+        alert("You cannot call yourself!");
+        return;
+      }
+      
       const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
       setLocalStream(stream); setCallStatus("ringing");
       setTimeout(() => { if (myVideoRef.current) myVideoRef.current.srcObject = stream; }, 100);
       const peer = new Peer({ initiator: true, trickle: false, stream: stream });
       peer.on("signal", (data) => {
+        console.log("📞 Emitting call_user to:", selectedUser._id);
         socket.emit("call_user", { userToCall: selectedUser._id, signalData: data, from: user.id, callerName: user.username });
       });
       peer.on("stream", (currentStream) => {

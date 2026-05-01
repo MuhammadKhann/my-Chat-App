@@ -3,13 +3,26 @@ const { onlineUsers, privacyCache } = require('../../utils/onlineState');
 const setupCallHandlers = (io, socket) => {
     // 1. Caller initiates the ring
     socket.on("call_user", ({ userToCall, signalData, from, callerName }) => {
-        console.log(`📞 SIGNAL RECEIVED: ${callerName} is calling ${userToCall}`);
+        console.log(`📞 CALL REQUEST: ${callerName} (${from}) → ${userToCall}`);
+        
+        // Debug: Check rooms
+        const rooms = Array.from(socket.rooms);
+        console.log(`📞 Caller socket rooms:`, rooms);
+        console.log(`📞 Target user online:`, onlineUsers.has(userToCall));
+        
+        // Prevent calling self
+        if (from === userToCall) {
+            console.log(`❌ REJECTED: User trying to call themselves`);
+            socket.emit("call_error", { error: "Cannot call yourself" });
+            return;
+        }
 
         io.to(userToCall).emit("incoming_call", {
             signal: signalData,
             from,
             callerName
         });
+        console.log(`📞 EMITTED incoming_call to room: ${userToCall}`);
     });
 
     // 2. Receiver clicks "Answer"
