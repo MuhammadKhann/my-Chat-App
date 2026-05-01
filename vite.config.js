@@ -6,8 +6,14 @@ export default defineConfig({
   plugins: [react()],
   root: path.resolve(__dirname, 'client'),
   define: {
-    global: 'window',
+    global: 'globalThis',
     'process.env': {},
-    'process': { env: {} }
+    'process': { env: {} },
+    'window.global': 'globalThis'
+  },
+  build: {
+    commonjsOptions: {
+      transformMixedEsModules: true
+    }
   }
 })
