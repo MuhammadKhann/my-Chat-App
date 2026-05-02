@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import EmojiPicker from 'emoji-picker-react';
 
 function ChatInput({
   message,
@@ -11,11 +12,28 @@ function ChatInput({
   isUploading,
   disabled
 }) {
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const emojiPickerRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target)) {
+        setShowEmojiPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const handleKeyDown = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       onSend();
     }
+  };
+
+  const onEmojiClick = (emojiData) => {
+    onMessageChange(message + emojiData.emoji);
   };
 
   return (
@@ -27,8 +45,47 @@ function ChatInput({
         display: "flex",
         alignItems: "flex-end",
         gap: 10,
+        position: "relative",
       }}
     >
+      {showEmojiPicker && (
+        <div
+          ref={emojiPickerRef}
+          style={{
+            position: "absolute",
+            bottom: "calc(100% + 10px)",
+            left: 16,
+            zIndex: 1000,
+          }}
+        >
+          <EmojiPicker onEmojiClick={onEmojiClick} theme="auto" />
+        </div>
+      )}
+
+      {/* Emoji Button */}
+      <button
+        type="button"
+        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: "50%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+          color: showEmojiPicker ? "var(--accent)" : "var(--ink2)",
+          background: "none",
+          border: "none",
+          transition: "color 0.15s",
+          padding: 0,
+        }}
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
+        </svg>
+      </button>
+
       {/* File attachment button */}
       <label
         style={{
