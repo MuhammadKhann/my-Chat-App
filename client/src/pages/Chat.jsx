@@ -753,6 +753,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
 
   const myVideoRef = useRef(null);
   const userVideoRef = useRef(null);
+  const localStreamRef = useRef(null);
   const connectionRef = useRef(null);
   const messageInputRef = useRef(null);
 
@@ -932,7 +933,10 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
     });
     socket.on("incoming_call", ({ from, callerName, signal }) => {
       console.log("🚨 INCOMING CALL DETECTED FROM:", callerName);
-      if (callStatus === "active") return;
+      if (callStatus !== "idle") {
+        console.warn("🚫 Already in a call session, ignoring incoming call.");
+        return;
+      }
       setCallerInfo({ id: from, name: callerName, signal: signal });
       setCallStatus("receiving");
     });
@@ -947,16 +951,22 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       setTimeout(() => { setCallNotification(null); }, 3000);
     });
 
+    socket.on("disconnect", () => {
+      console.warn("🔌 Socket disconnected, ending call if active.");
+      endCall(false);
+    });
+
     return () => {
       socket.off("message_confirmed"); socket.off("send_error");
       socket.off("receive_message"); socket.off("status_changed");
       socket.off("online_users_list");
       socket.off("user_status_change"); socket.off("user_typing");
       socket.off("incoming_call"); socket.off("call_ended"); socket.off("call_declined");
+      socket.off("disconnect");
     };
   }, [user.id, callStatus]);
 
-  useEffect(() => { scrollRef.current?.scrollIntoView({ behavior: "smooth" }); }, [chatHistory]);
+  useEffect(() => { scrollRef.current?.scrollIntoView({ behavior: "auto" }); }, [chatHistory]);
 
   const handleKeystroke = () => {
     if (!selectedUser) return;
@@ -980,6 +990,15 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   };
 
   useEffect(() => { if (user.id) fetchChatList(); }, [user.id, selectedUser]);
+
+  useEffect(() => {
+    return () => {
+      // Ensure call is ended and hardware is released on unmount
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
 
   const handleFileSelect = (e) => {
     const file = e.target.files[0];
@@ -1062,9 +1081,15 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
         alert("You cannot call yourself!");
         return;
       }
+
+      if (callStatus !== "idle") {
+        console.warn("⚠️ Cannot start call: already in a call or receiving one.");
+        return;
+      }
       
         await enumerateVideoInputs();
       const stream = await getLocalMediaStream();
+      localStreamRef.current = stream;
       setLocalStream(stream); setCallStatus("ringing");
       setTimeout(() => { if (myVideoRef.current) myVideoRef.current.srcObject = stream; }, 100);
       const peer = new Peer({ initiator: true, trickle: false, stream: stream });
@@ -1096,6 +1121,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       setTimeout(() => { setCallNotification(null); }, 3000);
       await enumerateVideoInputs();
       const stream = await getLocalMediaStream();
+      localStreamRef.current = stream;
       setLocalStream(stream);
       setTimeout(() => { if (myVideoRef.current) myVideoRef.current.srcObject = stream; }, 100);
       const peer = new Peer({ initiator: false, trickle: false, stream: stream });
@@ -1120,10 +1146,17 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
     setCallStatus("idle"); setCallerInfo({ id: "", name: "", signal: null });
     setIsCameraOn(true);
     setIsMicOn(true);
-    setLocalStream((prevStream) => {
-      if (prevStream) { prevStream.getTracks().forEach((track) => track.stop()); }
-      return null;
-    });
+
+    // Synchronously stop all tracks to ensure camera/mic lights go off immediately
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track) => {
+        track.stop();
+        console.log(`⏹️ Track stopped: ${track.kind}`);
+      });
+      localStreamRef.current = null;
+    }
+
+    setLocalStream(null);
     setRemoteStream(null);
     if (myVideoRef.current) myVideoRef.current.srcObject = null;
     if (userVideoRef.current) userVideoRef.current.srcObject = null;
@@ -1191,6 +1224,15 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       const nextDevice = cams[(currentIndex + 1) % cams.length] || cams[0];
       if (!nextDevice) return;
 
+      // Stop old video track first to free up hardware resource (critical for mobile)
+      if (localStreamRef.current) {
+        const oldVideoTrack = localStreamRef.current.getVideoTracks()[0];
+        if (oldVideoTrack) {
+          oldVideoTrack.stop();
+          console.log("⏹️ Old video track stopped for lens switch");
+        }
+      }
+
       const newVideoStream = await navigator.mediaDevices.getUserMedia({
         audio: false,
         video: { deviceId: { exact: nextDevice.deviceId }, width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -1198,28 +1240,29 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       const newVideoTrack = newVideoStream.getVideoTracks()[0];
       if (!newVideoTrack) throw new Error("No camera track available.");
 
-      if (localStream) {
-        const oldVideoTrack = localStream.getVideoTracks()[0];
-        const audioTracks = localStream.getAudioTracks();
+      if (localStreamRef.current) {
+        const audioTracks = localStreamRef.current.getAudioTracks();
         const updatedStream = new MediaStream([...audioTracks, newVideoTrack]);
 
+        localStreamRef.current = updatedStream;
         setLocalStream(updatedStream);
         setIsCameraOn(true);
         setActiveVideoDeviceId(nextDevice.deviceId);
         if (myVideoRef.current) myVideoRef.current.srcObject = updatedStream;
 
         if (connectionRef.current) {
-          if (typeof connectionRef.current.replaceTrack === "function") {
-            connectionRef.current.replaceTrack(oldVideoTrack, newVideoTrack, localStream);
-          } else if (connectionRef.current._pc?.getSenders) {
+          // Find the video sender and replace its track
+          if (connectionRef.current._pc?.getSenders) {
             const sender = connectionRef.current._pc.getSenders().find((s) => s.track?.kind === "video");
             if (sender && typeof sender.replaceTrack === "function") {
               sender.replaceTrack(newVideoTrack);
             }
+          } else if (typeof connectionRef.current.replaceTrack === "function") {
+            // Some Simple-Peer versions use replaceTrack directly
+            const oldVideoTrack = localStreamRef.current.getVideoTracks()[0];
+            connectionRef.current.replaceTrack(oldVideoTrack, newVideoTrack, updatedStream);
           }
         }
-
-        oldVideoTrack?.stop();
       } else {
         setActiveVideoDeviceId(nextDevice.deviceId);
       }
@@ -1232,8 +1275,8 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   };
 
   const toggleCamera = () => {
-    if (localStream) {
-      const videoTrack = localStream.getVideoTracks()[0];
+    if (localStreamRef.current) {
+      const videoTrack = localStreamRef.current.getVideoTracks()[0];
       if (videoTrack) {
         videoTrack.enabled = !videoTrack.enabled;
         setIsCameraOn(videoTrack.enabled);
@@ -1242,8 +1285,8 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   };
 
   const toggleMic = () => {
-    if (localStream) {
-      const audioTrack = localStream.getAudioTracks()[0];
+    if (localStreamRef.current) {
+      const audioTrack = localStreamRef.current.getAudioTracks()[0];
       if (audioTrack) {
         audioTrack.enabled = !audioTrack.enabled;
         setIsMicOn(audioTrack.enabled);
@@ -1925,12 +1968,67 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                 ) : null;
               })()}
 
+              {/* Incoming Call Banner (Fixed at top) */}
+              {callStatus === "receiving" && callerInfo?.id !== user?.id && (
+                <div style={{
+                  background: "var(--card)",
+                  borderBottom: "1px solid var(--accent)",
+                  padding: "12px 20px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  zIndex: 100,
+                  animation: "slideDown 0.3s ease",
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{ width: 38, height: 38, borderRadius: "50%", background: "var(--accent2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+                      </svg>
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: "var(--ink)" }}>Incoming Call</div>
+                      <div style={{ fontSize: 12, color: "var(--ink3)" }}>{callerInfo.name} is calling…</div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={declineCall} style={{
+                      background: "rgba(239,68,68,0.1)", color: "#ef4444", border: "1px solid rgba(239,68,68,0.2)",
+                      padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer",
+                    }}>Decline</button>
+                    <button onClick={answerCall} style={{
+                      background: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)", color: "#fff", border: "none",
+                      padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer",
+                      boxShadow: "0 2px 8px rgba(34,197,94,0.3)",
+                    }}>Answer</button>
+                  </div>
+                </div>
+              )}
+
+              {/* Call Notification Toast (Fixed at top) */}
+              {callNotification && (
+                <div style={{
+                  background: callNotification.type === "success" ? "rgba(22,163,74,0.96)" : "rgba(220,38,38,0.96)",
+                  color: "#fff", padding: "8px 20px", fontSize: 13, fontWeight: 600,
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  zIndex: 99, animation: "fadeIn 0.2s ease",
+                }}>
+                  {callNotification.type === "success" ? (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                  ) : (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                  )}
+                  {callNotification.text}
+                </div>
+              )}
+
               {/* ── Messages Area ── */}
               <div
                 ref={messagesViewportRef}
                 onScroll={onMessagesScroll}
                 style={{
-                  flex: 1, overflowY: "auto",
+                  flex: 1, overflowY: "auto", overflowX: "hidden",
                   padding: "24px 20px 8px",
                   display: "flex", flexDirection: "column", gap: 4,
                 }}>
@@ -2064,101 +2162,6 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                 })}
 
                 <div ref={scrollRef} />
-
-                {/* Incoming Call Banner */}
-                {callStatus === "receiving" && (
-                  <div style={{
-                    background: "var(--card)",
-                    border: "1px solid var(--accent)",
-                    borderRadius: 16,
-                    boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
-                    padding: "14px 16px",
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 12,
-                    marginTop: 12,
-                    pointerEvents: "auto",
-                  }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <div style={{ width: 44, height: 44, borderRadius: "50%", background: "var(--accent2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
-                        </svg>
-                      </div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: 15, color: "var(--ink)", marginBottom: 2 }}>Incoming Video Call</div>
-                        <div style={{ fontSize: 13, color: "var(--ink3)", overflowWrap: "anywhere", wordBreak: "break-word" }}>
-                          {callerInfo.name} is calling…
-                        </div>
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                      <button onClick={declineCall} style={{
-                        flex: "1 1 120px",
-                        minWidth: 120,
-                        background: "rgba(239,68,68,0.1)",
-                        color: "#ef4444",
-                        border: "1px solid rgba(239,68,68,0.2)",
-                        padding: "10px 16px",
-                        borderRadius: 10,
-                        fontWeight: 600,
-                        fontSize: 13,
-                        cursor: "pointer",
-                        pointerEvents: "auto",
-                        transition: "background 0.2s",
-                      }} onMouseOver={(e) => e.target.style.background = "rgba(239,68,68,0.2)"} onMouseOut={(e) => e.target.style.background = "rgba(239,68,68,0.1)"}>
-                        Decline
-                      </button>
-                      <button onClick={answerCall} style={{
-                        flex: "1 1 120px",
-                        minWidth: 120,
-                        background: "linear-gradient(135deg, #22c55e 0%, #16a34a 100%)",
-                        color: "#fff",
-                        border: "none",
-                        padding: "10px 16px",
-                        borderRadius: 10,
-                        fontWeight: 600,
-                        fontSize: 13,
-                        cursor: "pointer",
-                        boxShadow: "0 2px 10px rgba(34,197,94,0.35)",
-                        pointerEvents: "auto",
-                        transition: "transform 0.2s",
-                      }} onMouseOver={(e) => e.target.style.transform = "scale(1.02)"} onMouseOut={(e) => e.target.style.transform = "scale(1)"}>
-                        Answer
-                      </button>
-                    </div>
-                  </div>
-                )}
-
-                {/* Call Notification Toast */}
-                {callNotification && (
-                  <div style={{
-                    background: callNotification.type === "success" ? "rgba(22,163,74,0.96)" : "rgba(220,38,38,0.96)",
-                    backdropFilter: "blur(8px)",
-                    color: "#fff",
-                    padding: "10px 16px",
-                    borderRadius: 24,
-                    fontWeight: 600,
-                    fontSize: 13,
-                    boxShadow: callNotification.type === "success"
-                      ? "0 4px 12px rgba(22,163,74,0.3)"
-                      : "0 4px 12px rgba(220,38,38,0.3)",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    justifyContent: "center",
-                    textAlign: "center",
-                    marginTop: 8,
-                    pointerEvents: "auto",
-                  }}>
-                    {callNotification.type === "success" ? (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
-                    ) : (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
-                    )}
-                    {callNotification.text}
-                  </div>
-                )}
               </div>
 
               {/* ── Typing Indicator ── */}
