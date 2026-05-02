@@ -1629,7 +1629,9 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                 border: "1px solid var(--border)",
                 borderRadius: 12,
                 boxShadow: "0 12px 36px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.06)",
-                zIndex: 9999, overflow: "hidden",
+                zIndex: 9999,
+                maxHeight: "calc(100vh - 80px)",
+                overflowY: "auto",
                 animation: "fadeIn 0.18s ease both",
               }}>
                 <div style={{ padding: "10px 14px 8px", fontSize: 10, fontWeight: 600, letterSpacing: "0.09em", textTransform: "uppercase", color: "var(--ink3)", borderBottom: "1px solid var(--border)" }}>
@@ -1688,7 +1690,9 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                 border: "1px solid var(--border)",
                 borderRadius: 12,
                 boxShadow: "0 12px 36px rgba(0,0,0,0.14), 0 2px 8px rgba(0,0,0,0.06)",
-                zIndex: 9999, overflow: "hidden",
+                zIndex: 9999,
+                maxHeight: "calc(100vh - 80px)",
+                overflowY: "auto",
                 animation: "fadeIn 0.18s ease both",
               }}>
                 <div style={{ padding: "10px 14px 8px", fontSize: 10, fontWeight: 600, letterSpacing: "0.09em", textTransform: "uppercase", color: "var(--ink3)", borderBottom: "1px solid var(--border)" }}>
@@ -2374,6 +2378,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                       position: "absolute",
                       bottom: "calc(100% + 10px)",
                       left: 16,
+                      right: isMobile ? 16 : "auto",
                       zIndex: 1000,
                     }}
                   >
@@ -2383,6 +2388,8 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                         handleKeystroke();
                       }}
                       theme={dark ? "dark" : "light"}
+                      width={isMobile ? "100%" : 350}
+                      height={isMobile ? 350 : 400}
                     />
                   </div>
                 )}
