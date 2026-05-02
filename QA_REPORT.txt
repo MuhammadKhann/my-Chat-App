@@ -41,10 +41,10 @@ The my-chat-app chat application is **functionally robust** with well-implemente
   ```javascript
   // App.jsx - Smart initialization
   const [user, setUser] = useState(() => {
-    const savedUser = localStorage.getItem("nexusUser");
+    const savedUser = localStorage.getItem("chatAppUser");
     if (!savedUser) return null;
     if (savedUser === "undefined" || savedUser === "null") {
-      localStorage.removeItem("nexusUser");
+      localStorage.removeItem("chatAppUser");
       return null;
     }
     const parsed = JSON.parse(savedUser);
@@ -52,7 +52,7 @@ The my-chat-app chat application is **functionally robust** with well-implemente
   });
   ```
 - **How It Works:**
-  1. On page load, checks localStorage for `nexusUser`
+  1. On page load, checks localStorage for `chatAppUser`
   2. Validates JSON integrity (prevents corruption)
   3. Auto-navigates to chat if user exists
   4. Falls back gracefully on corrupted data
@@ -65,7 +65,7 @@ The my-chat-app chat application is **functionally robust** with well-implemente
   const handleLogout = () => {
     setPage("login");      // Navigate first
     setUser(null);         // Clear state
-    localStorage.removeItem("nexusUser");  // Remove persistence
+    localStorage.removeItem("chatAppUser");  // Remove persistence
   };
   ```
 - **Behavior:** Logout only executes when user explicitly clicks logout button in chat UI
@@ -136,9 +136,9 @@ The my-chat-app chat application is **functionally robust** with well-implemente
 // Login.jsx - handleLogin
 if (response.ok) {
   if (rememberMe) {
-    localStorage.setItem("nexusUser", JSON.stringify(data));
+    localStorage.setItem("chatAppUser", JSON.stringify(data));
   } else {
-    localStorage.removeItem("nexusUser");
+    localStorage.removeItem("chatAppUser");
   }
   setUser(data);  // Always sets in memory
 }
@@ -150,7 +150,7 @@ if (response.ok) {
   1. User logs in with "Remember Me" ✓
   2. User data saved to localStorage
   3. User clicks logout
-  4. localStorage is cleared: `setPage("login")` + `localStorage.removeItem("nexusUser")`
+  4. localStorage is cleared: `setPage("login")` + `localStorage.removeItem("chatAppUser")`
   5. User is redirected to **login page** (not register)
 
 #### 3.3 Logout Behavior (Remember Me Unchecked)
@@ -389,7 +389,7 @@ None identified. System is production-ready for core features.
   const handleLogout = () => {
     setPage("login");
     setUser(null);
-    localStorage.removeItem("nexusUser");
+    localStorage.removeItem("chatAppUser");
     // Socket.io still connected!
   };
   ```
@@ -399,7 +399,7 @@ None identified. System is production-ready for core features.
     socket.disconnect();  // ADD THIS
     setPage("login");
     setUser(null);
-    localStorage.removeItem("nexusUser");
+    localStorage.removeItem("chatAppUser");
   };
   ```
 - **Why:** Prevents unauthorized real-time event delivery after logout

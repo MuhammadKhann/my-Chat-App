@@ -60,7 +60,7 @@ function ChatSidebar({
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search users..."
-            className="nexus-input"
+            className="chat-app-input"
             style={{
               flex: 1,
               padding: "9px 12px",

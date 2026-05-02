@@ -43,7 +43,7 @@ function TopBar({ dark, onToggle }) {
           fontFamily: "'Bricolage Grotesque', sans-serif",
           fontWeight: 700, fontSize: 17,
           color: "var(--ink)", letterSpacing: "-0.02em",
-        }}>Nexus</span>
+        }}>Chat App</span>
         <span style={{
           fontSize: 10, fontWeight: 600, letterSpacing: "0.08em",
           textTransform: "uppercase", color: "var(--accent)",
@@ -313,7 +313,7 @@ function Register({ setPage, dark, setDark }) {
                   {isDesktop ? (
                     <>Where teams<br />get things<br /><span style={{ color: "var(--accent)" }}>done.</span></>
                   ) : (
-                    <><span style={{ color: "var(--accent)" }}>Nexus</span> — where teams get things done.</>
+                    <><span style={{ color: "var(--accent)" }}>Chat App</span> — where teams get things done.</>
                   )}
                 </h1>
 

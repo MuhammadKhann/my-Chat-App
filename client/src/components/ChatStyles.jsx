@@ -63,7 +63,7 @@ const ChatStyles = () => (
     }
 
     /* Input focus ring */
-    .nexus-input:focus {
+    .chat-app-input:focus {
       outline: none;
       border-color: var(--accent) !important;
       box-shadow: 0 0 0 3px var(--accent2);

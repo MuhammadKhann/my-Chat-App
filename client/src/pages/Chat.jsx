@@ -73,7 +73,7 @@ const ChatStyles = () => (
     }
 
     /* Input focus ring */
-    .nexus-input:focus {
+    .chat-app-input:focus {
       outline: none;
       border-color: var(--accent) !important;
       box-shadow: 0 0 0 3px var(--accent2);
@@ -232,7 +232,7 @@ const forceDownloadMedia = async (url, customFilename, setDownloading) => {
     a.style.display = "none";
     a.href = blobUrl;
     const ext = url.split(".").pop().split("?")[0] || "file";
-    a.download = customFilename ? `${customFilename}.${ext}` : `Nexus_Media_${Date.now()}.${ext}`;
+    a.download = customFilename ? `${customFilename}.${ext}` : `ChatApp_Media_${Date.now()}.${ext}`;
     document.body.appendChild(a);
     a.click();
     setTimeout(() => {
@@ -305,7 +305,7 @@ function ImageViewerModal({ src, onClose }) {
       }}
     >
       <div style={{ position: "absolute", top: 20, right: 20, zIndex: 10, display: "flex", gap: 10 }}>
-        <DownloadButton url={src} filename="Nexus_Image" />
+        <DownloadButton url={src} filename="ChatApp_Image" />
         <button
           onClick={onClose}
           style={{
@@ -379,7 +379,7 @@ function VideoPlayerModal({ src, onClose }) {
       }}
     >
       <div style={{ position: "absolute", top: 20, right: 20, zIndex: 10, display: "flex", gap: 10 }}>
-        <DownloadButton url={src} filename="Nexus_Video" />
+        <DownloadButton url={src} filename="ChatApp_Video" />
         <button
           onClick={onClose}
           style={{
@@ -768,8 +768,8 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       if (res.ok) {
         data.id = data._id || data.id;
         setUser(data);
-        if (localStorage.getItem("nexusUser")) {
-          localStorage.setItem("nexusUser", JSON.stringify(data));
+        if (localStorage.getItem("chatAppUser")) {
+          localStorage.setItem("chatAppUser", JSON.stringify(data));
         }
         socket.emit("privacy_changed", { userId: data.id, privacyLevel: level });
       }
@@ -795,8 +795,8 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       if (res.ok) {
         data.id = data._id || data.id;
         setUser(data);
-        if (localStorage.getItem("nexusUser")) {
-          localStorage.setItem("nexusUser", JSON.stringify(data));
+        if (localStorage.getItem("chatAppUser")) {
+          localStorage.setItem("chatAppUser", JSON.stringify(data));
         }
       } else { alert(data.error || "Failed to upload avatar."); }
     } catch (error) {
@@ -1322,7 +1322,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
     } catch { /* ignore */ }
     if (socket) { socket.disconnect(); }
     setUser(null); setSelectedUser(null); setChatHistory([]);
-    localStorage.removeItem("nexusUser");
+    localStorage.removeItem("chatAppUser");
     setPage("login");
   };
 
@@ -1392,7 +1392,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
             fontSize: 20, fontWeight: 400,
             color: "var(--ink)", letterSpacing: "0.01em",
             flexShrink: 0,
-          }}>Nexus</span>
+          }}>Chat App</span>
 
           <div style={{ width: 1, height: 22, background: "var(--border)", flexShrink: 0 }} />
 
@@ -1656,7 +1656,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                 <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
                   <input
                     type="text"
-                    className="nexus-input"
+                    className="chat-app-input"
                     placeholder="Search username…"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -2260,7 +2260,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                         ref={messageInputRef}
                         type="text"
                         autoComplete="off"
-                        className="nexus-input"
+                        className="chat-app-input"
                         value={message}
                         onChange={(e) => { setMessage(e.target.value); handleKeystroke(); }}
                         placeholder={isUploading ? "Uploading…" : selectedFile ? "Add a caption…" : "Type a message…"}

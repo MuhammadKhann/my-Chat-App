@@ -9,14 +9,14 @@ function App() {
   // --- INDESTRUCTIBLE INITIALIZER ---
   const [user, setUser] = useState(() => {
     try {
-      const savedUser = localStorage.getItem("nexusUser");
+      const savedUser = localStorage.getItem("chatAppUser");
       
       // 1. Check if it's completely empty
       if (!savedUser) return null;
 
       // 2. Check if it's the dreaded "undefined" or "null" string
       if (savedUser === "undefined" || savedUser === "null") {
-        localStorage.removeItem("nexusUser");
+        localStorage.removeItem("chatAppUser");
         return null;
       }
 
@@ -34,7 +34,7 @@ function App() {
     } catch (error) {
       // If ANY of the above fails, nuke the storage and start fresh
       console.error("Persistence Corrupted. Resetting session...");
-      localStorage.removeItem("nexusUser");
+      localStorage.removeItem("chatAppUser");
       return null;
     }
   }); // Stores the logged-in user's info
@@ -44,26 +44,26 @@ function App() {
 
   
   const [dark, setDark] = useState(() => {
-    const savedTheme = localStorage.getItem("nexus-theme");
+    const savedTheme = localStorage.getItem("chat-app-theme");
     return savedTheme === "dark";
   });
 
   const [themeId, setThemeId] = useState(() => {
-    return localStorage.getItem("nexus-color-theme") || "cosmic";
+    return localStorage.getItem("chat-app-color-theme") || "cosmic";
   });
 
   useEffect(() => {
-    localStorage.setItem("nexus-theme", dark ? "dark" : "light");
+    localStorage.setItem("chat-app-theme", dark ? "dark" : "light");
   }, [dark]);
 
   useEffect(() => {
-    localStorage.setItem("nexus-color-theme", themeId);
+    localStorage.setItem("chat-app-color-theme", themeId);
   }, [themeId]);
 
   useEffect(() => {
     // If there is no local storage, the user explicitly didn't check "Remember Me".
     // They want strict behavior: a page refresh should log them out.
-    const hasStorage = localStorage.getItem("nexusUser");
+    const hasStorage = localStorage.getItem("chatAppUser");
     if (!hasStorage) {
       setIsCheckingAuth(false);
       // Fire a silent logout to ensure the backend cookie is securely destroyed 
@@ -90,7 +90,7 @@ function App() {
           // If cookie is invalid or missing, force logout/login
           setUser(null);
           setPage("login");
-          localStorage.removeItem("nexusUser");
+          localStorage.removeItem("chatAppUser");
         }
       } catch (error) {
         console.error("Auth Check failed:", error);

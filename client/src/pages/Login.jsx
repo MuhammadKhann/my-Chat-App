@@ -39,7 +39,7 @@ function TopBar({ dark, onToggle }) {
           fontFamily: "'Bricolage Grotesque', sans-serif",
           fontWeight: 700, fontSize: 17,
           color: "var(--ink)", letterSpacing: "-0.02em",
-        }}>Nexus</span>
+        }}>Chat App</span>
         <span style={{
           fontSize: 10, fontWeight: 600, letterSpacing: "0.08em",
           textTransform: "uppercase", color: "var(--accent)",
@@ -136,10 +136,10 @@ function Login({ setPage, dark, setDark, setUser }) {
 
         // Only save the session permanently if "Remember Me" is checked
         if (rememberMe) {
-            localStorage.setItem("nexusUser", JSON.stringify(data));
+            localStorage.setItem("chatAppUser", JSON.stringify(data));
         } else {
             // Ensure no old sessions remain if the user unchecked it
-            localStorage.removeItem("nexusUser");
+            localStorage.removeItem("chatAppUser");
         }
 
         setBtnState("success");
@@ -240,7 +240,7 @@ function Login({ setPage, dark, setDark, setUser }) {
               }}>
                 {isDesktop
                   ? <>Your workspace is<br />ready.<br /><span style={{ color: "var(--accent)" }}>Jump back in.</span></>
-                  : <><span style={{ color: "var(--accent)" }}>Nexus</span> — your workspace is ready.</>
+                  : <><span style={{ color: "var(--accent)" }}>Chat App</span> — your workspace is ready.</>
                 }
               </h1>
               {isDesktop && (
@@ -269,7 +269,7 @@ function Login({ setPage, dark, setDark, setUser }) {
               transition: "background 0.3s",
             }}>
               <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--ink3)", marginBottom: 10 }}>Sign in to continue</p>
-              <h2 style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 700, fontSize: isMobile ? 22 : 27, color: "var(--ink)", letterSpacing: "-0.02em", marginBottom: 6, lineHeight: 1.1 }}>Nexus Login</h2>
+              <h2 style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 700, fontSize: isMobile ? 22 : 27, color: "var(--ink)", letterSpacing: "-0.02em", marginBottom: 6, lineHeight: 1.1 }}>Chat App Login</h2>
               <p style={{ fontSize: 13, color: "var(--ink3)", marginBottom: 28 }}>Enter your credentials to access your workspace.</p>
 
               <form onSubmit={handleLogin}>

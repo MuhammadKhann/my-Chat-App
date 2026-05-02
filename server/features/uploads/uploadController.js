@@ -10,7 +10,7 @@ const uploadAvatar = async (req, res) => {
 
         const uploadStream = cloudinary.uploader.upload_stream(
             {
-                folder: "nexus_avatars",
+                folder: "chat_app_avatars",
                 transformation: [{ width: 250, height: 250, crop: "fill", gravity: "face" }]
             },
             async (error, result) => {
@@ -45,7 +45,7 @@ const uploadFile = async (req, res) => {
         if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
         const uploadStream = cloudinary.uploader.upload_stream(
-            { folder: "nexus_attachments", resource_type: "auto" },
+            { folder: "chat_app_attachments", resource_type: "auto" },
             (error, result) => {
                 if (error) {
                     console.error("Cloudinary Error:", error);
