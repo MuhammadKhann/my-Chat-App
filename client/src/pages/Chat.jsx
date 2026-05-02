@@ -547,7 +547,6 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const scrollRef = useRef();
 
   // ─── Smart Read Receipts (Enterprise) ───────────────────────────────────────
   const messagesViewportRef = useRef(null);
@@ -966,7 +965,11 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
     };
   }, [user.id, callStatus]);
 
-  useEffect(() => { scrollRef.current?.scrollIntoView({ behavior: "auto" }); }, [chatHistory]);
+  useEffect(() => {
+    if (messagesViewportRef.current) {
+      messagesViewportRef.current.scrollTop = messagesViewportRef.current.scrollHeight;
+    }
+  }, [chatHistory, selectedUser]);
 
   const handleKeystroke = () => {
     if (!selectedUser) return;
@@ -2161,8 +2164,6 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                     </React.Fragment>
                   );
                 })}
-
-                <div ref={scrollRef} />
               </div>
 
               {/* ── Typing Indicator ── */}
