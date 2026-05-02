@@ -3,7 +3,7 @@ import Register from "./Register";
 import Login from "./Login";
 import Chat from "./Chat";
 import { GlobalStyles, FontLoader } from "../components/GlobalStyles";
-import { api } from "../services/api";
+import { api, fetchWithAuth } from "../services/api";
 
 function App() {
   // --- INDESTRUCTIBLE INITIALIZER ---
@@ -91,13 +91,13 @@ function App() {
       setIsCheckingAuth(false);
       // Fire a silent logout to ensure the backend cookie is securely destroyed 
       // preventing the session from silently lingering in the background.
-      fetch(api("/api/logout"), { method: "POST", credentials: "include" }).catch(() => {});
+      fetchWithAuth(api("/api/logout"), { method: "POST", credentials: "include" }).catch(() => {});
       return;
     }
 
     const checkAuth = async () => {
       try {
-        const res = await fetch(api("/api/auth/check"), {
+        const res = await fetchWithAuth(api("/api/auth/check"), {
           method: "GET",
           credentials: "include", // Mandatory to send the JWT cookie
         });
@@ -114,6 +114,7 @@ function App() {
           setUser(null);
           setPage("login");
           localStorage.removeItem("chatAppUser");
+          localStorage.removeItem("chatAppToken");
         }
       } catch (error) {
         console.error("Auth Check failed:", error);

@@ -134,6 +134,11 @@ function Login({ setPage, dark, setDark, setUser }) {
         // Normalize: Backend returns `_id`, but Chat.jsx uses `user.id`.
         data.id = data._id || data.id;
 
+        // Save the token for Header-based auth (vital for incognito/cross-domain cookies)
+        if (data.token) {
+            localStorage.setItem("chatAppToken", data.token);
+        }
+
         // Only save the session permanently if "Remember Me" is checked
         if (rememberMe) {
             localStorage.setItem("chatAppUser", JSON.stringify(data));

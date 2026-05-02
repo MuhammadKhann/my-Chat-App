@@ -11,3 +11,27 @@ export function api(path = "/") {
   return `${base}${p}`;
 }
 
+/**
+ * Enhanced fetch wrapper that automatically includes:
+ * 1. Credentials (for HttpOnly cookies)
+ * 2. Authorization Header (Bearer token fallback for incognito/cross-domain)
+ */
+export async function fetchWithAuth(url, options = {}) {
+  const token = localStorage.getItem("chatAppToken");
+  
+  const headers = {
+    ...options.headers,
+  };
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const enhancedOptions = {
+    ...options,
+    headers,
+    credentials: "include", // Always include cookies
+  };
+
+  return fetch(url, enhancedOptions);
+}

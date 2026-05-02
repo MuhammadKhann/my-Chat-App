@@ -3,7 +3,7 @@ import EmojiPicker from 'emoji-picker-react';
 import io from "socket.io-client";
 import Peer from "simple-peer";
 import { THEMES } from "../components/GlobalStyles";
-import { BACKEND_URL, api } from "../services/api";
+import { BACKEND_URL, api, fetchWithAuth } from "../services/api";
 import { sounds } from "../services/soundService";
 
 // ─── CSS Design System (injected once via Login's GlobalStyles) ───────────────
@@ -150,7 +150,10 @@ const ChatStyles = () => (
 const socket = io(BACKEND_URL, {
   withCredentials: true,
   transports: ["websocket"],
-  autoConnect: false
+  autoConnect: false,
+  auth: {
+    token: localStorage.getItem("chatAppToken")
+  }
 });
 
 // ─── Small Avatar helper ──────────────────────────────────────────────────────
@@ -770,7 +773,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   // ─── All original logic (untouched) ────────────────────────────────────────
   const handlePrivacyChange = async (level) => {
     try {
-      const res = await fetch(api("/api/users/privacy"), {
+      const res = await fetchWithAuth(api("/api/users/privacy"), {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
@@ -800,7 +803,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
     const formData = new FormData();
     formData.append("avatar", file);
     try {
-      const res = await fetch(api("/api/users/avatar"), {
+      const res = await fetchWithAuth(api("/api/users/avatar"), {
         method: "POST", credentials: "include", body: formData,
       });
       const data = await res.json();
@@ -856,7 +859,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   useEffect(() => {
     if (selectedUser) {
       const room = getRoomId(user.id, selectedUser._id);
-      fetch(api(`/messages/${room}`), { credentials: 'include' })
+      fetchWithAuth(api(`/messages/${room}`), { credentials: 'include' })
         .then(res => res.json())
         .then(data => setChatHistory(data))
         .catch(err => console.error(err));
@@ -1004,7 +1007,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
 
   const fetchChatList = async () => {
     try {
-      const res = await fetch(api(`/chats/list/${user.id}`), { credentials: 'include' });
+      const res = await fetchWithAuth(api(`/chats/list/${user.id}`), { credentials: 'include' });
       const data = await res.json();
       setChatList(data);
     } catch (err) { console.error(err); }
@@ -1453,7 +1456,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
     if (!selectedUser) return;
     const room = getRoomId(user.id, selectedUser._id);
     try {
-      const res = await fetch(api(`/messages/delete/${room}`), { method: "DELETE", credentials: 'include' });
+      const res = await fetchWithAuth(api(`/messages/delete/${room}`), { method: "DELETE", credentials: 'include' });
       if (res.ok) {
         setChatHistory([]);
         setChatList(chatList.filter(item => item._id !== selectedUser._id));
@@ -1465,11 +1468,12 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
 
   const handleLogout = async () => {
     try {
-      await fetch(api("/api/logout"), { method: "POST", credentials: 'include' });
+      await fetchWithAuth(api("/api/logout"), { method: "POST", credentials: "include" });
     } catch { /* ignore */ }
     if (socket) { socket.disconnect(); }
     setUser(null); setSelectedUser(null); setChatHistory([]);
     localStorage.removeItem("chatAppUser");
+    localStorage.removeItem("chatAppToken");
     setPage("login");
   };
 
@@ -1818,7 +1822,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                   />
                   <button
                     onClick={async () => {
-                      const response = await fetch(api(`/users/search?q=${searchQuery}`), { credentials: 'include' });
+                      const response = await fetchWithAuth(api(`/users/search?q=${searchQuery}`), { credentials: 'include' });
                       const data = await response.json();
                       setSearchResults(data);
                     }}

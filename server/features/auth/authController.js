@@ -33,7 +33,7 @@ const register = async (req, res) => {
         const newUser = new User({ username, email, password: hashedPassword });
         await newUser.save();
 
-        generateTokenAndSetCookie(newUser._id, res);
+        const token = generateTokenAndSetCookie(newUser._id, res);
 
         res.status(201).json({
             _id: newUser._id,
@@ -42,7 +42,8 @@ const register = async (req, res) => {
             avatar: newUser.avatar,
             theme: newUser.theme,
             darkMode: newUser.darkMode,
-            privacyLevel: newUser.privacyLevel
+            privacyLevel: newUser.privacyLevel,
+            token: token // Include token for header-based auth fallback
         });
     } catch (err) {
         if (err.code === 11000) {
@@ -72,7 +73,7 @@ const login = async (req, res) => {
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
 
-        generateTokenAndSetCookie(user._id, res);
+        const token = generateTokenAndSetCookie(user._id, res);
 
         res.status(200).json({
             _id: user._id,
@@ -81,7 +82,8 @@ const login = async (req, res) => {
             avatar: user.avatar,
             theme: user.theme,
             darkMode: user.darkMode,
-            privacyLevel: user.privacyLevel
+            privacyLevel: user.privacyLevel,
+            token: token // Include token for header-based auth fallback
         });
     } catch (err) {
         res.status(500).json({ error: err.message });
