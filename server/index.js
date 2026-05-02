@@ -29,7 +29,8 @@ app.use(cors({
         if (!origin) return callback(null, true);
         callback(null, true);
     },
-    credentials: true
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
 }));
 
 app.use(express.json());

@@ -1015,6 +1015,26 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
 
   useEffect(() => { if (user.id) fetchChatList(); }, [user.id, selectedUser]);
 
+  // Reset unread count locally and in DB when chat is opened
+  useEffect(() => {
+    if (selectedUser && user.id) {
+      // 1. Clear locally in the sidebar state
+      setChatList((prev) => 
+        prev.map((chat) => 
+          chat._id === selectedUser._id ? { ...chat, unreadCount: 0 } : chat
+        )
+      );
+
+      // 2. Tell the backend to mark all messages from this partner as seen
+      const room = getRoomId(user.id, selectedUser._id);
+      socket.emit("mark_room_seen", {
+        room,
+        userId: user.id,
+        partnerId: selectedUser._id
+      });
+    }
+  }, [selectedUser, user.id]);
+
   useEffect(() => {
     return () => {
       // Ensure call is ended and hardware is released on unmount
