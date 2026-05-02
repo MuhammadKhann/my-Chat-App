@@ -1624,7 +1624,8 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
 
             {showThemeMenu && (
               <div style={{
-                position: "absolute", top: "calc(100% + 8px)", right: 0,
+                position: "absolute", top: "calc(100% + 8px)",
+                right: isNarrowMobile ? -80 : 0,
                 width: 232, background: "var(--card)",
                 border: "1px solid var(--border)",
                 borderRadius: 12,
@@ -1685,7 +1686,8 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
 
             {showPrivacyMenu && (
               <div style={{
-                position: "absolute", top: "calc(100% + 8px)", right: 0,
+                position: "absolute", top: "calc(100% + 8px)",
+                right: isNarrowMobile ? -40 : 0,
                 width: 232, background: "var(--card)",
                 border: "1px solid var(--border)",
                 borderRadius: 12,
