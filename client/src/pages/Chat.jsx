@@ -148,7 +148,8 @@ const ChatStyles = () => (
 // ─── Socket Connection ────────────────────────────────────────────────────────
 const socket = io(BACKEND_URL, {
   withCredentials: true,
-  transports: ["polling", "websocket"]
+  transports: ["websocket"],
+  autoConnect: false
 });
 
 // ─── Small Avatar helper ──────────────────────────────────────────────────────

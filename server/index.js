@@ -83,7 +83,10 @@ const io = new Server(server, {
         credentials: true,
         allowedHeaders: ["Cookie", "Authorization"]
     },
-    transports: ['websocket', 'polling']
+    transports: ['websocket', 'polling'], // Prioritize websocket
+    allowEIO3: true, // Support older clients if any
+    pingTimeout: 60000,
+    pingInterval: 25000,
 });
 
 // Socket Authentication Middleware
