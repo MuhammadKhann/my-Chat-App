@@ -188,7 +188,7 @@ function Login({ setPage, dark, setDark, setUser }) {
 
   return (
     <>
-      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "var(--bg)", transition: "background 0.3s" }}>
+      <div style={{ minHeight: "calc(var(--vh, 1vh) * 100)", display: "flex", flexDirection: "column", background: "var(--bg)", transition: "background 0.3s" }}>
         
         {/* 3. TOPBAR NOW USES setDark(!dark) GLOBALLY */}
         <TopBar dark={dark} onToggle={() => setDark(!dark)} />

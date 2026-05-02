@@ -60,6 +60,29 @@ function App() {
     localStorage.setItem("chat-app-color-theme", themeId);
   }, [themeId]);
 
+  // Robust mobile keyboard handling: set --vh variable for accurate viewport height
+  useEffect(() => {
+    const updateVh = () => {
+      const vh = (window.visualViewport ? window.visualViewport.height : window.innerHeight) * 0.01;
+      document.documentElement.style.setProperty('--vh', `${vh}px`);
+    };
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', updateVh);
+      window.visualViewport.addEventListener('scroll', updateVh);
+    }
+    window.addEventListener('resize', updateVh);
+    updateVh();
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', updateVh);
+        window.visualViewport.removeEventListener('scroll', updateVh);
+      }
+      window.removeEventListener('resize', updateVh);
+    };
+  }, []);
+
   useEffect(() => {
     // If there is no local storage, the user explicitly didn't check "Remember Me".
     // They want strict behavior: a page refresh should log them out.

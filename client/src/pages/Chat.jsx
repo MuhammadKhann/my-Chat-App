@@ -1420,10 +1420,11 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   // ─── JSX ────────────────────────────────────────────────────────────────────
   return (
     <div style={{
-      height: "100vh", display: "flex", flexDirection: "column",
+      height: "calc(var(--vh, 1vh) * 100)", display: "flex", flexDirection: "column",
       background: "var(--bg)", color: "var(--ink)",
       transition: "background 0.3s, color 0.3s",
       fontFamily: "'DM Sans', sans-serif",
+      overflow: "hidden", position: "fixed", width: "100%", top: 0, left: 0,
     }}>
       <ChatStyles />
 

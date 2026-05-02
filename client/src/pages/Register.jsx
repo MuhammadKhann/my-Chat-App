@@ -248,7 +248,7 @@ function Register({ setPage, dark, setDark }) {
   return (
     <>
 
-      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "var(--bg)", transition: "background 0.3s" }}>
+      <div style={{ minHeight: "calc(var(--vh, 1vh) * 100)", display: "flex", flexDirection: "column", background: "var(--bg)", transition: "background 0.3s" }}>
 
         {/* TopBar now calls setDark(!dark) globally  */}
         <TopBar dark={dark} onToggle={() => setDark(!dark)} />
