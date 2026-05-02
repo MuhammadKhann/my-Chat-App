@@ -899,7 +899,6 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
           receiverId: user.id, status: "delivered"
         });
       } else {
-        setChatHistory((prev) => [...prev, normalizedMsg]);
         socket.emit("update_status", {
           msgId: incomingMsg._id,
           senderId: (incomingMsg.sender || incomingMsg.senderId).toString(),
