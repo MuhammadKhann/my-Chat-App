@@ -755,6 +755,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
 
   const myVideoRef = useRef(null);
   const userVideoRef = useRef(null);
+  const remoteAudioRef = useRef(null);
   const localStreamRef = useRef(null);
   const connectionRef = useRef(null);
   const messageInputRef = useRef(null);
@@ -1134,7 +1135,11 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       });
       peer.on("stream", (currentStream) => {
         setRemoteStream(currentStream);
-        if (userVideoRef.current) userVideoRef.current.srcObject = currentStream;
+        if (type === 'audio' || callerInfo.callType === 'audio') {
+          if (remoteAudioRef.current) remoteAudioRef.current.srcObject = currentStream;
+        } else {
+          if (userVideoRef.current) userVideoRef.current.srcObject = currentStream;
+        }
       });
       socket.on("call_accepted", (signal) => {
         sounds.stopAll();
@@ -1167,7 +1172,11 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       peer.on("signal", (data) => { socket.emit("answer_call", { signal: data, to: callerInfo.id }); });
       peer.on("stream", (currentStream) => {
         setRemoteStream(currentStream);
-        if (userVideoRef.current) userVideoRef.current.srcObject = currentStream;
+        if (type === 'audio' || callerInfo.callType === 'audio') {
+          if (remoteAudioRef.current) remoteAudioRef.current.srcObject = currentStream;
+        } else {
+          if (userVideoRef.current) userVideoRef.current.srcObject = currentStream;
+        }
       });
       peer.signal(callerInfo.signal);
       connectionRef.current = peer;
@@ -1201,6 +1210,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
     setRemoteStream(null);
     if (myVideoRef.current) myVideoRef.current.srcObject = null;
     if (userVideoRef.current) userVideoRef.current.srcObject = null;
+    if (remoteAudioRef.current) remoteAudioRef.current.srcObject = null;
     if (connectionRef.current) { connectionRef.current.destroy(); connectionRef.current = null; }
     socket.off("call_accepted");
   };
@@ -1341,17 +1351,31 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
     const newState = !isSpeakerOn;
     setIsSpeakerOn(newState);
     
-    // Feature detection for setSinkId
-    const remoteVideo = userVideoRef.current;
-    if (remoteVideo && typeof remoteVideo.setSinkId === "function") {
-      try {
-        // This is a best-effort approach. Mapping IDs to 'earpiece' vs 'speaker'
-        // is not standardized across mobile browsers, but toggling the state 
-        // provides the necessary UI feedback for the user.
-        console.log("🔊 Speaker toggled:", newState ? "Loudspeaker" : "Earpiece");
-      } catch (err) {
-        console.error("setSinkId failed:", err);
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const outputs = devices.filter(d => d.kind === 'audiooutput');
+      
+      const element = remoteAudioRef.current || userVideoRef.current;
+      if (element && typeof element.setSinkId === "function") {
+        if (outputs.length > 1) {
+          // On many Androids, the 0th is earpiece, 1st is speaker (or vice-versa)
+          // We try to find a device that matches the requested state
+          const target = newState 
+            ? outputs.find(d => d.label.toLowerCase().includes('speaker')) || outputs[1] || outputs[0]
+            : outputs.find(d => d.label.toLowerCase().includes('earpiece') || d.label.toLowerCase().includes('receiver')) || outputs[0];
+          
+          if (target) {
+            await element.setSinkId(target.deviceId);
+            console.log("🔊 Audio routed to:", target.label || target.deviceId);
+          }
+        } else if (outputs.length === 1) {
+          // Only one output reported, OS manages the route.
+          // Toggling state provides UI feedback.
+          await element.setSinkId(outputs[0].deviceId);
+        }
       }
+    } catch (err) {
+      console.error("Speaker toggle failed:", err);
     }
   };
 
@@ -2485,8 +2509,8 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                  <div style={{ color: "#fff", fontSize: 18, fontWeight: 700, marginBottom: 4 }}>{selectedUser?.username}</div>
                  <div style={{ color: "var(--accent)", fontSize: 13, fontWeight: 500, letterSpacing: "0.02em" }}>{callStatus === 'active' ? 'Ongoing Audio Call' : 'Calling...'}</div>
                </div>
-               {/* Hidden video tag to maintain WebRTC stream connection */}
-               <video playsInline ref={userVideoRef} autoPlay style={{ display: "none" }} />
+               {/* Hidden audio tag for earpiece routing */}
+               <audio playsInline ref={remoteAudioRef} autoPlay style={{ display: "none" }} />
             </div>
           ) : (
             /* Video Call Interface */
