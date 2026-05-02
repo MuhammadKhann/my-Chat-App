@@ -3,6 +3,7 @@ import io from "socket.io-client";
 import Peer from "simple-peer";
 import { THEMES } from "../components/GlobalStyles";
 import { BACKEND_URL, api } from "../services/api";
+import { sounds } from "../services/soundService";
 
 // ─── CSS Design System (injected once via Login's GlobalStyles) ───────────────
 // All CSS variables (--bg, --card, --accent, --ink, --border, etc.) come from
@@ -896,6 +897,9 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
         });
       }
       const senderId = (incomingMsg.sender || incomingMsg.senderId).toString();
+      if (senderId !== user.id.toString()) {
+        sounds.playIncomingMessage();
+      }
       const isChatOpen = currentSelectedUser && senderId === currentSelectedUser._id;
       setChatList((prev) => {
         const existingIndex = prev.findIndex(chat => chat._id === senderId);
@@ -936,15 +940,18 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
         console.warn("🚫 Already in a call session, ignoring incoming call.");
         return;
       }
+      sounds.playIncomingCallRing();
       setCallerInfo({ id: from, name: callerName, signal: signal });
       setCallStatus("receiving");
     });
     socket.on("call_ended", () => {
+      sounds.stopAll();
       endCall(false);
       setCallNotification({ text: "Call ended", type: "error" });
       setTimeout(() => { setCallNotification(null); }, 3000);
     });
     socket.on("call_declined", () => {
+      sounds.stopAll();
       endCall(false);
       setCallNotification({ text: "Call declined by user", type: "error" });
       setTimeout(() => { setCallNotification(null); }, 3000);
@@ -952,6 +959,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
 
     socket.on("disconnect", () => {
       console.warn("🔌 Socket disconnected, ending call if active.");
+      sounds.stopAll();
       endCall(false);
     });
 
@@ -997,9 +1005,27 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   useEffect(() => {
     return () => {
       // Ensure call is ended and hardware is released on unmount
+      sounds.stopAll();
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach(track => track.stop());
       }
+    };
+  }, []);
+
+  useEffect(() => {
+    const warmUp = () => {
+      sounds.init();
+      window.removeEventListener("click", warmUp);
+      window.removeEventListener("keydown", warmUp);
+      window.removeEventListener("touchstart", warmUp);
+    };
+    window.addEventListener("click", warmUp);
+    window.addEventListener("keydown", warmUp);
+    window.addEventListener("touchstart", warmUp);
+    return () => {
+      window.removeEventListener("click", warmUp);
+      window.removeEventListener("keydown", warmUp);
+      window.removeEventListener("touchstart", warmUp);
     };
   }, []);
 
@@ -1094,6 +1120,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       const stream = await getLocalMediaStream();
       localStreamRef.current = stream;
       setLocalStream(stream); setCallStatus("ringing");
+      sounds.playOutgoingCallRing();
       setTimeout(() => { if (myVideoRef.current) myVideoRef.current.srcObject = stream; }, 100);
       const peer = new Peer({ initiator: true, trickle: false, stream: stream });
       peer.on("signal", (data) => {
@@ -1105,6 +1132,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
         if (userVideoRef.current) userVideoRef.current.srcObject = currentStream;
       });
       socket.on("call_accepted", (signal) => {
+        sounds.stopAll();
         setCallStatus("active"); peer.signal(signal);
         setCallNotification({ text: "Connected", type: "success" });
         setTimeout(() => { setCallNotification(null); }, 3000);
@@ -1119,6 +1147,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
 
   const answerCall = async () => {
     try {
+      sounds.stopAll();
       setCallStatus("active");
       setCallNotification({ text: "Connected", type: "success" });
       setTimeout(() => { setCallNotification(null); }, 3000);
@@ -1142,6 +1171,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   };
 
   const endCall = (emitToServer = true) => {
+    sounds.stopAll();
     if (emitToServer && callStatus !== "idle") {
       const targetId = callerInfo.id || (selectedUser ? selectedUser._id : null);
       if (targetId) socket.emit("end_call", { to: targetId });
@@ -1168,6 +1198,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   };
 
   const declineCall = () => {
+    sounds.stopAll();
     if (callerInfo.id) { socket.emit("decline_call", { to: callerInfo.id }); }
     setCallStatus("idle"); setCallerInfo({ id: "", name: "", signal: null });
   };
@@ -1354,9 +1385,9 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       tempId, sender: user.id.toString(), receiver: selectedUser?._id?.toString(),
       text: message, fileUrl, fileName, fileType,
       fileSize: selectedFile?.size || null, room, status: "sent"
-    });
-    setMessage(""); setSelectedFile(null);
-    requestAnimationFrame(() => {
+      });
+      sounds.playSentMessage();
+      setMessage(""); setSelectedFile(null);    requestAnimationFrame(() => {
       messageInputRef.current?.focus();
     });
   };
