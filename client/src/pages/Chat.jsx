@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import EmojiPicker from 'emoji-picker-react';
 import io from "socket.io-client";
 import Peer from "simple-peer";
 import { THEMES } from "../components/GlobalStyles";
@@ -519,6 +520,9 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       if (privacyMenuRef.current && !privacyMenuRef.current.contains(e.target)) {
         setShowPrivacyMenu(false);
       }
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target)) {
+        setShowEmojiPicker(false);
+      }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -540,6 +544,8 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   }, [selectedUser]);
 
   const [message, setMessage] = useState("");
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const emojiPickerRef = useRef(null);
   const [chatHistory, setChatHistory] = useState([]);
   const [isPartnerTyping, setIsPartnerTyping] = useState(false);
   const [isMeTyping, setIsMeTyping] = useState(false);
@@ -2336,7 +2342,27 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                 borderTop: "1px solid var(--border)",
                 background: "var(--card)",
                 flexShrink: 0,
+                position: "relative",
               }}>
+                {showEmojiPicker && (
+                  <div
+                    ref={emojiPickerRef}
+                    style={{
+                      position: "absolute",
+                      bottom: "calc(100% + 10px)",
+                      left: 16,
+                      zIndex: 1000,
+                    }}
+                  >
+                    <EmojiPicker
+                      onEmojiClick={(emojiData) => {
+                        setMessage((prev) => prev + emojiData.emoji);
+                        handleKeystroke();
+                      }}
+                      theme={dark ? "dark" : "light"}
+                    />
+                  </div>
+                )}
                 <form onSubmit={sendMessage} style={{ display: "flex", gap: 8, alignItems: "center" }}>
 
                   {isRecording ? (
@@ -2363,6 +2389,43 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                     </div>
                   ) : (
                     <>
+                      {/* Emoji Toggle */}
+                      <button
+                        type="button"
+                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                        title="Add emoji"
+                        style={{
+                          width: 36, height: 36, borderRadius: 9,
+                          border: "1px solid var(--border)",
+                          background: "var(--bg2)",
+                          color: showEmojiPicker ? "var(--accent)" : "var(--ink3)",
+                          cursor: "pointer",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          transition: "color 0.15s, background 0.15s, border-color 0.15s",
+                          flexShrink: 0,
+                        }}
+                        onMouseOver={(e) => {
+                          if (!showEmojiPicker) {
+                            e.currentTarget.style.color = "var(--ink)";
+                            e.currentTarget.style.borderColor = "var(--border2)";
+                          }
+                        }}
+                        onMouseOut={(e) => {
+                          if (!showEmojiPicker) {
+                            e.currentTarget.style.color = "var(--ink3)";
+                            e.currentTarget.style.background = "var(--bg2)";
+                            e.currentTarget.style.borderColor = "var(--border)";
+                          }
+                        }}
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10" />
+                          <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+                          <line x1="9" y1="9" x2="9.01" y2="9" />
+                          <line x1="15" y1="9" x2="15.01" y2="9" />
+                        </svg>
+                      </button>
+
                       {/* Attachment */}
                       <label style={{ cursor: "pointer", color: "var(--ink3)", display: "flex", alignItems: "center", justifyContent: "center", width: 36, height: 36, borderRadius: 9, border: "1px solid var(--border)", background: "var(--bg2)", flexShrink: 0, transition: "color 0.15s, background 0.15s, border-color 0.15s" }}
                         onMouseOver={(e) => {
@@ -2380,7 +2443,6 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                           <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
                         </svg>
                       </label>
-
                       {/* Text input */}
                       <input
                         ref={messageInputRef}
