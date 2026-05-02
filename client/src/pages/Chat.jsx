@@ -744,6 +744,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   const [callerInfo, setCallerInfo] = useState({ id: "", name: "", signal: null });
   const [callNotification, setCallNotification] = useState(null);
   const [isCameraOn, setIsCameraOn] = useState(true);
+  const [isMicOn, setIsMicOn] = useState(true);
   const [videoDevices, setVideoDevices] = useState([]);
   const [activeVideoDeviceId, setActiveVideoDeviceId] = useState(null);
   const [isSwitchingCamera, setIsSwitchingCamera] = useState(false);
@@ -1117,6 +1118,8 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       if (targetId) socket.emit("end_call", { to: targetId });
     }
     setCallStatus("idle"); setCallerInfo({ id: "", name: "", signal: null });
+    setIsCameraOn(true);
+    setIsMicOn(true);
     setLocalStream((prevStream) => {
       if (prevStream) { prevStream.getTracks().forEach((track) => track.stop()); }
       return null;
@@ -1234,6 +1237,16 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       if (videoTrack) {
         videoTrack.enabled = !videoTrack.enabled;
         setIsCameraOn(videoTrack.enabled);
+      }
+    }
+  };
+
+  const toggleMic = () => {
+    if (localStream) {
+      const audioTrack = localStream.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !audioTrack.enabled;
+        setIsMicOn(audioTrack.enabled);
       }
     }
   };
@@ -2402,8 +2415,28 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
             }} />
           </div>
 
-          {/* Controls: Camera toggle, Fullscreen, Hang up */}
+          {/* Controls: Mute, Camera toggle, Fullscreen, Hang up */}
           <div style={{ position: "absolute", bottom: isMobile ? 12 : 16, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 12, alignItems: "center" }}>
+            {/* Microphone toggle */}
+            <button onClick={toggleMic} style={{
+              background: isMicOn ? "rgba(255,255,255,0.2)" : "#ef4444", color: "#fff", border: "none",
+              width: isMobile ? 40 : 46, height: isMobile ? 40 : 46, borderRadius: "50%",
+              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+              transition: "transform 0.1s",
+            }}
+              onMouseOver={(e) => e.currentTarget.style.transform = "scale(1.07)"}
+              onMouseOut={(e) => e.currentTarget.style.transform = "scale(1)"}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                {isMicOn ? (
+                  <><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></>
+                ) : (
+                  <><line x1="1" y1="1" x2="23" y2="23"></line><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"></path><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></>
+                )}
+              </svg>
+            </button>
+
             {/* Camera toggle */}
             <button onClick={toggleCamera} style={{
               background: isCameraOn ? "rgba(255,255,255,0.2)" : "#ef4444", color: "#fff", border: "none",
