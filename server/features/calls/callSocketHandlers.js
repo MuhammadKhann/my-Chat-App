@@ -2,14 +2,14 @@ const { onlineUsers, privacyCache } = require('../../utils/onlineState');
 
 const setupCallHandlers = (io, socket) => {
     // 1. Caller initiates the ring
-    socket.on("call_user", ({ userToCall, signalData, from, callerName }) => {
-        console.log(`📞 CALL REQUEST: ${callerName} (${from}) → ${userToCall}`);
-        
+    socket.on("call_user", ({ userToCall, signalData, from, callerName, callType }) => {
+        console.log(`📞 CALL REQUEST: ${callerName} (${from}) → ${userToCall} [Type: ${callType || 'video'}]`);
+
         // Debug: Check rooms
         const rooms = Array.from(socket.rooms);
         console.log(`📞 Caller socket rooms:`, rooms);
         console.log(`📞 Target user online:`, onlineUsers.has(userToCall));
-        
+
         // Prevent calling self
         if (from === userToCall) {
             console.log(`❌ REJECTED: User trying to call themselves`);
@@ -20,7 +20,8 @@ const setupCallHandlers = (io, socket) => {
         io.to(userToCall).emit("incoming_call", {
             signal: signalData,
             from,
-            callerName
+            callerName,
+            callType: callType || 'video'
         });
         console.log(`📞 EMITTED incoming_call to room: ${userToCall}`);
     });

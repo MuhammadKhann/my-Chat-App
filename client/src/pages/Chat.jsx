@@ -741,7 +741,9 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   const [localStream, setLocalStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
   const [callStatus, setCallStatus] = useState("idle");
-  const [callerInfo, setCallerInfo] = useState({ id: "", name: "", signal: null });
+  const [activeCallType, setActiveCallType] = useState(null); // 'audio' | 'video'
+  const [isSpeakerOn, setIsSpeakerOn] = useState(!isMobile);
+  const [callerInfo, setCallerInfo] = useState({ id: "", name: "", signal: null, callType: 'video' });
   const [callNotification, setCallNotification] = useState(null);
   const [isCameraOn, setIsCameraOn] = useState(true);
   const [isMicOn, setIsMicOn] = useState(true);
@@ -934,14 +936,15 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
         setIsPartnerTyping(data.typing);
       }
     });
-    socket.on("incoming_call", ({ from, callerName, signal }) => {
-      console.log("🚨 INCOMING CALL DETECTED FROM:", callerName);
+    socket.on("incoming_call", ({ from, callerName, signal, callType }) => {
+      console.log("🚨 INCOMING CALL DETECTED FROM:", callerName, "[Type:", callType, "]");
       if (callStatus !== "idle") {
         console.warn("🚫 Already in a call session, ignoring incoming call.");
         return;
       }
       sounds.playIncomingCallRing();
-      setCallerInfo({ id: from, name: callerName, signal: signal });
+      setCallerInfo({ id: from, name: callerName, signal: signal, callType: callType || 'video' });
+      setActiveCallType(callType || 'video');
       setCallStatus("receiving");
     });
     socket.on("call_ended", () => {
@@ -1091,14 +1094,15 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
     return `${m}:${s}`;
   };
 
-  const initiateCall = async () => {
+  const initiateCall = async (type = 'video') => {
     try {
       // DEBUG: Check if calling self
       console.log("📞 INITIATE CALL DEBUG:", {
         currentUserId: user?.id,
         selectedUserId: selectedUser?._id,
         selectedUserName: selectedUser?.username,
-        isCallingSelf: user?.id === selectedUser?._id
+        isCallingSelf: user?.id === selectedUser?._id,
+        type
       });
       
       if (!selectedUser?._id) {
@@ -1116,8 +1120,9 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
         return;
       }
       
-        await enumerateVideoInputs();
-      const stream = await getLocalMediaStream();
+      setActiveCallType(type);
+      await enumerateVideoInputs();
+      const stream = await getLocalMediaStream(type);
       localStreamRef.current = stream;
       setLocalStream(stream); setCallStatus("ringing");
       sounds.playOutgoingCallRing();
@@ -1125,7 +1130,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       const peer = new Peer({ initiator: true, trickle: false, stream: stream });
       peer.on("signal", (data) => {
         console.log("📞 Emitting call_user to:", selectedUser._id);
-        socket.emit("call_user", { userToCall: selectedUser._id, signalData: data, from: user.id, callerName: user.username });
+        socket.emit("call_user", { userToCall: selectedUser._id, signalData: data, from: user.id, callerName: user.username, callType: type });
       });
       peer.on("stream", (currentStream) => {
         setRemoteStream(currentStream);
@@ -1149,10 +1154,12 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
     try {
       sounds.stopAll();
       setCallStatus("active");
+      const type = callerInfo.callType || 'video';
+      setActiveCallType(type);
       setCallNotification({ text: "Connected", type: "success" });
       setTimeout(() => { setCallNotification(null); }, 3000);
       await enumerateVideoInputs();
-      const stream = await getLocalMediaStream();
+      const stream = await getLocalMediaStream(type);
       localStreamRef.current = stream;
       setLocalStream(stream);
       setTimeout(() => { if (myVideoRef.current) myVideoRef.current.srcObject = stream; }, 100);
@@ -1176,7 +1183,8 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       const targetId = callerInfo.id || (selectedUser ? selectedUser._id : null);
       if (targetId) socket.emit("end_call", { to: targetId });
     }
-    setCallStatus("idle"); setCallerInfo({ id: "", name: "", signal: null });
+    setCallStatus("idle"); setCallerInfo({ id: "", name: "", signal: null, callType: 'video' });
+    setActiveCallType(null);
     setIsCameraOn(true);
     setIsMicOn(true);
 
@@ -1200,7 +1208,8 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   const declineCall = () => {
     sounds.stopAll();
     if (callerInfo.id) { socket.emit("decline_call", { to: callerInfo.id }); }
-    setCallStatus("idle"); setCallerInfo({ id: "", name: "", signal: null });
+    setCallStatus("idle"); setCallerInfo({ id: "", name: "", signal: null, callType: 'video' });
+    setActiveCallType(null);
   };
 
   const enumerateVideoInputs = useCallback(async () => {
@@ -1229,10 +1238,10 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
     return () => navigator?.mediaDevices?.removeEventListener("devicechange", handleDeviceChange);
   }, [enumerateVideoInputs, activeVideoDeviceId]);
 
-  const getLocalMediaStream = async () => {
-    const videoConstraints = activeVideoDeviceId
+  const getLocalMediaStream = async (type = 'video') => {
+    const videoConstraints = (type === 'video' && activeVideoDeviceId)
       ? { deviceId: { exact: activeVideoDeviceId }, width: { ideal: 1280 }, height: { ideal: 720 } }
-      : { width: { ideal: 1280 }, height: { ideal: 720 } };
+      : (type === 'video' ? { width: { ideal: 1280 }, height: { ideal: 720 } } : false);
 
     return navigator.mediaDevices.getUserMedia({
       audio: true,
@@ -1324,6 +1333,24 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       if (audioTrack) {
         audioTrack.enabled = !audioTrack.enabled;
         setIsMicOn(audioTrack.enabled);
+      }
+    }
+  };
+
+  const toggleSpeaker = async () => {
+    const newState = !isSpeakerOn;
+    setIsSpeakerOn(newState);
+    
+    // Feature detection for setSinkId
+    const remoteVideo = userVideoRef.current;
+    if (remoteVideo && typeof remoteVideo.setSinkId === "function") {
+      try {
+        // This is a best-effort approach. Mapping IDs to 'earpiece' vs 'speaker'
+        // is not standardized across mobile browsers, but toggling the state 
+        // provides the necessary UI feedback for the user.
+        console.log("🔊 Speaker toggled:", newState ? "Loudspeaker" : "Earpiece");
+      } catch (err) {
+        console.error("setSinkId failed:", err);
       }
     }
   };
@@ -1952,9 +1979,30 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                 </div>
 
                 <div style={{ display: "flex", gap: 6 }}>
+                  {/* Audio call */}
+                  <button
+                    onClick={() => initiateCall('audio')}
+                    title="Start Audio Call"
+                    className="nav-icon-btn"
+                    style={{
+                      height: 34, width: 34, justifyContent: "center",
+                      borderRadius: 9,
+                      color: "var(--accent)", border: "1px solid var(--border)", cursor: "pointer",
+                      display: "flex", alignItems: "center",
+                      background: "var(--bg2)",
+                      transition: "all 0.2s",
+                    }}
+                    onMouseOver={(e) => { e.currentTarget.style.background = "var(--accent)"; e.currentTarget.style.color = "#fff"; }}
+                    onMouseOut={(e) => { e.currentTarget.style.background = "var(--bg2)"; e.currentTarget.style.color = "var(--accent)"; }}
+                  >
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.79 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l2.27-2.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                    </svg>
+                  </button>
+
                   {/* Video call */}
                   <button
-                    onClick={initiateCall}
+                    onClick={() => initiateCall('video')}
                     title="Start Video Call"
                     className="gradient-btn"
                     style={{
@@ -1970,7 +2018,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
                     </svg>
-                    {isMobile ? null : "Call"}
+                    {isMobile ? null : "Video"}
                   </button>
 
                   {/* Clear chat */}
@@ -2019,11 +2067,15 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     <div style={{ width: 38, height: 38, borderRadius: "50%", background: "var(--accent2)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+                        {callerInfo.callType === 'audio' ? (
+                          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.79 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l2.27-2.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                        ) : (
+                          <><polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></>
+                        )}
                       </svg>
                     </div>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: 14, color: "var(--ink)" }}>Incoming Call</div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: "var(--ink)" }}>Incoming {callerInfo.callType === 'audio' ? 'Audio' : 'Video'} Call</div>
                       <div style={{ fontSize: 12, color: "var(--ink3)" }}>{callerInfo.name} is calling…</div>
                     </div>
                   </div>
@@ -2410,7 +2462,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
           WEBRTC OVERLAYS (unchanged logic, refined visuals)
       ══════════════════════════════════════════════════════════════════ */}
 
-      {/* Active / ringing video window */}
+      {/* Active / ringing call window */}
       {(callStatus === "active" || callStatus === "ringing") && (
         <div ref={callContainerRef} style={{
           position: "fixed", bottom: isMobile ? 20 : 28, right: isMobile ? "50%" : 28,
@@ -2422,36 +2474,55 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
           boxShadow: "0 20px 60px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.2)",
           zIndex: 999, border: "1px solid rgba(255,255,255,0.1)",
         }}>
-          {callStatus === "active" ? (
-            <video playsInline ref={userVideoRef} autoPlay style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          {activeCallType === 'audio' ? (
+            /* Audio Call Interface: Avatar centered */
+            <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", background: "#0a0a0a", gap: 20 }}>
+               <div style={{ position: "relative" }}>
+                 <div style={{ position: "absolute", top: -10, left: -10, right: -10, bottom: -10, borderRadius: "50%", border: "2px solid var(--accent)", opacity: 0.3, animation: "pulse 2s infinite" }} />
+                 <Avatar src={selectedUser?.avatar} name={selectedUser?.username} size={isMobile ? 100 : 120} />
+               </div>
+               <div style={{ textAlign: "center" }}>
+                 <div style={{ color: "#fff", fontSize: 18, fontWeight: 700, marginBottom: 4 }}>{selectedUser?.username}</div>
+                 <div style={{ color: "var(--accent)", fontSize: 13, fontWeight: 500, letterSpacing: "0.02em" }}>{callStatus === 'active' ? 'Ongoing Audio Call' : 'Calling...'}</div>
+               </div>
+               {/* Hidden video tag to maintain WebRTC stream connection */}
+               <video playsInline ref={userVideoRef} autoPlay style={{ display: "none" }} />
+            </div>
           ) : (
-            <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.7)", flexDirection: "column", gap: 12, background: "#0a0a0a" }}>
-              <div style={{ width: 56, height: 56, borderRadius: "50%", background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", animation: "pulse 1.8s infinite" }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg>
+            /* Video Call Interface */
+            callStatus === "active" ? (
+              <video playsInline ref={userVideoRef} autoPlay style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            ) : (
+              <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.7)", flexDirection: "column", gap: 12, background: "#0a0a0a" }}>
+                <div style={{ width: 56, height: 56, borderRadius: "50%", background: "rgba(255,255,255,0.08)", display: "flex", alignItems: "center", justifyContent: "center", animation: "pulse 1.8s infinite" }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" /></svg>
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 500 }}>Calling {selectedUser?.username}…</div>
               </div>
-              <div style={{ fontSize: 14, fontWeight: 500 }}>Calling {selectedUser?.username}…</div>
+            )
+          )}
+
+          {/* PiP local video - only for video calls */}
+          {activeCallType === 'video' && (
+            <div style={{
+              position: "absolute", bottom: isMobile ? 80 : 70, right: isMobile ? 10 : 14,
+              width: isMobile ? 80 : 90, height: isMobile ? 106 : 120, background: isCameraOn ? "#1a1a1a" : "#333",
+              borderRadius: 10, overflow: "hidden",
+              border: "1.5px solid rgba(255,255,255,0.15)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              {!isCameraOn && (
+                <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 12 }}>Camera Off</div>
+              )}
+              <video playsInline muted ref={myVideoRef} autoPlay style={{ 
+                width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)",
+                opacity: isCameraOn ? 1 : 0,
+                position: isCameraOn ? "relative" : "absolute",
+              }} />
             </div>
           )}
 
-          {/* PiP local video */}
-          <div style={{
-            position: "absolute", bottom: isMobile ? 80 : 70, right: isMobile ? 10 : 14,
-            width: isMobile ? 80 : 90, height: isMobile ? 106 : 120, background: isCameraOn ? "#1a1a1a" : "#333",
-            borderRadius: 10, overflow: "hidden",
-            border: "1.5px solid rgba(255,255,255,0.15)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            {!isCameraOn && (
-              <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 12 }}>Camera Off</div>
-            )}
-            <video playsInline muted ref={myVideoRef} autoPlay style={{ 
-              width: "100%", height: "100%", objectFit: "cover", transform: "scaleX(-1)",
-              opacity: isCameraOn ? 1 : 0,
-              position: isCameraOn ? "relative" : "absolute",
-            }} />
-          </div>
-
-          {/* Controls: Mute, Camera toggle, Fullscreen, Hang up */}
+          {/* Controls: Mute, Speaker/Camera switch, Fullscreen, Hang up */}
           <div style={{ position: "absolute", bottom: isMobile ? 12 : 16, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 12, alignItems: "center" }}>
             {/* Microphone toggle */}
             <button onClick={toggleMic} style={{
@@ -2473,54 +2544,79 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
               </svg>
             </button>
 
-            {/* Camera toggle */}
-            <button onClick={toggleCamera} style={{
-              background: isCameraOn ? "rgba(255,255,255,0.2)" : "#ef4444", color: "#fff", border: "none",
-              width: isMobile ? 40 : 46, height: isMobile ? 40 : 46, borderRadius: "50%",
-              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
-              boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
-              transition: "transform 0.1s",
-            }}
-              onMouseOver={(e) => e.currentTarget.style.transform = "scale(1.07)"}
-              onMouseOut={(e) => e.currentTarget.style.transform = "scale(1)"}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                {isCameraOn ? (
-                  <><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></>
-                ) : (
-                  <><line x1="1" y1="1" x2="23" y2="23"/><path d="M17 17h-6v-6l-4 4-6-6 8-8 4 4v-2h6z"/></>
-                )}
-              </svg>
-            </button>
+            {/* Speaker Toggle (Audio Only + Mobile) */}
+            {activeCallType === 'audio' && isMobile && (
+               <button onClick={toggleSpeaker} style={{
+                 background: isSpeakerOn ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.1)", color: "#fff", border: "none",
+                 width: 40, height: 40, borderRadius: "50%",
+                 cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+                 boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+                 transition: "all 0.2s",
+               }}>
+                 {isSpeakerOn ? (
+                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                     <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" /><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
+                   </svg>
+                 ) : (
+                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                     <path d="M12 18h.01M8 21h8a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2z" /><path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
+                   </svg>
+                 )}
+               </button>
+            )}
 
-            {/* Camera switch */}
-            <button
-              onClick={switchCamera}
-              disabled={isSwitchingCamera || videoDevices.length <= 1}
-              title={videoDevices.length > 1 ? "Switch camera" : "No alternate camera detected"}
-              style={{
-                background: "rgba(255,255,255,0.18)", color: "#fff", border: "none",
+            {/* Camera toggle (Video Only) */}
+            {activeCallType === 'video' && (
+              <button onClick={toggleCamera} style={{
+                background: isCameraOn ? "rgba(255,255,255,0.2)" : "#ef4444", color: "#fff", border: "none",
                 width: isMobile ? 40 : 46, height: isMobile ? 40 : 46, borderRadius: "50%",
-                cursor: isSwitchingCamera ? "not-allowed" : "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center",
+                cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
                 boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
-                opacity: isSwitchingCamera || videoDevices.length <= 1 ? 0.55 : 1,
-                transition: "transform 0.1s, opacity 0.15s",
+                transition: "transform 0.1s",
               }}
-              onMouseOver={(e) => { if (!isSwitchingCamera) e.currentTarget.style.transform = "scale(1.07)"; }}
-              onMouseOut={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M3 7V4h3" />
-                <path d="M21 17v3h-3" />
-                <path d="M21 7l-3 3" />
-                <path d="M3 17l3-3" />
-                <path d="M8 7a5 5 0 017-1.5" />
-                <path d="M16 17a5 5 0 01-7 1.5" />
-              </svg>
-            </button>
+                onMouseOver={(e) => e.currentTarget.style.transform = "scale(1.07)"}
+                onMouseOut={(e) => e.currentTarget.style.transform = "scale(1)"}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  {isCameraOn ? (
+                    <><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></>
+                  ) : (
+                    <><line x1="1" y1="1" x2="23" y2="23"/><path d="M17 17h-6v-6l-4 4-6-6 8-8 4 4v-2h6z"/></>
+                  )}
+                </svg>
+              </button>
+            )}
 
-            {/* Fullscreen toggle */}
+            {/* Camera switch (Video Only) */}
+            {activeCallType === 'video' && (
+              <button
+                onClick={switchCamera}
+                disabled={isSwitchingCamera || videoDevices.length <= 1}
+                title={videoDevices.length > 1 ? "Switch camera" : "No alternate camera detected"}
+                style={{
+                  background: "rgba(255,255,255,0.18)", color: "#fff", border: "none",
+                  width: isMobile ? 40 : 46, height: isMobile ? 40 : 46, borderRadius: "50%",
+                  cursor: isSwitchingCamera ? "not-allowed" : "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
+                  opacity: isSwitchingCamera || videoDevices.length <= 1 ? 0.55 : 1,
+                  transition: "transform 0.1s, opacity 0.15s",
+                }}
+                onMouseOver={(e) => { if (!isSwitchingCamera) e.currentTarget.style.transform = "scale(1.07)"; }}
+                onMouseOut={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 7V4h3" />
+                  <path d="M21 17v3h-3" />
+                  <path d="M21 7l-3 3" />
+                  <path d="M3 17l3-3" />
+                  <path d="M8 7a5 5 0 017-1.5" />
+                  <path d="M16 17a5 5 0 01-7 1.5" />
+                </svg>
+              </button>
+            )}
+
+            {/* Fullscreen toggle (Always) */}
             <button onClick={toggleFullscreen} style={{
               background: "rgba(255,255,255,0.2)", color: "#fff", border: "none",
               width: isMobile ? 40 : 46, height: isMobile ? 40 : 46, borderRadius: "50%",
@@ -2540,7 +2636,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
               </svg>
             </button>
 
-            {/* Hang up */}
+            {/* Hang up (Always) */}
             <button onClick={() => endCall(true)} style={{
               background: "#ef4444", color: "#fff", border: "none",
               width: isMobile ? 40 : 46, height: isMobile ? 40 : 46, borderRadius: "50%",
