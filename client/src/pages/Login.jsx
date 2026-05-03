@@ -202,59 +202,53 @@ function Login({ setPage, dark, setDark, setUser }) {
           overflow: "hidden",
         }}>
 
-          {/* LEFT PANEL - WELCOME (70% on desktop, full on mobile) */}
+          {/* LEFT PANEL - WELCOME (70% on desktop, hidden on mobile) */}
+          {!isMobile && (
           <div style={{
-            flex: isMobile ? "none" : "0 0 70%",
-            width: isMobile ? "100%" : "auto",
-            height: isMobile ? "auto" : "100%",
+            flex: "0 0 70%",
+            width: "auto",
+            height: "100%",
             padding: leftPad,
             background: "var(--card2)",
-            borderRight: isMobile ? "none" : "1px solid var(--border)",
-            borderBottom: isMobile ? "1px solid var(--border)" : "none",
+            borderRight: "1px solid var(--border)",
             display: "flex",
             flexDirection: "column",
             justifyContent: "center",
-            alignItems: isMobile ? "center" : "flex-start",
+            alignItems: "flex-start",
             transition: "background 0.3s, border-color 0.3s",
             overflow: "auto",
           }}>
-            {!isMobile && (
-              <p style={{
-                fontSize: 10, fontWeight: 600, letterSpacing: "0.14em",
-                textTransform: "uppercase", color: "var(--accent)",
-                marginBottom: 16, display: "flex", alignItems: "center", gap: 6,
-              }}>
-                <span style={{ display: "inline-block", width: 16, height: 1.5, background: "var(--accent)" }} />
-                Welcome back
-              </p>
-            )}
+            <p style={{
+              fontSize: 10, fontWeight: 600, letterSpacing: "0.14em",
+              textTransform: "uppercase", color: "var(--accent)",
+              marginBottom: 16, display: "flex", alignItems: "center", gap: 6,
+            }}>
+              <span style={{ display: "inline-block", width: 16, height: 1.5, background: "var(--accent)" }} />
+              Welcome back
+            </p>
             <h1 style={{
               fontFamily: "'Bricolage Grotesque', sans-serif",
               fontWeight: 700,
-              fontSize: isMobile ? 26 : isTablet ? 32 : 48,
+              fontSize: 48,
               lineHeight: 1.2,
               color: "var(--ink)", letterSpacing: "-0.03em",
-              marginBottom: !isMobile ? 24 : 12,
-              textAlign: isMobile ? "center" : "left",
-              maxWidth: isMobile ? "100%" : "500px",
+              marginBottom: 24,
+              textAlign: "left",
+              maxWidth: "500px",
             }}>
-              {isMobile
-                ? <><span style={{ color: "var(--accent)" }}>Chat App</span><br/>Your workspace is ready</>
-                : <>Your workspace is<br />ready.<br /><span style={{ color: "var(--accent)" }}>Jump back in.</span></>
-              }
+              <>Your workspace is<br />ready.<br /><span style={{ color: "var(--accent)" }}>Jump back in.</span></>
             </h1>
-            {!isMobile && (
-              <p style={{ 
-                fontSize: 15, 
-                color: "var(--ink3)", 
-                lineHeight: 1.7, 
-                maxWidth: 420, 
-                marginTop: 8,
-              }}>
-                Sign in to access your secure, professional chat environment. All messages and files are synced in real-time across all your devices.
-              </p>
-            )}
+            <p style={{ 
+              fontSize: 15, 
+              color: "var(--ink3)", 
+              lineHeight: 1.7, 
+              maxWidth: 420, 
+              marginTop: 8,
+            }}>
+              Sign in to access your secure, professional chat environment. All messages and files are synced in real-time across all your devices.
+            </p>
           </div>
+          )}
 
           {/* RIGHT PANEL — FORM (30% on desktop, full on mobile) */}
           <div style={{
