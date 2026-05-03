@@ -1,5 +1,271 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo } from "react";
 import { api } from "../services/api";
+import {
+  ArrowRight,
+  Code2,
+  Cloud,
+  ExternalLink,
+  Github,
+  Globe,
+  Mail,
+  MapPin,
+  MessageSquare,
+  ShieldCheck,
+  Sparkles,
+  Zap,
+} from "lucide-react";
+
+/*
+UPDATED LEFT PANEL
+------------------
+✔ Scrollable panel (independent scroll)
+✔ Top creator badge (moved from bottom)
+✔ Safe for adding more sections (auto scroll)
+✔ Clean + production-ready
+*/
+
+const defaultTechStack = [
+  { name: "MongoDB", subtitle: "Database", short: "MDB" },
+  { name: "Express.js", subtitle: "Backend", short: "EX" },
+  { name: "React", subtitle: "Frontend", short: "R" },
+  { name: "Node.js", subtitle: "Runtime", short: "N" },
+];
+
+const defaultFeatures = [
+  { label: "Real-time Messaging", icon: MessageSquare },
+  { label: "Secure & Private", icon: ShieldCheck },
+  { label: "Online Status", icon: Globe },
+  { label: "Fast & Reliable", icon: Zap },
+];
+
+const defaultDeployments = [
+  {
+    name: "Backend on Azure",
+    subtitle: "Microsoft Azure",
+    detail: "Scalable, secure, always available",
+    status: "Live",
+    icon: Cloud,
+  },
+  {
+    name: "Frontend on Vercel",
+    subtitle: "Vercel Edge Network",
+    detail: "Blazing fast global delivery",
+    status: "Live",
+    icon: ExternalLink,
+  },
+];
+
+function InfoPill({ icon: Icon, children }) {
+  return (
+    <div 
+      className="flex items-center gap-2 rounded-full border px-4 py-2 text-xs sm:text-sm backdrop-blur"
+      style={{
+        borderColor: "var(--border)",
+        background: "var(--card2)",
+        color: "var(--ink2)"
+      }}
+    >
+      <Icon className="h-4 w-4" style={{ color: "var(--accent)" }} />
+      <span>{children}</span>
+    </div>
+  );
+}
+
+function TechCard({ name, subtitle, short }) {
+  return (
+    <div 
+      className="rounded-xl border p-4 transition hover:opacity-80"
+      style={{
+        borderColor: "var(--border)",
+        background: "var(--card2)",
+      }}
+    >
+      <div 
+        className="h-10 w-10 flex items-center justify-center rounded-lg font-semibold"
+        style={{
+          background: "var(--accent2)",
+          color: "var(--accent)",
+        }}
+      >
+        {short}
+      </div>
+      <h3 className="mt-3 text-sm font-semibold" style={{ color: "var(--ink)" }}>{name}</h3>
+      <p className="text-xs" style={{ color: "var(--ink3)" }}>{subtitle}</p>
+    </div>
+  );
+}
+
+function DeploymentCard({ name, subtitle, detail, status, icon: Icon }) {
+  return (
+    <div 
+      className="rounded-xl border p-4"
+      style={{
+        borderColor: "var(--border)",
+        background: "var(--card2)",
+      }}
+    >
+      <div className="flex justify-between items-start">
+        <div className="flex gap-3">
+          <div 
+            className="h-10 w-10 flex items-center justify-center rounded-lg"
+            style={{
+              background: "var(--accent2)",
+            }}
+          >
+            <Icon className="h-5 w-5" style={{ color: "var(--accent)" }} />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold" style={{ color: "var(--ink)" }}>{name}</h3>
+            <p className="text-xs" style={{ color: "var(--ink3)" }}>{subtitle}</p>
+          </div>
+        </div>
+        <span 
+          className="text-[10px] px-2 py-1 rounded-full font-medium"
+          style={{
+            background: "rgba(34, 197, 94, 0.1)",
+            color: "#22c55e",
+          }}
+        >
+          {status}
+        </span>
+      </div>
+      <p className="text-xs mt-3" style={{ color: "var(--ink2)" }}>{detail}</p>
+    </div>
+  );
+}
+
+const LeftPanel = memo(({
+  name = "Muhammad Sand Dela",
+  description = "Computer Science student building scalable MERN applications.",
+  location = "Pakistan",
+  email = "muhammadsanddela@gmail.com",
+  linkedin = "linkedin.com/in/muhammadsanddela",
+  headline = "Built for real-time\nconversations.",
+  techStack = defaultTechStack,
+  features = defaultFeatures,
+  deployments = defaultDeployments,
+  className = "",
+}) => {
+  return (
+    <section
+      className={`h-full overflow-hidden transition-colors duration-300 ${className}`}
+      style={{
+        background: "var(--bg2)",
+        color: "var(--ink)",
+        borderRight: "1px solid var(--border)"
+      }}
+    >
+      {/* SCROLL CONTAINER */}
+      <div className="h-full overflow-y-auto scroll-smooth px-6 py-6 sm:px-10 lg:px-14">
+
+        {/* TOP CREATOR BADGE */}
+        <div className="mb-8 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div 
+              className="h-10 w-10 flex items-center justify-center rounded-xl"
+              style={{ background: "var(--accent)" }}
+            >
+              <Code2 className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <p className="text-sm font-medium">Created with ❤️ by</p>
+              <p className="text-xs" style={{ color: "var(--ink3)" }}>{name}</p>
+            </div>
+          </div>
+
+          <span className="hidden sm:flex items-center gap-2 text-xs" style={{ color: "var(--ink3)" }}>
+            <Sparkles className="h-4 w-4" style={{ color: "var(--accent)" }} /> Premium UI
+          </span>
+        </div>
+
+        {/* HEADER */}
+        <div className="flex items-center gap-3 mb-10">
+          <div 
+            className="h-10 w-10 flex items-center justify-center rounded-xl"
+            style={{ background: "var(--accent)" }}
+          >
+            <MessageSquare className="h-5 w-5 text-white" />
+          </div>
+          <span className="font-bold text-lg" style={{ color: "var(--ink)" }}>Chat App</span>
+        </div>
+
+        {/* MAIN CONTENT */}
+        <div className="space-y-10">
+
+          {/* HEADLINE */}
+          <div>
+            <h1 
+              className="text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight"
+              style={{ fontFamily: "'Bricolage Grotesque', sans-serif" }}
+            >
+              {headline.split("\n").map((line, i) => (
+                <span key={i} className="block">
+                  {i === 1 ? (
+                    <span style={{ color: "var(--accent)" }}>{line}</span>
+                  ) : (
+                    line
+                  )}
+                </span>
+              ))}
+            </h1>
+            <p className="mt-4 max-w-xl text-sm sm:text-base" style={{ color: "var(--ink2)" }}>
+              {description}
+            </p>
+          </div>
+
+          {/* INFO */}
+          <div className="flex flex-wrap gap-3">
+            <InfoPill icon={MapPin}>{location}</InfoPill>
+            <InfoPill icon={Mail}>{email}</InfoPill>
+            <InfoPill icon={ExternalLink}>{linkedin}</InfoPill>
+          </div>
+
+          {/* FEATURES */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {features.map((f) => (
+              <div key={f.label} className="flex items-center gap-2 text-xs sm:text-sm" style={{ color: "var(--ink2)" }}>
+                <f.icon className="h-4 w-4" style={{ color: "var(--accent)" }} />
+                {f.label}
+              </div>
+            ))}
+          </div>
+
+          {/* TECH STACK */}
+          <div>
+            <h2 className="text-xs uppercase font-bold tracking-widest mb-3" style={{ color: "var(--ink3)" }}>Tech Stack</h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {techStack.map((t) => (
+                <TechCard key={t.name} {...t} />
+              ))}
+            </div>
+          </div>
+
+          {/* DEPLOYMENT */}
+          <div>
+            <h2 className="text-xs uppercase font-bold tracking-widest mb-3" style={{ color: "var(--ink3)" }}>Deployment</h2>
+            <div className="grid sm:grid-cols-2 gap-3">
+              {deployments.map((d) => (
+                <DeploymentCard key={d.name} {...d} />
+              ))}
+            </div>
+          </div>
+
+        </div>
+
+        {/* OPTIONAL CTA */}
+        <div className="mt-10 flex justify-end">
+          <button 
+            className="flex items-center gap-2 text-sm font-semibold hover:underline"
+            style={{ color: "var(--accent)" }}
+          >
+            View Project <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
+
+      </div>
+    </section>
+  );
+});
 
 // GlobalStyles and FontLoader are now imported in App.jsx
 
@@ -197,56 +463,7 @@ function Login({ setPage, dark, setDark, setUser }) {
 
           {/* LEFT PANEL - WELCOME (70% on desktop, hidden on mobile) */}
           {!isMobile && (
-          <div style={{
-            flex: "0 0 70%",
-            width: "auto",
-            height: "100%",
-            padding: "52px 48px",
-            background: "var(--card2)",
-            borderRight: "1px solid var(--border)",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "center",
-            transition: "background 0.3s, border-color 0.3s",
-            overflow: "auto",
-          }}>
-            {/* Centered Content Container */}
-            <div style={{
-              maxWidth: 560,
-              width: "100%",
-              margin: "0 auto",
-            }}>
-              <p style={{
-                fontSize: 10, fontWeight: 600, letterSpacing: "0.14em",
-                textTransform: "uppercase", color: "var(--accent)",
-                marginBottom: 16, display: "flex", alignItems: "center", gap: 6,
-              }}>
-                <span style={{ display: "inline-block", width: 16, height: 1.5, background: "var(--accent)" }} />
-                Welcome back
-              </p>
-              <h1 style={{
-                fontFamily: "'Bricolage Grotesque', sans-serif",
-                fontWeight: 700,
-                fontSize: isTablet ? 36 : 48,
-                lineHeight: 1.2,
-                color: "var(--ink)", letterSpacing: "-0.03em",
-                marginBottom: 24,
-                textAlign: "left",
-              }}>
-                <>Your workspace is<br />ready.<br /><span style={{ color: "var(--accent)" }}>Jump back in.</span></>
-              </h1>
-              <p style={{ 
-                fontSize: 15, 
-                color: "var(--ink3)", 
-                lineHeight: 1.7, 
-                maxWidth: 420, 
-                marginTop: 8,
-              }}>
-                Sign in to access your secure, professional chat environment. All messages and files are synced in real-time across all your devices.
-              </p>
-            </div>
-          </div>
+            <LeftPanel className="flex-[0_0_70%]" />
           )}
 
           {/* RIGHT PANEL — FORM (30% on desktop, full on mobile) */}
