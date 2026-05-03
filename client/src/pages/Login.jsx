@@ -207,39 +207,45 @@ function Login({ setPage, dark, setDark, setUser }) {
             display: "flex",
             flexDirection: "column",
             justifyContent: "center",
-            alignItems: "flex-start",
+            alignItems: "center",
             transition: "background 0.3s, border-color 0.3s",
             overflow: "auto",
           }}>
-            <p style={{
-              fontSize: 10, fontWeight: 600, letterSpacing: "0.14em",
-              textTransform: "uppercase", color: "var(--accent)",
-              marginBottom: 16, display: "flex", alignItems: "center", gap: 6,
+            {/* Centered Content Container */}
+            <div style={{
+              maxWidth: 560,
+              width: "100%",
+              margin: "0 auto",
             }}>
-              <span style={{ display: "inline-block", width: 16, height: 1.5, background: "var(--accent)" }} />
-              Welcome back
-            </p>
-            <h1 style={{
-              fontFamily: "'Bricolage Grotesque', sans-serif",
-              fontWeight: 700,
-              fontSize: 48,
-              lineHeight: 1.2,
-              color: "var(--ink)", letterSpacing: "-0.03em",
-              marginBottom: 24,
-              textAlign: "left",
-              maxWidth: "500px",
-            }}>
-              <>Your workspace is<br />ready.<br /><span style={{ color: "var(--accent)" }}>Jump back in.</span></>
-            </h1>
-            <p style={{ 
-              fontSize: 15, 
-              color: "var(--ink3)", 
-              lineHeight: 1.7, 
-              maxWidth: 420, 
-              marginTop: 8,
-            }}>
-              Sign in to access your secure, professional chat environment. All messages and files are synced in real-time across all your devices.
-            </p>
+              <p style={{
+                fontSize: 10, fontWeight: 600, letterSpacing: "0.14em",
+                textTransform: "uppercase", color: "var(--accent)",
+                marginBottom: 16, display: "flex", alignItems: "center", gap: 6,
+              }}>
+                <span style={{ display: "inline-block", width: 16, height: 1.5, background: "var(--accent)" }} />
+                Welcome back
+              </p>
+              <h1 style={{
+                fontFamily: "'Bricolage Grotesque', sans-serif",
+                fontWeight: 700,
+                fontSize: isTablet ? 36 : 48,
+                lineHeight: 1.2,
+                color: "var(--ink)", letterSpacing: "-0.03em",
+                marginBottom: 24,
+                textAlign: "left",
+              }}>
+                <>Your workspace is<br />ready.<br /><span style={{ color: "var(--accent)" }}>Jump back in.</span></>
+              </h1>
+              <p style={{ 
+                fontSize: 15, 
+                color: "var(--ink3)", 
+                lineHeight: 1.7, 
+                maxWidth: 420, 
+                marginTop: 8,
+              }}>
+                Sign in to access your secure, professional chat environment. All messages and files are synced in real-time across all your devices.
+              </p>
+            </div>
           </div>
           )}
 

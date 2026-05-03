@@ -254,15 +254,19 @@ function Register({ setPage, dark, setDark }) {
             borderRight: "1px solid var(--border)",
             display: "flex",
             flexDirection: "column",
-            justifyContent: "space-between",
-            alignItems: "flex-start",
+            justifyContent: "center",
+            alignItems: "center",
             transition: "background 0.3s, border-color 0.3s",
             overflow: "auto",
           }}>
-
-            {/* Top section */}
-            <div>
-              {!isMobile && (
+            {/* Centered Content Container */}
+            <div style={{
+              maxWidth: 600,
+              width: "100%",
+              margin: "0 auto",
+            }}>
+              {/* Top section */}
+              <div>
                 <p style={{
                   fontSize: 10, fontWeight: 600, letterSpacing: "0.14em",
                   textTransform: "uppercase", color: "var(--accent)",
@@ -272,25 +276,19 @@ function Register({ setPage, dark, setDark }) {
                   <span style={{ display: "inline-block", width: 16, height: 1.5, background: "var(--accent)" }} />
                   Business messaging
                 </p>
-              )}
 
-              <h1 style={{
-                fontFamily: "'Bricolage Grotesque', sans-serif",
-                fontWeight: 700,
-                fontSize: isMobile ? 26 : isTablet ? 32 : 48,
-                lineHeight: 1.2,
-                color: "var(--ink)", letterSpacing: "-0.03em",
-                marginBottom: !isMobile ? 24 : 12,
-                textAlign: isMobile ? "center" : "left",
-                maxWidth: isMobile ? "100%" : "500px",
-              }}>
-                {isMobile
-                  ? <><span style={{ color: "var(--accent)" }}>Chat App</span><br/>Get things done</>
-                  : <>Where teams<br />get things<br /><span style={{ color: "var(--accent)" }}>done.</span></>
-                }
-              </h1>
+                <h1 style={{
+                  fontFamily: "'Bricolage Grotesque', sans-serif",
+                  fontWeight: 700,
+                  fontSize: isTablet ? 36 : 48,
+                  lineHeight: 1.2,
+                  color: "var(--ink)", letterSpacing: "-0.03em",
+                  marginBottom: 24,
+                  textAlign: "left",
+                }}>
+                  <>Where teams<br />get things<br /><span style={{ color: "var(--accent)" }}>done.</span></>
+                </h1>
 
-              {!isMobile && (
                 <p style={{
                   fontSize: 15,
                   color: "var(--ink3)", 
@@ -301,45 +299,45 @@ function Register({ setPage, dark, setDark }) {
                 }}>
                   A focused workspace for professional teams — secure, fast, and built for real work.
                 </p>
-              )}
-            </div>
+              </div>
 
-            {/* Stats grid — desktop & tablet */}
-            {isDesktop && (
-              <div>
-                <div style={{
-                  display: "flex", border: "1px solid var(--border)",
-                  borderRadius: "var(--rs)", overflow: "hidden", marginTop: 32,
-                }}>
-                  <StatCard value="99.9%" label="Uptime SLA" />
-                  <StatCard value="<80ms" label="Latency" />
-                  <div style={{ flex: 1, padding: "14px 16px", background: "var(--card)", transition: "background 0.3s" }}>
-                    <div style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: 20, fontWeight: 700, color: "var(--ink)", letterSpacing: "-0.02em" }}>E2EE</div>
-                    <div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 3 }}>Encrypted</div>
+              {/* Stats grid — desktop only */}
+              {isDesktop && (
+                <div>
+                  <div style={{
+                    display: "flex", border: "1px solid var(--border)",
+                    borderRadius: "var(--rs)", overflow: "hidden", marginTop: 32,
+                  }}>
+                    <StatCard value="99.9%" label="Uptime SLA" />
+                    <StatCard value="<80ms" label="Latency" />
+                    <div style={{ flex: 1, padding: "14px 16px", background: "var(--card)", transition: "background 0.3s" }}>
+                      <div style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: 20, fontWeight: 700, color: "var(--ink)", letterSpacing: "-0.02em" }}>E2EE</div>
+                      <div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 3 }}>Encrypted</div>
+                    </div>
+                  </div>
+
+                  {/* Trust items */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 24 }}>
+                    <TrustItem icon={ShieldIcon} text="SOC 2 Type II compliant infrastructure" delay={0.1} />
+                    <TrustItem icon={LockIcon}   text="Zero-knowledge end-to-end encryption"   delay={0.2} />
+                    <TrustItem icon={BoltIcon}   text="Real-time sync across all your devices"  delay={0.3} />
                   </div>
                 </div>
+              )}
 
-                {/* Trust items */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 24 }}>
-                  <TrustItem icon={ShieldIcon} text="SOC 2 Type II compliant infrastructure" delay={0.1} />
-                  <TrustItem icon={LockIcon}   text="Zero-knowledge end-to-end encryption"   delay={0.2} />
-                  <TrustItem icon={BoltIcon}   text="Real-time sync across all your devices"  delay={0.3} />
+              {/* Tablet: compact trust badges inline */}
+              {isTablet && (
+                <div style={{ display: "flex", gap: 8, flexShrink: 0, marginTop: 24 }}>
+                  {[ShieldIcon, LockIcon, BoltIcon].map((icon, i) => (
+                    <div key={i} style={{
+                      width: 32, height: 32, borderRadius: "50%",
+                      background: "var(--accent2)",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>{icon}</div>
+                  ))}
                 </div>
-              </div>
-            )}
-
-            {/* Tablet: compact trust badges inline */}
-            {isTablet && (
-              <div style={{ display: "flex", gap: 8, flexShrink: 0, marginTop: 24 }}>
-                {[ShieldIcon, LockIcon, BoltIcon].map((icon, i) => (
-                  <div key={i} style={{
-                    width: 32, height: 32, borderRadius: "50%",
-                    background: "var(--accent2)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                  }}>{icon}</div>
-                ))}
-              </div>
-            )}
+              )}
+            </div>
           </div>
           )}
 
