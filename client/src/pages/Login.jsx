@@ -175,8 +175,12 @@ const LeftPanel = memo(({
         borderRight: "1px solid var(--border)"
       }}
     >
+      <style>{`
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
       {/* SCROLL CONTAINER */}
-      <div className="h-full overflow-y-auto scroll-smooth px-6 py-6 sm:px-10 lg:px-14">
+      <div className="h-full overflow-y-auto scroll-smooth px-6 py-6 sm:px-10 lg:px-14 hide-scrollbar">
 
         {/* TOP CREATOR BADGE */}
         <div className="mb-8 flex items-center justify-between">
@@ -188,8 +192,8 @@ const LeftPanel = memo(({
               <Code2 className="h-5 w-5 text-white" />
             </div>
             <div>
-              <p className="text-sm font-medium">Created by</p>
-              <p className="text-xs" style={{ color: "var(--ink3)" }}>{name}</p>
+              <p className="text-base font-medium">Created by</p>
+              <p className="text-sm" style={{ color: "var(--ink3)" }}>{name}</p>
             </div>
           </div>
 
@@ -215,7 +219,7 @@ const LeftPanel = memo(({
           {/* HEADLINE */}
           <div>
             <h1 
-              className="text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight"
+              className="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight"
               style={{ 
                 fontFamily: "'Bricolage Grotesque', sans-serif",
                 color: "var(--ink)"
@@ -274,16 +278,6 @@ const LeftPanel = memo(({
             </div>
           </div>
 
-        </div>
-
-        {/* OPTIONAL CTA */}
-        <div className="mt-10 flex justify-end">
-          <button 
-            className="flex items-center gap-2 text-sm font-semibold hover:underline"
-            style={{ color: "var(--accent)" }}
-          >
-            View Project <ArrowRight className="h-4 w-4" />
-          </button>
         </div>
 
       </div>
