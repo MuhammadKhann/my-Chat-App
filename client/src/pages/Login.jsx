@@ -299,7 +299,7 @@ function Login({ setPage, dark, setDark, setUser }) {
                   focused={focused === "identifier"}
                 />
 
-                <div style={{ position: "relative", marginBottom: 24 }}>
+                <div style={{ position: "relative", marginBottom: 16 }}>
                   <input
                     type={showPw ? "text" : "password"}
                     placeholder="Password"
@@ -331,6 +331,30 @@ function Login({ setPage, dark, setDark, setUser }) {
                   >
                     {showPw ? "Hide" : "Show"}
                   </button>
+                </div>
+
+                {/* Remember Me Checkbox */}
+                <div style={{ 
+                  display: "flex", 
+                  alignItems: "center", 
+                  gap: "10px", 
+                  marginBottom: "20px",
+                }}>
+                  <input 
+                    type="checkbox" 
+                    id="rememberMe"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    style={{ 
+                      cursor: "pointer",
+                      width: 18,
+                      height: 18,
+                      accentColor: "var(--accent)",
+                    }}
+                  />
+                  <label htmlFor="rememberMe" style={{ cursor: "pointer", fontSize: 14, color: "var(--ink2)", fontWeight: 500 }}>
+                    Remember me
+                  </label>
                 </div>
 
                 {/* Aesthetic Error Reminder */}
