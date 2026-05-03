@@ -1818,14 +1818,15 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
         {/* ── SIDEBAR ── */}
         {(!isMobile || isSidebarOpen) && (
           <div style={{
-            width: isMobile ? 288 : 260,
+            width: isMobile ? 320 : 320,
+            minWidth: 280,
             height: "100%",
+            flexShrink: 0,
             background: "var(--card)",
             borderRight: "1px solid var(--border)",
             display: "flex", flexDirection: "column",
             position: "relative",
             zIndex: 100,
-            flexShrink: 0,
           }}>
 
           {/* Tabs: Chats | Search */}
