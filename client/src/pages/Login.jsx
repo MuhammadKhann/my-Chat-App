@@ -34,6 +34,8 @@ const defaultTechStack = [
   { name: "Express.js", subtitle: "Backend", short: "EX" },
   { name: "React", subtitle: "Frontend", short: "R" },
   { name: "Node.js", subtitle: "Runtime", short: "N" },
+  { name: "Azure", subtitle: "Microsoft Cloud", short: "AZ" },
+  { name: "Vercel", subtitle: "Edge Network", short: "VC" },
 ];
 
 const defaultFeatures = [
@@ -47,22 +49,7 @@ const defaultFeatures = [
   { label: "Read Receipts", icon: CheckCircle2 },
 ];
 
-const defaultDeployments = [
-  {
-    name: "Backend on Azure",
-    subtitle: "Microsoft Azure",
-    detail: "Scalable, secure, always available",
-    status: "Live",
-    icon: Cloud,
-  },
-  {
-    name: "Frontend on Vercel",
-    subtitle: "Vercel Edge Network",
-    detail: "Intractive UI",
-    status: "Live",
-    icon: ExternalLink,
-  },
-];
+const defaultDeployments = [];
 
 function InfoPill({ icon: Icon, children, href }) {
   const content = (
@@ -279,20 +266,10 @@ const LeftPanel = memo(({
 
           {/* TECH STACK */}
           <div>
-            <h2 className="text-xs uppercase font-bold tracking-widest mb-3" style={{ color: "var(--ink3)" }}>Tech Stack</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <h2 className="text-xs uppercase font-bold tracking-widest mb-3" style={{ color: "var(--ink3)" }}>Tech Stack & Infrastructure</h2>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
               {techStack.map((t) => (
                 <TechCard key={t.name} {...t} />
-              ))}
-            </div>
-          </div>
-
-          {/* DEPLOYMENT */}
-          <div>
-            <h2 className="text-xs uppercase font-bold tracking-widest mb-3" style={{ color: "var(--ink3)" }}>Deployment</h2>
-            <div className="grid sm:grid-cols-2 gap-3">
-              {deployments.map((d) => (
-                <DeploymentCard key={d.name} {...d} />
               ))}
             </div>
           </div>
