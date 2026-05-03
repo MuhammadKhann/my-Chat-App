@@ -110,7 +110,10 @@ function Login({ setPage, dark, setDark, setUser }) {
   const [errorMsg, setErrorMsg] = useState("");
   const [showPopup, setShowPopup] = useState(false);
 
-  const showComingSoon = () => setShowPopup(true);
+  const showComingSoon = () => {
+    setShowPopup(true);
+    setTimeout(() => setShowPopup(false), 2000);
+  };
 
   const isMobile  = vw < 900;
   const isTablet  = vw >= 900 && vw < 1200;
@@ -403,40 +406,14 @@ function Login({ setPage, dark, setDark, setUser }) {
           {/* Coming Soon Popup */}
           {showPopup && (
             <div style={{
-              position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-              background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center",
-              zIndex: 1000,
-            }} onClick={() => setShowPopup(false)}>
-              <div style={{
-                background: "var(--card)", padding: "32px 48px", borderRadius: "var(--r)",
-                boxShadow: "var(--shadow)", textAlign: "center", maxWidth: 320,
-              }} onClick={e => e.stopPropagation()}>
-                <div style={{
-                  width: 56, height: 56, borderRadius: "50%", background: "var(--accent2)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  margin: "0 auto 16px",
-                }}>
-                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2">
-                    <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
-                  </svg>
-                </div>
-                <h3 style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: 20, fontWeight: 700, color: "var(--ink)", marginBottom: 8 }}>
-                  Coming Soon
-                </h3>
-                <p style={{ fontSize: 14, color: "var(--ink2)", marginBottom: 24 }}>
-                  This feature is under development.
-                </p>
-                <button
-                  onClick={() => setShowPopup(false)}
-                  style={{
-                    padding: "10px 24px", background: "var(--accent)", color: "#fff",
-                    border: "none", borderRadius: "var(--rs)", fontSize: 14, fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                >
-                  Got it
-                </button>
-              </div>
+              position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+              background: "var(--card)", padding: "12px 24px", borderRadius: "var(--rs)",
+              boxShadow: "var(--shadow)", textAlign: "center",
+              zIndex: 1000, border: "1px solid var(--border)",
+            }}>
+              <p style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>
+                Coming Soon
+              </p>
             </div>
           )}
 
