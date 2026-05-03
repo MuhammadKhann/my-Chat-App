@@ -5,7 +5,6 @@ import {
   Code2,
   Cloud,
   ExternalLink,
-  Github,
   Globe,
   Mail,
   MapPin,
