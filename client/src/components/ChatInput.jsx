@@ -121,6 +121,11 @@ function ChatInput({
           onBlur={onTypingStop}
           placeholder="Type a message..."
           disabled={disabled}
+          autoComplete="off"
+          spellCheck="false"
+          autoCorrect="off"
+          autoCapitalize="off"
+          inputMode="text"
           style={{
             width: "100%",
             minHeight: 40,

@@ -2395,7 +2395,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                     />
                   </div>
                 )}
-                <form onSubmit={sendMessage} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <form onSubmit={sendMessage} autoComplete="off" style={{ display: "flex", gap: 8, alignItems: "center" }}>
 
                   {isRecording ? (
                     /* Recording UI */
@@ -2480,6 +2480,10 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                         ref={messageInputRef}
                         type="text"
                         autoComplete="off"
+                        spellCheck="false"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        inputMode="text"
                         className="chat-app-input"
                         value={message}
                         onChange={(e) => { setMessage(e.target.value); handleKeystroke(); }}
