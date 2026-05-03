@@ -2508,11 +2508,14 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                       <input
                         ref={messageInputRef}
                         type="text"
-                        autoComplete="off"
+                        name="chat_message"
+                        autoComplete="new-password"
                         spellCheck="false"
                         autoCorrect="off"
                         autoCapitalize="off"
                         inputMode="text"
+                        aria-autocomplete="none"
+                        data-lpignore="true"
                         className="chat-app-input"
                         value={message}
                         onChange={(e) => { setMessage(e.target.value); handleKeystroke(); }}

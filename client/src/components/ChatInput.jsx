@@ -114,6 +114,7 @@ function ChatInput({
       {/* Message input */}
       <div style={{ flex: 1, position: "relative" }}>
         <textarea
+          name="chat_message"
           value={message}
           onChange={(e) => onMessageChange(e.target.value)}
           onKeyDown={handleKeyDown}
@@ -121,11 +122,13 @@ function ChatInput({
           onBlur={onTypingStop}
           placeholder="Type a message..."
           disabled={disabled}
-          autoComplete="off"
+          autoComplete="new-password"
           spellCheck="false"
           autoCorrect="off"
           autoCapitalize="off"
           inputMode="text"
+          aria-autocomplete="none"
+          data-lpignore="true"
           style={{
             width: "100%",
             minHeight: 40,
