@@ -12,6 +12,12 @@ import {
   ShieldCheck,
   Sparkles,
   Zap,
+  Video,
+  Lock,
+  Image,
+  Layers,
+  Smartphone,
+  CheckCircle2,
 } from "lucide-react";
 
 /*
@@ -32,9 +38,13 @@ const defaultTechStack = [
 
 const defaultFeatures = [
   { label: "Real-time Messaging", icon: MessageSquare },
-  { label: "Secure & Private", icon: ShieldCheck },
+  { label: "Voice & Video Calls", icon: Video },
+  { label: "End-to-End Encryption", icon: Lock },
   { label: "Online Status", icon: Globe },
-  { label: "Fast & Reliable", icon: Zap },
+  { label: "File & Image Sharing", icon: Image },
+  { label: "Multiple Themes", icon: Layers },
+  { label: "Responsive Design", icon: Smartphone },
+  { label: "Read Receipts", icon: CheckCircle2 },
 ];
 
 const defaultDeployments = [
@@ -48,13 +58,38 @@ const defaultDeployments = [
   {
     name: "Frontend on Vercel",
     subtitle: "Vercel Edge Network",
-    detail: "Blazing fast global delivery",
+    detail: "Intractive UI",
     status: "Live",
     icon: ExternalLink,
   },
 ];
 
-function InfoPill({ icon: Icon, children }) {
+function InfoPill({ icon: Icon, children, href }) {
+  const content = (
+    <>
+      <Icon className="h-4 w-4" style={{ color: "var(--accent)" }} />
+      <span>{children}</span>
+    </>
+  );
+
+  if (href) {
+    return (
+      <a 
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-2 rounded-full border px-4 py-2 text-xs sm:text-sm backdrop-blur transition hover:opacity-80 no-underline"
+        style={{
+          borderColor: "var(--border)",
+          background: "var(--card2)",
+          color: "var(--ink2)"
+        }}
+      >
+        {content}
+      </a>
+    );
+  }
+
   return (
     <div 
       className="flex items-center gap-2 rounded-full border px-4 py-2 text-xs sm:text-sm backdrop-blur"
@@ -64,8 +99,7 @@ function InfoPill({ icon: Icon, children }) {
         color: "var(--ink2)"
       }}
     >
-      <Icon className="h-4 w-4" style={{ color: "var(--accent)" }} />
-      <span>{children}</span>
+      {content}
     </div>
   );
 }
@@ -134,11 +168,11 @@ function DeploymentCard({ name, subtitle, detail, status, icon: Icon }) {
 }
 
 const LeftPanel = memo(({
-  name = "Muhammad Sand Dela",
+  name = "Muhammad Bin Nasir",
   description = "Computer Science student building scalable MERN applications.",
-  location = "Pakistan",
-  email = "muhammadsanddela@gmail.com",
-  linkedin = "linkedin.com/in/muhammadsanddela",
+  location = "Multan, Pakistan",
+  email = "Muhammad.243595@gmail.com",
+  linkedin = "https://www.linkedin.com/in/muhammad-bin-nasir-5b790b308/",
   headline = "Built for real-time\nconversations.",
   techStack = defaultTechStack,
   features = defaultFeatures,
@@ -167,7 +201,7 @@ const LeftPanel = memo(({
               <Code2 className="h-5 w-5 text-white" />
             </div>
             <div>
-              <p className="text-sm font-medium">Created with ❤️ by</p>
+              <p className="text-sm font-medium">Created by</p>
               <p className="text-xs" style={{ color: "var(--ink3)" }}>{name}</p>
             </div>
           </div>
@@ -195,7 +229,10 @@ const LeftPanel = memo(({
           <div>
             <h1 
               className="text-3xl sm:text-4xl lg:text-5xl font-bold leading-tight"
-              style={{ fontFamily: "'Bricolage Grotesque', sans-serif" }}
+              style={{ 
+                fontFamily: "'Bricolage Grotesque', sans-serif",
+                color: "var(--ink)"
+              }}
             >
               {headline.split("\n").map((line, i) => (
                 <span key={i} className="block">
@@ -216,17 +253,28 @@ const LeftPanel = memo(({
           <div className="flex flex-wrap gap-3">
             <InfoPill icon={MapPin}>{location}</InfoPill>
             <InfoPill icon={Mail}>{email}</InfoPill>
-            <InfoPill icon={ExternalLink}>{linkedin}</InfoPill>
+            <InfoPill icon={ExternalLink} href={linkedin}>LinkedIn Profile</InfoPill>
           </div>
 
           {/* FEATURES */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {features.map((f) => (
-              <div key={f.label} className="flex items-center gap-2 text-xs sm:text-sm" style={{ color: "var(--ink2)" }}>
-                <f.icon className="h-4 w-4" style={{ color: "var(--accent)" }} />
-                {f.label}
-              </div>
-            ))}
+          <div>
+            <h2 className="text-xs uppercase font-bold tracking-widest mb-4" style={{ color: "var(--ink3)" }}>Core Features</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {features.map((f) => (
+                <div 
+                  key={f.label} 
+                  className="flex items-center gap-3 p-3 rounded-lg border"
+                  style={{
+                    borderColor: "var(--border)",
+                    background: "var(--card)",
+                    color: "var(--ink2)"
+                  }}
+                >
+                  <f.icon className="h-5 w-5 flex-shrink-0" style={{ color: "var(--accent)" }} />
+                  <span className="text-xs font-medium leading-tight">{f.label}</span>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* TECH STACK */}
