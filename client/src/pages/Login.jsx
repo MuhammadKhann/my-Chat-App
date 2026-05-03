@@ -247,12 +247,16 @@ const LeftPanel = memo(({
 
           {/* FEATURES */}
           <div>
-            <h2 className="text-xs uppercase font-extrabold tracking-[0.2em] mb-4" style={{ color: "var(--ink)" }}>Core Capabilities</h2>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-px flex-1" style={{ background: "linear-gradient(to right, transparent, var(--border), transparent)" }}></div>
+              <h2 className="text-[10px] uppercase font-bold tracking-[0.3em] whitespace-nowrap" style={{ color: "var(--ink2)", opacity: 0.8 }}>Core Capabilities</h2>
+              <div className="h-px flex-1" style={{ background: "linear-gradient(to right, transparent, var(--border), transparent)" }}></div>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {features.map((f) => (
                 <div 
                   key={f.label} 
-                  className="flex items-center gap-3 p-4 rounded-xl border transition-all duration-300 hover:scale-[1.02] hover:shadow-lg group"
+                  className="flex items-center gap-3 p-4 rounded-xl border transition-all duration-300 hover:shadow-md group"
                   style={{
                     background: "var(--card)",
                     borderColor: "var(--border)",
@@ -273,7 +277,11 @@ const LeftPanel = memo(({
 
           {/* TECH STACK */}
           <div>
-            <h2 className="text-xs uppercase font-extrabold tracking-[0.2em] mb-4" style={{ color: "var(--ink)" }}>Architecture & Stack</h2>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-px flex-1" style={{ background: "linear-gradient(to right, transparent, var(--border), transparent)" }}></div>
+              <h2 className="text-[10px] uppercase font-bold tracking-[0.3em] whitespace-nowrap" style={{ color: "var(--ink2)", opacity: 0.8 }}>Architecture & Stack</h2>
+              <div className="h-px flex-1" style={{ background: "linear-gradient(to right, transparent, var(--border), transparent)" }}></div>
+            </div>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
               {techStack.map((t) => (
                 <TechCard key={t.name} {...t} />
