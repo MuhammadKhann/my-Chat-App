@@ -37,7 +37,7 @@ function TopBar({ dark, onToggle, themeId, setThemeId }) {
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{
           width: 32, height: 32, borderRadius: 8,
-          background: "var(--accent)",
+          background: "linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%)",
           display: "flex", alignItems: "center", justifyContent: "center",
           flexShrink: 0,
         }}>
@@ -53,9 +53,11 @@ function TopBar({ dark, onToggle, themeId, setThemeId }) {
         }}>Chat App</span>
         <span style={{
           fontSize: 10, fontWeight: 600, letterSpacing: "0.08em",
-          textTransform: "uppercase", color: "var(--accent)",
-          background: "var(--accent2)", padding: "3px 8px", borderRadius: 100,
+          textTransform: "uppercase", 
+          background: "linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%)", 
+          padding: "3px 8px", borderRadius: 100,
           marginLeft: 2,
+          color: "#fff",
         }}>Beta</span>
       </div>
 
@@ -108,34 +110,34 @@ function TopBar({ dark, onToggle, themeId, setThemeId }) {
   );
 }
 
-function StatCard({ value, label }) {
+function StatCard({ value, label, isDarkBG }) {
   return (
     <div style={{
       flex: 1, padding: "14px 16px",
-      background: "var(--card)",
-      borderRight: "1px solid var(--border)",
+      background: isDarkBG ? "transparent" : "var(--card)",
+      borderRight: isDarkBG ? "1px solid rgba(255,255,255,0.1)" : "1px solid var(--border)",
       transition: "background 0.3s",
     }}>
       <div style={{
         fontFamily: "'Bricolage Grotesque', sans-serif",
         fontSize: 20, fontWeight: 700,
-        color: "var(--ink)", letterSpacing: "-0.02em",
+        color: isDarkBG ? "#fff" : "var(--ink)", letterSpacing: "-0.02em",
       }}>{value}</div>
-      <div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 3 }}>{label}</div>
+      <div style={{ fontSize: 11, color: isDarkBG ? "rgba(255,255,255,0.6)" : "var(--ink3)", marginTop: 3 }}>{label}</div>
     </div>
   );
 }
 
-function TrustItem({ icon, text, delay = 0 }) {
+function TrustItem({ icon, text, delay = 0, isDarkBG }) {
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: 10,
-      fontSize: 13, color: "var(--ink2)",
+      fontSize: 13, color: isDarkBG ? "rgba(255,255,255,0.8)" : "var(--ink2)",
       animation: `fadeIn 0.4s ease ${delay}s both`,
     }}>
       <div style={{
         width: 22, height: 22, borderRadius: "50%",
-        background: "var(--accent2)",
+        background: isDarkBG ? "rgba(255,255,255,0.1)" : "var(--accent2)",
         display: "flex", alignItems: "center", justifyContent: "center",
         flexShrink: 0,
       }}>
@@ -282,7 +284,7 @@ function Register({ setPage, dark, setDark, themeId, setThemeId }) {
             width: "auto",
             height: "100%",
             padding: "56px 48px",
-            background: "var(--card2)",
+            background: "linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%)",
             borderRight: "1px solid var(--border)",
             display: "flex",
             flexDirection: "column",
@@ -301,11 +303,11 @@ function Register({ setPage, dark, setDark, themeId, setThemeId }) {
               <div>
                 <p style={{
                   fontSize: 10, fontWeight: 600, letterSpacing: "0.14em",
-                  textTransform: "uppercase", color: "var(--accent)",
+                  textTransform: "uppercase", color: "rgba(255,255,255,0.8)",
                   marginBottom: 18,
                   display: "flex", alignItems: "center", gap: 6,
                 }}>
-                  <span style={{ display: "inline-block", width: 16, height: 1.5, background: "var(--accent)" }} />
+                  <span style={{ display: "inline-block", width: 16, height: 1.5, background: "#fff" }} />
                   Business messaging
                 </p>
 
@@ -314,16 +316,16 @@ function Register({ setPage, dark, setDark, themeId, setThemeId }) {
                   fontWeight: 700,
                   fontSize: isTablet ? 36 : 48,
                   lineHeight: 1.2,
-                  color: "var(--ink)", letterSpacing: "-0.03em",
+                  color: "#fff", letterSpacing: "-0.03em",
                   marginBottom: 24,
                   textAlign: "left",
                 }}>
-                  <>Where teams<br />get things<br /><span style={{ color: "var(--accent)" }}>done.</span></>
+                  <>Where teams<br />get things<br /><span style={{ opacity: 0.8 }}>done.</span></>
                 </h1>
 
                 <p style={{
                   fontSize: 15,
-                  color: "var(--ink3)", 
+                  color: "rgba(255,255,255,0.7)", 
                   fontWeight: 400,
                   lineHeight: 1.7, 
                   maxWidth: 420, 
@@ -337,22 +339,24 @@ function Register({ setPage, dark, setDark, themeId, setThemeId }) {
               {isDesktop && (
                 <div>
                   <div style={{
-                    display: "flex", border: "1px solid var(--border)",
+                    display: "flex", border: "1px solid rgba(255,255,255,0.1)",
                     borderRadius: "var(--rs)", overflow: "hidden", marginTop: 32,
+                    background: "rgba(255,255,255,0.05)",
+                    backdropFilter: "blur(10px)",
                   }}>
-                    <StatCard value="99.9%" label="Uptime SLA" />
-                    <StatCard value="<80ms" label="Latency" />
-                    <div style={{ flex: 1, padding: "14px 16px", background: "var(--card)", transition: "background 0.3s" }}>
-                      <div style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: 20, fontWeight: 700, color: "var(--ink)", letterSpacing: "-0.02em" }}>E2EE</div>
-                      <div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 3 }}>Encrypted</div>
+                    <StatCard value="99.9%" label="Uptime SLA" isDarkBG={true} />
+                    <StatCard value="<80ms" label="Latency" isDarkBG={true} />
+                    <div style={{ flex: 1, padding: "14px 16px", background: "transparent", transition: "background 0.3s" }}>
+                      <div style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: 20, fontWeight: 700, color: "#fff", letterSpacing: "-0.02em" }}>E2EE</div>
+                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginTop: 3 }}>Encrypted</div>
                     </div>
                   </div>
 
                   {/* Trust items */}
                   <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 24 }}>
-                    <TrustItem icon={ShieldIcon} text="SOC 2 Type II compliant infrastructure" delay={0.1} />
-                    <TrustItem icon={LockIcon}   text="Zero-knowledge end-to-end encryption"   delay={0.2} />
-                    <TrustItem icon={BoltIcon}   text="Real-time sync across all your devices"  delay={0.3} />
+                    <TrustItem icon={ShieldIcon} text="SOC 2 Type II compliant infrastructure" delay={0.1} isDarkBG={true} />
+                    <TrustItem icon={LockIcon}   text="Zero-knowledge end-to-end encryption"   delay={0.2} isDarkBG={true} />
+                    <TrustItem icon={BoltIcon}   text="Real-time sync across all your devices"  delay={0.3} isDarkBG={true} />
                   </div>
                 </div>
               )}
@@ -363,7 +367,7 @@ function Register({ setPage, dark, setDark, themeId, setThemeId }) {
                   {[ShieldIcon, LockIcon, BoltIcon].map((icon, i) => (
                     <div key={i} style={{
                       width: 32, height: 32, borderRadius: "50%",
-                      background: "var(--accent2)",
+                      background: "rgba(255,255,255,0.1)",
                       display: "flex", alignItems: "center", justifyContent: "center",
                     }}>{icon}</div>
                   ))}

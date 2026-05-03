@@ -97,17 +97,18 @@ function InfoPill({ icon: Icon, children, href }) {
   );
 }
 
-function TechCard({ name, subtitle, live }) {
+function TechCard({ name, subtitle, live, isDarkBG }) {
   return (
     <div 
       className="rounded-lg border p-3 transition-all duration-300 hover:shadow-md"
       style={{
-        borderColor: "var(--border)",
-        background: "var(--card)",
+        borderColor: isDarkBG ? "rgba(255,255,255,0.1)" : "var(--border)",
+        background: isDarkBG ? "rgba(255,255,255,0.05)" : "var(--card)",
+        backdropFilter: isDarkBG ? "blur(8px)" : "none",
       }}
     >
       <div className="flex items-center justify-between gap-2">
-        <h3 className="text-xs font-bold" style={{ color: "var(--ink)" }}>{name}</h3>
+        <h3 className="text-xs font-bold" style={{ color: isDarkBG ? "#fff" : "var(--ink)" }}>{name}</h3>
         {live && (
           <div className="flex items-center gap-1">
             <span className="relative flex h-2 w-2">
@@ -118,7 +119,7 @@ function TechCard({ name, subtitle, live }) {
           </div>
         )}
       </div>
-      <p className="text-[10px] mt-1 font-bold uppercase tracking-wider" style={{ color: "var(--ink)" }}>{subtitle}</p>
+      <p className="text-[10px] mt-1 font-bold uppercase tracking-wider" style={{ color: isDarkBG ? "rgba(255,255,255,0.6)" : "var(--ink)" }}>{subtitle}</p>
     </div>
   );
 }
@@ -179,8 +180,8 @@ const LeftPanel = memo(({
     <section
       className={`${disableScroll ? "h-auto" : "h-full"} overflow-hidden transition-colors duration-300 ${className}`}
       style={{
-        background: "var(--bg2)",
-        color: "var(--ink)",
+        background: "linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%)",
+        color: "#fff",
         borderRight: disableScroll ? "none" : "1px solid var(--border)",
         borderTop: disableScroll ? "1px solid var(--border)" : "none",
       }}
@@ -188,6 +189,8 @@ const LeftPanel = memo(({
       <style>{`
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .text-white-80 { color: rgba(255, 255, 255, 0.8); }
+        .text-white-60 { color: rgba(255, 255, 255, 0.6); }
       `}</style>
       {/* SCROLL CONTAINER */}
       <div className={`h-full ${disableScroll ? "" : "overflow-y-auto"} scroll-smooth px-6 py-10 sm:px-10 lg:px-14 hide-scrollbar`}>
@@ -196,20 +199,19 @@ const LeftPanel = memo(({
         <div className="mb-10 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div 
-              className="h-12 w-12 flex items-center justify-center rounded-2xl"
-              style={{ background: "var(--accent)" }}
+              className="h-12 w-12 flex items-center justify-center rounded-2xl bg-white/10 backdrop-blur-md border border-white/20"
             >
               <Code2 className="h-6 w-6 text-white" />
             </div>
             <div>
-              <p className="text-xs font-medium opacity-60" style={{ color: "var(--ink3)" }}>Created By</p>
-              <p className="text-lg font-bold" style={{ color: "var(--ink)" }}>{name}</p>
-              <p className="text-xs font-medium opacity-60" style={{ color: "var(--ink3)" }}>Full Stack Developer</p>
+              <p className="text-xs font-medium opacity-60 text-white">Created By</p>
+              <p className="text-lg font-bold text-white">{name}</p>
+              <p className="text-xs font-medium opacity-60 text-white">Full Stack Developer</p>
             </div>
           </div>
 
-          <span className="hidden sm:flex items-center gap-2 text-xs" style={{ color: "var(--ink3)" }}>
-            <Sparkles className="h-4 w-4" style={{ color: "var(--accent)" }} />
+          <span className="hidden sm:flex items-center gap-2 text-xs text-white/60">
+            <Sparkles className="h-4 w-4 text-white" />
           </span>
         </div>
 
@@ -222,20 +224,20 @@ const LeftPanel = memo(({
               className="text-lg sm:text-xl lg:text-2xl font-bold leading-tight"
               style={{ 
                 fontFamily: "'Bricolage Grotesque', sans-serif",
-                color: "var(--ink)"
+                color: "#fff"
               }}
             >
               {headline.split("\n").map((line, i) => (
                 <span key={i} className="block">
                   {i === 1 ? (
-                    <span style={{ color: "var(--accent)" }}>{line}</span>
+                    <span className="opacity-80">{line}</span>
                   ) : (
                     line
                   )}
                 </span>
               ))}
             </h1>
-            <p className="mt-3 max-w-xl text-xs sm:text-sm opacity-70" style={{ color: "var(--ink2)" }}>
+            <p className="mt-3 max-w-xl text-xs sm:text-sm opacity-80 text-white">
               {description}
             </p>
           </div>
@@ -250,9 +252,9 @@ const LeftPanel = memo(({
           {/* FEATURES */}
           <div>
             <div className="flex items-center gap-3 mb-6">
-              <div className="h-px flex-1" style={{ background: "linear-gradient(to right, transparent, var(--border), transparent)" }}></div>
-              <h2 className="text-[10px] uppercase font-bold tracking-[0.3em] whitespace-nowrap" style={{ color: "var(--ink2)", opacity: 0.8 }}>Core Capabilities</h2>
-              <div className="h-px flex-1" style={{ background: "linear-gradient(to right, transparent, var(--border), transparent)" }}></div>
+              <div className="h-px flex-1" style={{ background: "linear-gradient(to right, transparent, rgba(255,255,255,0.2), transparent)" }}></div>
+              <h2 className="text-[10px] uppercase font-bold tracking-[0.3em] whitespace-nowrap text-white/80">Core Capabilities</h2>
+              <div className="h-px flex-1" style={{ background: "linear-gradient(to right, transparent, rgba(255,255,255,0.2), transparent)" }}></div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 px-2">
               {[0, 1, 2].map((colIndex) => (
@@ -260,9 +262,9 @@ const LeftPanel = memo(({
                   {features.slice(colIndex * 4, colIndex * 4 + 4).map((f) => (
                     <li key={f.label} className="flex items-start gap-3 group">
                       <div className="mt-1">
-                        <f.icon className="h-3.5 w-3.5 opacity-60 group-hover:opacity-100 transition-opacity" style={{ color: "var(--accent)" }} />
+                        <f.icon className="h-3.5 w-3.5 text-white/60 group-hover:text-white transition-colors" />
                       </div>
-                      <span className="text-[12px] font-medium leading-tight" style={{ color: "var(--ink2)" }}>{f.label}</span>
+                      <span className="text-[12px] font-medium leading-tight text-white/80">{f.label}</span>
                     </li>
                   ))}
                 </ul>
@@ -273,13 +275,13 @@ const LeftPanel = memo(({
           {/* TECH STACK */}
           <div>
             <div className="flex items-center gap-3 mb-6">
-              <div className="h-px flex-1" style={{ background: "linear-gradient(to right, transparent, var(--border), transparent)" }}></div>
-              <h2 className="text-[10px] uppercase font-bold tracking-[0.3em] whitespace-nowrap" style={{ color: "var(--ink2)", opacity: 0.8 }}>Architecture & Stack</h2>
-              <div className="h-px flex-1" style={{ background: "linear-gradient(to right, transparent, var(--border), transparent)" }}></div>
+              <div className="h-px flex-1" style={{ background: "linear-gradient(to right, transparent, rgba(255,255,255,0.2), transparent)" }}></div>
+              <h2 className="text-[10px] uppercase font-bold tracking-[0.3em] whitespace-nowrap text-white/80">Architecture & Stack</h2>
+              <div className="h-px flex-1" style={{ background: "linear-gradient(to right, transparent, rgba(255,255,255,0.2), transparent)" }}></div>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
               {techStack.map((t) => (
-                <TechCard key={t.name} {...t} />
+                <TechCard key={t.name} {...t} isDarkBG={true} />
               ))}
             </div>
           </div>
@@ -321,7 +323,7 @@ function TopBar({ dark, onToggle, themeId, setThemeId }) {
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{
           width: 32, height: 32, borderRadius: 8,
-          background: "var(--accent)",
+          background: "linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%)",
           display: "flex", alignItems: "center", justifyContent: "center",
           flexShrink: 0,
         }}>
@@ -337,9 +339,11 @@ function TopBar({ dark, onToggle, themeId, setThemeId }) {
         }}>Chat App</span>
         <span style={{
           fontSize: 10, fontWeight: 600, letterSpacing: "0.08em",
-          textTransform: "uppercase", color: "var(--accent)",
-          background: "var(--accent2)", padding: "3px 8px", borderRadius: 100,
+          textTransform: "uppercase", 
+          background: "linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%)", 
+          padding: "3px 8px", borderRadius: 100,
           marginLeft: 2,
+          color: "#fff",
         }}>Beta</span>
       </div>
 
