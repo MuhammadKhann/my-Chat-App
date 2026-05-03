@@ -861,7 +861,17 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       const room = getRoomId(user.id, selectedUser._id);
       fetchWithAuth(api(`/messages/${room}`), { credentials: 'include' })
         .then(res => res.json())
-        .then(data => setChatHistory(data))
+        .then((data) => {
+          const normalized = data.map((msg) => {
+            const senderId = (msg.sender || msg.senderId || "").toString();
+            if (senderId === selectedUser._id?.toString() && msg.status !== "seen") {
+              if (msg._id) emittedSeenMsgIdsRef.current.add(msg._id);
+              return { ...msg, status: "seen" };
+            }
+            return msg;
+          });
+          setChatHistory(normalized);
+        })
         .catch(err => console.error(err));
     }
   }, [selectedUser, user.id]);
@@ -932,6 +942,14 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
     socket.on("status_changed", ({ msgId, status }) => {
       setChatHistory(prev => prev.map(m => m._id === msgId ? { ...m, status } : m));
     });
+    socket.on("room_marked_seen", ({ finalStatus }) => {
+      setChatHistory(prev => prev.map(msg => {
+        if (msg.sender === user.id && msg.status !== finalStatus) {
+          return { ...msg, status: finalStatus };
+        }
+        return msg;
+      }));
+    });
     socket.on("online_users_list", (users) => { setOnlineUsers(new Set(users)); });
     socket.on("user_status_change", ({ userId, isOnline }) => {
       setOnlineUsers((prev) => {
@@ -979,6 +997,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
     return () => {
       socket.off("message_confirmed"); socket.off("send_error");
       socket.off("receive_message"); socket.off("status_changed");
+      socket.off("room_marked_seen");
       socket.off("online_users_list");
       socket.off("user_status_change"); socket.off("user_typing");
       socket.off("incoming_call"); socket.off("call_ended"); socket.off("call_declined");
@@ -1025,7 +1044,17 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
         )
       );
 
-      // 2. Tell the backend to mark all messages from this partner as seen
+      // 2. Mark any already-loaded incoming messages for this chat as seen locally
+      setChatHistory((prev) => prev.map((msg) => {
+        const senderId = (msg?.sender || msg?.senderId || "").toString();
+        if (senderId === selectedUser._id?.toString() && msg?.status !== "seen") {
+          if (msg._id) emittedSeenMsgIdsRef.current.add(msg._id);
+          return { ...msg, status: "seen" };
+        }
+        return msg;
+      }));
+
+      // 3. Tell the backend to mark all messages from this partner as seen
       const room = getRoomId(user.id, selectedUser._id);
       socket.emit("mark_room_seen", {
         room,
