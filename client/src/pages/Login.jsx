@@ -108,6 +108,9 @@ function Login({ setPage, dark, setDark, setUser }) {
   const [showPw, setShowPw]     = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [showPopup, setShowPopup] = useState(false);
+
+  const showComingSoon = () => setShowPopup(true);
 
   const isMobile  = vw < 900;
   const isTablet  = vw >= 900 && vw < 1200;
@@ -365,7 +368,7 @@ function Login({ setPage, dark, setDark, setUser }) {
 
               {/* Google Login Button */}
               <button
-                disabled
+                onClick={showComingSoon}
                 style={{
                   width: "100%", padding: "14px",
                   background: "transparent",
@@ -374,7 +377,7 @@ function Login({ setPage, dark, setDark, setUser }) {
                   borderRadius: 8,
                   fontFamily: "'Inter', sans-serif",
                   fontSize: 14, fontWeight: 500,
-                  cursor: "not-allowed",
+                  cursor: "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                   marginBottom: 20,
                 }}
@@ -385,17 +388,57 @@ function Login({ setPage, dark, setDark, setUser }) {
                   <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                 </svg>
-                Login with Google — Coming Soon
+                Login with Google
               </button>
 
               {/* Footer Links */}
               <div style={{ textAlign: "center" }}>
-                <p style={{ fontSize: 13, color: "var(--ink3)", marginBottom: 8 }}>
-                  Forget password? <span style={{ color: "var(--ink3)", fontWeight: 500 }}>Coming Soon</span>
+                <p style={{ fontSize: 13, color: "var(--ink3)", marginBottom: 8, cursor: "pointer" }} onClick={showComingSoon}>
+                  Forget password? <span style={{ color: "var(--accent)", fontWeight: 500, textDecoration: "underline" }}>Click here</span>
                 </p>
               </div>
             </div>
           </div>
+
+          {/* Coming Soon Popup */}
+          {showPopup && (
+            <div style={{
+              position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+              background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center",
+              zIndex: 1000,
+            }} onClick={() => setShowPopup(false)}>
+              <div style={{
+                background: "var(--card)", padding: "32px 48px", borderRadius: "var(--r)",
+                boxShadow: "var(--shadow)", textAlign: "center", maxWidth: 320,
+              }} onClick={e => e.stopPropagation()}>
+                <div style={{
+                  width: 56, height: 56, borderRadius: "50%", background: "var(--accent2)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  margin: "0 auto 16px",
+                }}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
+                  </svg>
+                </div>
+                <h3 style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: 20, fontWeight: 700, color: "var(--ink)", marginBottom: 8 }}>
+                  Coming Soon
+                </h3>
+                <p style={{ fontSize: 14, color: "var(--ink2)", marginBottom: 24 }}>
+                  This feature is under development.
+                </p>
+                <button
+                  onClick={() => setShowPopup(false)}
+                  style={{
+                    padding: "10px 24px", background: "var(--accent)", color: "#fff",
+                    border: "none", borderRadius: "var(--rs)", fontSize: 14, fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  Got it
+                </button>
+              </div>
+            </div>
+          )}
 
         </div>
       </div>
