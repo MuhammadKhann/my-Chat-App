@@ -30,12 +30,12 @@ UPDATED LEFT PANEL
 */
 
 const defaultTechStack = [
-  { name: "MongoDB", subtitle: "Database", short: "MDB" },
-  { name: "Express.js", subtitle: "Backend", short: "EX" },
-  { name: "React", subtitle: "Frontend", short: "R" },
-  { name: "Node.js", subtitle: "Runtime", short: "N" },
-  { name: "Azure", subtitle: "Cloud", short: "AZ" },
-  { name: "Vercel", subtitle: "Edge", short: "VC" },
+  { name: "MongoDB", subtitle: "Database" },
+  { name: "Express.js", subtitle: "Backend" },
+  { name: "React", subtitle: "Frontend" },
+  { name: "Node.js", subtitle: "Runtime" },
+  { name: "Azure", subtitle: "Cloud", live: true },
+  { name: "Vercel", subtitle: "Edge", live: true },
 ];
 
 const defaultFeatures = [
@@ -95,25 +95,28 @@ function InfoPill({ icon: Icon, children, href }) {
   );
 }
 
-function TechCard({ name, subtitle, short }) {
+function TechCard({ name, subtitle, live }) {
   return (
     <div 
-      className="rounded-lg border p-3 transition hover:border-gray-400 dark:hover:border-gray-600"
+      className="rounded-lg border p-3 transition-all duration-300 hover:shadow-md"
       style={{
         borderColor: "var(--border)",
-        background: "transparent",
+        background: "var(--card)",
       }}
     >
-      <div className="flex items-center gap-2">
-        <span 
-          className="text-[10px] font-bold tracking-tighter opacity-60"
-          style={{ color: "var(--accent)" }}
-        >
-          {short}
-        </span>
-        <h3 className="text-xs font-semibold" style={{ color: "var(--ink)" }}>{name}</h3>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-xs font-bold" style={{ color: "var(--ink)" }}>{name}</h3>
+        {live && (
+          <div className="flex items-center gap-1">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+            </span>
+            <span className="text-[8px] font-bold uppercase tracking-tighter text-green-500">Live</span>
+          </div>
+        )}
       </div>
-      <p className="text-[10px] mt-1 opacity-50 uppercase tracking-wider" style={{ color: "var(--ink3)" }}>{subtitle}</p>
+      <p className="text-[10px] mt-1 font-bold uppercase tracking-wider" style={{ color: "var(--ink)" }}>{subtitle}</p>
     </div>
   );
 }
@@ -197,13 +200,14 @@ const LeftPanel = memo(({
               <Code2 className="h-6 w-6 text-white" />
             </div>
             <div>
+              <p className="text-xs font-medium opacity-60" style={{ color: "var(--ink3)" }}>Created By</p>
               <p className="text-lg font-bold" style={{ color: "var(--ink)" }}>{name}</p>
               <p className="text-xs font-medium opacity-60" style={{ color: "var(--ink3)" }}>Full Stack Developer</p>
             </div>
           </div>
 
           <span className="hidden sm:flex items-center gap-2 text-xs" style={{ color: "var(--ink3)" }}>
-            <Sparkles className="h-4 w-4" style={{ color: "var(--accent)" }} /> Premium UI
+            <Sparkles className="h-4 w-4" style={{ color: "var(--accent)" }} />
           </span>
         </div>
 
@@ -243,19 +247,25 @@ const LeftPanel = memo(({
 
           {/* FEATURES */}
           <div>
-            <h2 className="text-[10px] uppercase font-bold tracking-[0.2em] mb-4 opacity-50" style={{ color: "var(--ink3)" }}>Core Capabilities</h2>
+            <h2 className="text-xs uppercase font-extrabold tracking-[0.2em] mb-4" style={{ color: "var(--ink)" }}>Core Capabilities</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {features.map((f) => (
                 <div 
                   key={f.label} 
-                  className="flex items-center gap-3 p-3 rounded-lg border border-transparent hover:border-gray-200 dark:hover:border-gray-800 transition-colors"
+                  className="flex items-center gap-3 p-4 rounded-xl border transition-all duration-300 hover:scale-[1.02] hover:shadow-lg group"
                   style={{
                     background: "var(--card)",
-                    color: "var(--ink2)"
+                    borderColor: "var(--border)",
+                    color: "var(--ink)"
                   }}
                 >
-                  <f.icon className="h-4 w-4 flex-shrink-0 opacity-70" style={{ color: "var(--accent)" }} />
-                  <span className="text-[11px] font-semibold leading-tight">{f.label}</span>
+                  <div 
+                    className="p-2 rounded-lg transition-colors group-hover:bg-opacity-20"
+                    style={{ background: "var(--accent2)" }}
+                  >
+                    <f.icon className="h-4 w-4 flex-shrink-0" style={{ color: "var(--accent)" }} />
+                  </div>
+                  <span className="text-[11px] font-bold leading-tight">{f.label}</span>
                 </div>
               ))}
             </div>
@@ -263,7 +273,7 @@ const LeftPanel = memo(({
 
           {/* TECH STACK */}
           <div>
-            <h2 className="text-[10px] uppercase font-bold tracking-[0.2em] mb-4 opacity-50" style={{ color: "var(--ink3)" }}>Architecture & Stack</h2>
+            <h2 className="text-xs uppercase font-extrabold tracking-[0.2em] mb-4" style={{ color: "var(--ink)" }}>Architecture & Stack</h2>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
               {techStack.map((t) => (
                 <TechCard key={t.name} {...t} />
