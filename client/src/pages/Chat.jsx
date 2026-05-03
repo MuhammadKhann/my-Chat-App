@@ -1518,6 +1518,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
         setChatHistory([]);
         setChatList(chatList.filter(item => item._id !== selectedUser._id));
         setSelectedUser(null);
+        setIsSidebarOpen(true);
         setShowClearConfirm(false);
       }
     } catch (err) { console.error("Delete failed", err); }
