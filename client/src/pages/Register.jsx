@@ -284,7 +284,7 @@ function Register({ setPage, dark, setDark, themeId, setThemeId }) {
             width: "auto",
             height: "100%",
             padding: "56px 48px",
-            background: "linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%)",
+            background: "var(--card2)",
             borderRight: "1px solid var(--border)",
             display: "flex",
             flexDirection: "column",
@@ -293,6 +293,11 @@ function Register({ setPage, dark, setDark, themeId, setThemeId }) {
             transition: "background 0.3s, border-color 0.3s",
             overflow: "auto",
           }}>
+            <style>{`
+              .premium-gradient {
+                background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+              }
+            `}</style>
             {/* Centered Content Container */}
             <div style={{
               maxWidth: 600,
@@ -303,11 +308,11 @@ function Register({ setPage, dark, setDark, themeId, setThemeId }) {
               <div>
                 <p style={{
                   fontSize: 10, fontWeight: 600, letterSpacing: "0.14em",
-                  textTransform: "uppercase", color: "rgba(255,255,255,0.8)",
+                  textTransform: "uppercase", color: "var(--accent)",
                   marginBottom: 18,
                   display: "flex", alignItems: "center", gap: 6,
                 }}>
-                  <span style={{ display: "inline-block", width: 16, height: 1.5, background: "#fff" }} />
+                  <span style={{ display: "inline-block", width: 16, height: 1.5, background: "var(--accent)" }} />
                   Business messaging
                 </p>
 
@@ -316,16 +321,20 @@ function Register({ setPage, dark, setDark, themeId, setThemeId }) {
                   fontWeight: 700,
                   fontSize: isTablet ? 36 : 48,
                   lineHeight: 1.2,
-                  color: "#fff", letterSpacing: "-0.03em",
+                  color: "var(--ink)", letterSpacing: "-0.03em",
                   marginBottom: 24,
                   textAlign: "left",
                 }}>
-                  <>Where teams<br />get things<br /><span style={{ opacity: 0.8 }}>done.</span></>
+                  <>Where teams<br />get things<br />
+                    <span className="premium-gradient inline-block bg-clip-text text-transparent" style={{ WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                      done.
+                    </span>
+                  </>
                 </h1>
 
                 <p style={{
                   fontSize: 15,
-                  color: "rgba(255,255,255,0.7)", 
+                  color: "var(--ink3)", 
                   fontWeight: 400,
                   lineHeight: 1.7, 
                   maxWidth: 420, 
@@ -339,24 +348,22 @@ function Register({ setPage, dark, setDark, themeId, setThemeId }) {
               {isDesktop && (
                 <div>
                   <div style={{
-                    display: "flex", border: "1px solid rgba(255,255,255,0.1)",
+                    display: "flex", border: "1px solid var(--border)",
                     borderRadius: "var(--rs)", overflow: "hidden", marginTop: 32,
-                    background: "rgba(255,255,255,0.05)",
-                    backdropFilter: "blur(10px)",
                   }}>
-                    <StatCard value="99.9%" label="Uptime SLA" isDarkBG={true} />
-                    <StatCard value="<80ms" label="Latency" isDarkBG={true} />
-                    <div style={{ flex: 1, padding: "14px 16px", background: "transparent", transition: "background 0.3s" }}>
-                      <div style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: 20, fontWeight: 700, color: "#fff", letterSpacing: "-0.02em" }}>E2EE</div>
-                      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginTop: 3 }}>Encrypted</div>
+                    <StatCard value="99.9%" label="Uptime SLA" />
+                    <StatCard value="<80ms" label="Latency" />
+                    <div style={{ flex: 1, padding: "14px 16px", background: "var(--card)", transition: "background 0.3s" }}>
+                      <div style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: 20, fontWeight: 700, color: "var(--ink)", letterSpacing: "-0.02em" }}>E2EE</div>
+                      <div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 3 }}>Encrypted</div>
                     </div>
                   </div>
 
                   {/* Trust items */}
                   <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 24 }}>
-                    <TrustItem icon={ShieldIcon} text="SOC 2 Type II compliant infrastructure" delay={0.1} isDarkBG={true} />
-                    <TrustItem icon={LockIcon}   text="Zero-knowledge end-to-end encryption"   delay={0.2} isDarkBG={true} />
-                    <TrustItem icon={BoltIcon}   text="Real-time sync across all your devices"  delay={0.3} isDarkBG={true} />
+                    <TrustItem icon={ShieldIcon} text="SOC 2 Type II compliant infrastructure" delay={0.1} />
+                    <TrustItem icon={LockIcon}   text="Zero-knowledge end-to-end encryption"   delay={0.2} />
+                    <TrustItem icon={BoltIcon}   text="Real-time sync across all your devices"  delay={0.3} />
                   </div>
                 </div>
               )}
@@ -367,7 +374,7 @@ function Register({ setPage, dark, setDark, themeId, setThemeId }) {
                   {[ShieldIcon, LockIcon, BoltIcon].map((icon, i) => (
                     <div key={i} style={{
                       width: 32, height: 32, borderRadius: "50%",
-                      background: "rgba(255,255,255,0.1)",
+                      background: "var(--accent2)",
                       display: "flex", alignItems: "center", justifyContent: "center",
                     }}>{icon}</div>
                   ))}
