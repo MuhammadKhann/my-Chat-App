@@ -234,147 +234,134 @@ function Register({ setPage, dark, setDark }) {
   );
 
   // ── Responsive layout values ──────────────────────────────────────────────
-  const pagePadding   = isMobile ? "0" : "48px 24px";
-  const sceneDirection = isDesktop ? "row" : "column";
-  const sceneWidth    = isDesktop ? 900 : isTablet ? 480 : "100%";
-  const sceneMaxWidth = "100%";
-  const sceneBorderRadius = isMobile ? 0 : 20;
-  const sceneMinHeight    = isMobile ? "100vh" : "auto";
   const leftPad   = isMobile ? "24px 20px" : isTablet ? "32px 28px" : "56px 48px";
   const rightPad  = isMobile ? "28px 20px" : isTablet ? "32px 28px" : "56px 48px";
-  const rightWidth = isDesktop ? 400 : "100%";
-  const headlineSize = isMobile ? 24 : isTablet ? 28 : 38;
 
   return (
     <>
-
-      <div style={{ minHeight: "calc(var(--vh, 1vh) * 100)", display: "flex", flexDirection: "column", background: "var(--bg)", transition: "background 0.3s" }}>
-
-        {/* TopBar now calls setDark(!dark) globally  */}
+      <div style={{ height: "calc(var(--vh, 1vh) * 100)", display: "flex", flexDirection: "column", background: "var(--bg)", transition: "background 0.3s" }}>
+        
+        {/* TopBar */}
         <TopBar dark={dark} onToggle={() => setDark(!dark)} />
 
-        {/* ── Page ── */}
+        {/* MAIN CONTENT - FULL SCREEN SPLIT */}
         <div style={{
-          flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
-          padding: pagePadding,
+          flex: 1,
+          display: "flex",
+          flexDirection: isMobile ? "column" : "row",
+          overflow: "hidden",
         }}>
+
+          {/* LEFT PANEL - WELCOME (70% on desktop, full on mobile) */}
           <div style={{
+            flex: isMobile ? "none" : "0 0 70%",
+            width: isMobile ? "100%" : "auto",
+            height: isMobile ? "auto" : "100%",
+            padding: leftPad,
+            background: "var(--card2)",
+            borderRight: isMobile ? "none" : "1px solid var(--border)",
+            borderBottom: isMobile ? "1px solid var(--border)" : "none",
             display: "flex",
-            flexDirection: sceneDirection,
-            width: sceneWidth,
-            maxWidth: sceneMaxWidth,
-            minHeight: sceneMinHeight,
-            borderRadius: sceneBorderRadius,
-            overflow: "hidden",
-            boxShadow: isMobile ? "none" : "var(--shadow)",
-            border: isMobile ? "none" : "1px solid var(--border)",
-            animation: "rise 0.5s cubic-bezier(0.22,1,0.36,1) both",
-            transition: "border-color 0.3s",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            alignItems: isMobile ? "center" : "flex-start",
+            transition: "background 0.3s, border-color 0.3s",
+            overflow: "auto",
           }}>
 
-            {/* LEFT PANEL */}
-            <div style={{
-              flex: isDesktop ? 1 : "none",
-              padding: leftPad,
-              background: "var(--card2)",
-              borderRight: isDesktop ? "1px solid var(--border)" : "none",
-              borderBottom: !isDesktop ? "1px solid var(--border)" : "none",
-              display: "flex",
-              flexDirection: isDesktop ? "column" : "row",
-              alignItems: isDesktop ? "flex-start" : "center",
-              justifyContent: isDesktop ? "space-between" : "space-between",
-              gap: isDesktop ? 0 : 12,
-              transition: "background 0.3s, border-color 0.3s",
-            }}>
-
-              {/* Left top block */}
-              <div style={{ flex: isDesktop ? "auto" : 1 }}>
-                {/* Eyebrow — desktop only */}
-                {isDesktop && (
-                  <p style={{
-                    fontSize: 10, fontWeight: 600, letterSpacing: "0.14em",
-                    textTransform: "uppercase", color: "var(--accent)",
-                    marginBottom: 18,
-                    display: "flex", alignItems: "center", gap: 6,
-                  }}>
-                    <span style={{ display: "inline-block", width: 16, height: 1.5, background: "var(--accent)" }} />
-                    Business messaging
-                  </p>
-                )}
-
-                {/* Headline */}
-                <h1 style={{
-                  fontFamily: "'Bricolage Grotesque', sans-serif",
-                  fontWeight: 700, fontSize: headlineSize,
-                  lineHeight: 1.08, color: "var(--ink)",
-                  letterSpacing: "-0.03em",
-                  marginBottom: isDesktop ? 16 : 0,
+            {/* Top section */}
+            <div>
+              {!isMobile && (
+                <p style={{
+                  fontSize: 10, fontWeight: 600, letterSpacing: "0.14em",
+                  textTransform: "uppercase", color: "var(--accent)",
+                  marginBottom: 18,
+                  display: "flex", alignItems: "center", gap: 6,
                 }}>
-                  {isDesktop ? (
-                    <>Where teams<br />get things<br /><span style={{ color: "var(--accent)" }}>done.</span></>
-                  ) : (
-                    <><span style={{ color: "var(--accent)" }}>Chat App</span> — where teams get things done.</>
-                  )}
-                </h1>
-
-                {/* Sub — desktop only */}
-                {isDesktop && (
-                  <p style={{
-                    fontSize: 14, color: "var(--ink3)", fontWeight: 400,
-                    lineHeight: 1.65, maxWidth: 280, marginTop: 4,
-                  }}>
-                    A focused workspace for professional teams — secure, fast, and built for real work.
-                  </p>
-                )}
-              </div>
-
-              {/* Stats grid — desktop & tablet */}
-              {isDesktop && (
-                <div>
-                  <div style={{
-                    display: "flex", border: "1px solid var(--border)",
-                    borderRadius: "var(--rs)", overflow: "hidden", marginTop: 32,
-                  }}>
-                    <StatCard value="99.9%" label="Uptime SLA" />
-                    <StatCard value="<80ms" label="Latency" />
-                    <div style={{ flex: 1, padding: "14px 16px", background: "var(--card)", transition: "background 0.3s" }}>
-                      <div style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: 20, fontWeight: 700, color: "var(--ink)", letterSpacing: "-0.02em" }}>E2EE</div>
-                      <div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 3 }}>Encrypted</div>
-                    </div>
-                  </div>
-
-                  {/* Trust items */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 24 }}>
-                    <TrustItem icon={ShieldIcon} text="SOC 2 Type II compliant infrastructure" delay={0.1} />
-                    <TrustItem icon={LockIcon}   text="Zero-knowledge end-to-end encryption"   delay={0.2} />
-                    <TrustItem icon={BoltIcon}   text="Real-time sync across all your devices"  delay={0.3} />
-                  </div>
-                </div>
+                  <span style={{ display: "inline-block", width: 16, height: 1.5, background: "var(--accent)" }} />
+                  Business messaging
+                </p>
               )}
 
-              {/* Tablet: compact trust badges inline */}
-              {isTablet && (
-                <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-                  {[ShieldIcon, LockIcon, BoltIcon].map((icon, i) => (
-                    <div key={i} style={{
-                      width: 32, height: 32, borderRadius: "50%",
-                      background: "var(--accent2)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}>{icon}</div>
-                  ))}
-                </div>
+              <h1 style={{
+                fontFamily: "'Bricolage Grotesque', sans-serif",
+                fontWeight: 700,
+                fontSize: isMobile ? 26 : isTablet ? 32 : 48,
+                lineHeight: 1.2,
+                color: "var(--ink)", letterSpacing: "-0.03em",
+                marginBottom: !isMobile ? 24 : 12,
+                textAlign: isMobile ? "center" : "left",
+                maxWidth: isMobile ? "100%" : "500px",
+              }}>
+                {isMobile
+                  ? <><span style={{ color: "var(--accent)" }}>Chat App</span><br/>Get things done</>
+                  : <>Where teams<br />get things<br /><span style={{ color: "var(--accent)" }}>done.</span></>
+                }
+              </h1>
+
+              {!isMobile && (
+                <p style={{
+                  fontSize: 15,
+                  color: "var(--ink3)", 
+                  fontWeight: 400,
+                  lineHeight: 1.7, 
+                  maxWidth: 420, 
+                  marginTop: 8,
+                }}>
+                  A focused workspace for professional teams — secure, fast, and built for real work.
+                </p>
               )}
             </div>
 
-            {/* RIGHT PANEL — FORM */}
-            <div style={{
-              width: rightWidth,
-              padding: rightPad,
-              background: "var(--card)",
-              display: "flex", flexDirection: "column", justifyContent: "center",
-              flex: isDesktop ? "none" : 1,
-              transition: "background 0.3s",
-            }}>
+            {/* Stats grid — desktop & tablet */}
+            {isDesktop && (
+              <div>
+                <div style={{
+                  display: "flex", border: "1px solid var(--border)",
+                  borderRadius: "var(--rs)", overflow: "hidden", marginTop: 32,
+                }}>
+                  <StatCard value="99.9%" label="Uptime SLA" />
+                  <StatCard value="<80ms" label="Latency" />
+                  <div style={{ flex: 1, padding: "14px 16px", background: "var(--card)", transition: "background 0.3s" }}>
+                    <div style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: 20, fontWeight: 700, color: "var(--ink)", letterSpacing: "-0.02em" }}>E2EE</div>
+                    <div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 3 }}>Encrypted</div>
+                  </div>
+                </div>
+
+                {/* Trust items */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 24 }}>
+                  <TrustItem icon={ShieldIcon} text="SOC 2 Type II compliant infrastructure" delay={0.1} />
+                  <TrustItem icon={LockIcon}   text="Zero-knowledge end-to-end encryption"   delay={0.2} />
+                  <TrustItem icon={BoltIcon}   text="Real-time sync across all your devices"  delay={0.3} />
+                </div>
+              </div>
+            )}
+
+            {/* Tablet: compact trust badges inline */}
+            {isTablet && (
+              <div style={{ display: "flex", gap: 8, flexShrink: 0, marginTop: 24 }}>
+                {[ShieldIcon, LockIcon, BoltIcon].map((icon, i) => (
+                  <div key={i} style={{
+                    width: 32, height: 32, borderRadius: "50%",
+                    background: "var(--accent2)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>{icon}</div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* RIGHT PANEL — FORM (30% on desktop, full on mobile) */}
+          <div style={{
+            flex: isMobile ? "1" : "0 0 30%",
+            width: isMobile ? "100%" : "auto",
+            height: isMobile ? "auto" : "100%",
+            padding: rightPad,
+            background: "var(--card)",
+            display: "flex", flexDirection: "column", justifyContent: "center",
+            transition: "background 0.3s",
+            overflow: "auto",
+          }}>
               <p style={{
                 fontSize: 10, fontWeight: 600, letterSpacing: "0.14em",
                 textTransform: "uppercase", color: "var(--ink3)", marginBottom: 10,
@@ -498,11 +485,10 @@ function Register({ setPage, dark, setDark }) {
                 {" "}and{" "}
                 <span style={{ textDecoration: "underline", cursor: "pointer" }}>Privacy Policy</span>
               </p>
-            </div>
+          </div>
 
-          </div>{/* end scene */}
-        </div>{/* end page */}
-      </div>{/* end root */}
+        </div>
+      </div>
     </>
   );
 }

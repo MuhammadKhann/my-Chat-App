@@ -184,95 +184,89 @@ function Login({ setPage, dark, setDark, setUser }) {
     );
   };
 
-  const pagePadding       = isMobile ? "0" : "48px 24px";
-  const sceneWidth        = isDesktop ? 900 : isTablet ? 480 : "100%";
-  const sceneBorderRadius = isMobile ? 0 : 20;
-  const sceneMinHeight    = isMobile ? "100vh" : "auto";
   const leftPad           = isMobile ? "24px 20px" : isTablet ? "28px 24px" : "52px 48px";
   const rightPad          = isMobile ? "28px 20px" : isTablet ? "32px 28px" : "52px 48px";
 
   return (
     <>
-      <div style={{ minHeight: "calc(var(--vh, 1vh) * 100)", display: "flex", flexDirection: "column", background: "var(--bg)", transition: "background 0.3s" }}>
+      <div style={{ height: "calc(var(--vh, 1vh) * 100)", display: "flex", flexDirection: "column", background: "var(--bg)", transition: "background 0.3s" }}>
         
-        {/* 3. TOPBAR NOW USES setDark(!dark) GLOBALLY */}
+        {/* TOPBAR */}
         <TopBar dark={dark} onToggle={() => setDark(!dark)} />
 
-        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: pagePadding }}>
+        {/* MAIN CONTENT - FULL SCREEN SPLIT */}
+        <div style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: isMobile ? "column" : "row",
+          overflow: "hidden",
+        }}>
+
+          {/* LEFT PANEL - WELCOME (70% on desktop, full on mobile) */}
           <div style={{
+            flex: isMobile ? "none" : "0 0 70%",
+            width: isMobile ? "100%" : "auto",
+            height: isMobile ? "auto" : "100%",
+            padding: leftPad,
+            background: "var(--card2)",
+            borderRight: isMobile ? "none" : "1px solid var(--border)",
+            borderBottom: isMobile ? "1px solid var(--border)" : "none",
             display: "flex",
-            flexDirection: isDesktop ? "row" : "column",
-            width: sceneWidth,
-            maxWidth: "100%",
-            minHeight: sceneMinHeight,
-            borderRadius: sceneBorderRadius,
-            overflow: "hidden",
-            boxShadow: isMobile ? "none" : "var(--shadow)",
-            border: isMobile ? "none" : "1px solid var(--border)",
-            animation: "rise 0.5s cubic-bezier(0.22,1,0.36,1) both",
-            transition: "border-color 0.3s",
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: isMobile ? "center" : "flex-start",
+            transition: "background 0.3s, border-color 0.3s",
+            overflow: "auto",
           }}>
-
-            {/* LEFT PANEL */}
-            <div style={{
-              flex: isDesktop ? 1 : "none",
-              padding: leftPad,
-              background: "var(--card2)",
-              borderRight:  isDesktop  ? "1px solid var(--border)" : "none",
-              borderBottom: !isDesktop ? "1px solid var(--border)" : "none",
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
-              transition: "background 0.3s, border-color 0.3s",
-            }}>
-              {isDesktop && (
-                <p style={{
-                  fontSize: 10, fontWeight: 600, letterSpacing: "0.14em",
-                  textTransform: "uppercase", color: "var(--accent)",
-                  marginBottom: 16, display: "flex", alignItems: "center", gap: 6,
-                }}>
-                  <span style={{ display: "inline-block", width: 16, height: 1.5, background: "var(--accent)" }} />
-                  Welcome back
-                </p>
-              )}
-              <h1 style={{
-                fontFamily: "'Bricolage Grotesque', sans-serif",
-                fontWeight: 700,
-                fontSize: isMobile ? 22 : isTablet ? 24 : 36,
-                lineHeight: 1.1,
-                color: "var(--ink)", letterSpacing: "-0.03em",
-                marginBottom: isDesktop ? 14 : 0,
+            {!isMobile && (
+              <p style={{
+                fontSize: 10, fontWeight: 600, letterSpacing: "0.14em",
+                textTransform: "uppercase", color: "var(--accent)",
+                marginBottom: 16, display: "flex", alignItems: "center", gap: 6,
               }}>
-                {isDesktop
-                  ? <>Your workspace is<br />ready.<br /><span style={{ color: "var(--accent)" }}>Jump back in.</span></>
-                  : <><span style={{ color: "var(--accent)" }}>Chat App</span> — your workspace is ready.</>
-                }
-              </h1>
-              {isDesktop && (
-                <p style={{ 
-                  fontSize: 14, 
-                  color: "var(--ink3)", 
-                  lineHeight: 1.65, 
-                  maxWidth: 270, 
-                  marginTop: 4, 
-                  textAlign: "center",
-                  marginLeft: "auto",
-                  marginRight: "auto" 
-                }}>
-                  Sign in to access your secure, professional chat environment. All messages and files are synced.
-                </p>
-              )}
-            </div>
-
-            {/* RIGHT PANEL — FORM */}
-            <div style={{
-              width: isDesktop ? 400 : "100%",
-              padding: rightPad,
-              background: "var(--card)",
-              display: "flex", flexDirection: "column", justifyContent: "center",
-              flex: isDesktop ? "none" : 1,
-              transition: "background 0.3s",
+                <span style={{ display: "inline-block", width: 16, height: 1.5, background: "var(--accent)" }} />
+                Welcome back
+              </p>
+            )}
+            <h1 style={{
+              fontFamily: "'Bricolage Grotesque', sans-serif",
+              fontWeight: 700,
+              fontSize: isMobile ? 26 : isTablet ? 32 : 48,
+              lineHeight: 1.2,
+              color: "var(--ink)", letterSpacing: "-0.03em",
+              marginBottom: !isMobile ? 24 : 12,
+              textAlign: isMobile ? "center" : "left",
+              maxWidth: isMobile ? "100%" : "500px",
             }}>
+              {isMobile
+                ? <><span style={{ color: "var(--accent)" }}>Chat App</span><br/>Your workspace is ready</>
+                : <>Your workspace is<br />ready.<br /><span style={{ color: "var(--accent)" }}>Jump back in.</span></>
+              }
+            </h1>
+            {!isMobile && (
+              <p style={{ 
+                fontSize: 15, 
+                color: "var(--ink3)", 
+                lineHeight: 1.7, 
+                maxWidth: 420, 
+                marginTop: 8,
+              }}>
+                Sign in to access your secure, professional chat environment. All messages and files are synced in real-time across all your devices.
+              </p>
+            )}
+          </div>
+
+          {/* RIGHT PANEL — FORM (30% on desktop, full on mobile) */}
+          <div style={{
+            flex: isMobile ? "1" : "0 0 30%",
+            width: isMobile ? "100%" : "auto",
+            height: isMobile ? "auto" : "100%",
+            padding: rightPad,
+            background: "var(--card)",
+            display: "flex", flexDirection: "column", justifyContent: "center",
+            transition: "background 0.3s",
+            overflow: "auto",
+          }}>
               <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--ink3)", marginBottom: 10 }}>Sign in to continue</p>
               <h2 style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 700, fontSize: isMobile ? 22 : 27, color: "var(--ink)", letterSpacing: "-0.02em", marginBottom: 6, lineHeight: 1.1 }}>Chat App Login</h2>
               <p style={{ fontSize: 13, color: "var(--ink3)", marginBottom: 28 }}>Enter your credentials to access your workspace.</p>
@@ -394,8 +388,8 @@ function Login({ setPage, dark, setDark, setUser }) {
                 Don't have an account?{" "}
                 <span onClick={() => setPage("register")} style={{ color: "var(--accent)", fontWeight: 500, cursor: "pointer", textDecoration: "underline" }}>Sign up free</span>
               </p>
-            </div>
           </div>
+
         </div>
       </div>
     </>
