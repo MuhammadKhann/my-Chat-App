@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { api } from "../services/api";
+import { Palette } from "lucide-react";
+import ThemePicker from "../components/ThemePicker";
 
 // GlobalStyles and FontLoader are now imported in App.jsx
 
@@ -16,7 +18,9 @@ function useViewport() {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function TopBar({ dark, onToggle }) {
+function TopBar({ dark, onToggle, themeId, setThemeId }) {
+  const [showPicker, setShowPicker] = useState(false);
+
   return (
     <nav style={{
       display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -26,6 +30,9 @@ function TopBar({ dark, onToggle }) {
       position: "sticky", top: 0, zIndex: 50,
       transition: "background 0.3s, border-color 0.3s",
     }}>
+      <style>{`
+        .hover-bg:hover { background: var(--bg2); }
+      `}</style>
       {/* Logo */}
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{
@@ -52,26 +59,51 @@ function TopBar({ dark, onToggle }) {
         }}>Beta</span>
       </div>
 
-      {/* Theme toggle */}
-      <button
-        onClick={onToggle}
-        aria-label="Toggle theme"
-        style={{
-          width: 44, height: 24, borderRadius: 100,
-          border: `1.5px solid ${dark ? "var(--accent)" : "var(--border2)"}`,
-          background: dark ? "var(--accent2)" : "var(--bg3)",
-          cursor: "pointer", position: "relative",
-          display: "flex", alignItems: "center", padding: "0 3px",
-          transition: "all 0.25s",
-        }}
-      >
-        <div style={{
-          width: 15, height: 15, borderRadius: "50%",
-          background: dark ? "var(--accent)" : "var(--ink3)",
-          transform: dark ? "translateX(20px)" : "translateX(0)",
-          transition: "all 0.25s",
-        }} />
-      </button>
+      {/* Actions */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ position: "relative" }}>
+          <button
+            onClick={() => setShowPicker(!showPicker)}
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              padding: 8, borderRadius: 8,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              transition: "background 0.2s",
+              color: "var(--ink2)",
+            }}
+            className="hover-bg"
+          >
+            <Palette className="h-5 w-5" />
+          </button>
+          {showPicker && (
+            <ThemePicker 
+              currentTheme={themeId} 
+              onThemeChange={setThemeId} 
+              onClose={() => setShowPicker(false)} 
+            />
+          )}
+        </div>
+
+        <button
+          onClick={onToggle}
+          aria-label="Toggle theme"
+          style={{
+            width: 44, height: 24, borderRadius: 100,
+            border: `1.5px solid ${dark ? "var(--accent)" : "var(--border2)"}`,
+            background: dark ? "var(--accent2)" : "var(--bg3)",
+            cursor: "pointer", position: "relative",
+            display: "flex", alignItems: "center", padding: "0 3px",
+            transition: "all 0.25s",
+          }}
+        >
+          <div style={{
+            width: 15, height: 15, borderRadius: "50%",
+            background: dark ? "var(--accent)" : "var(--ink3)",
+            transform: dark ? "translateX(20px)" : "translateX(0)",
+            transition: "all 0.25s",
+          }} />
+        </button>
+      </div>
     </nav>
   );
 }
@@ -141,7 +173,7 @@ function FormField({ type, placeholder, value, onChange, onFocus, onBlur, focuse
 }
 
 // ─── Main Register Component (Modified signature) ───────────────────────────
-function Register({ setPage, dark, setDark }) { 
+function Register({ setPage, dark, setDark, themeId, setThemeId }) { 
   const vw = useViewport();
   
   // Local theme state removed 

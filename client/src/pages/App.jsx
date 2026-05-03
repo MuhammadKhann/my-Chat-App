@@ -147,10 +147,10 @@ function App() {
       {!user ? (
         <>
           {page === "register" && (
-            <Register setPage={setPage} dark={dark} setDark={setDark} />
+            <Register setPage={setPage} dark={dark} setDark={setDark} themeId={themeId} setThemeId={setThemeId} />
           )}
           {page === "login" && (
-            <Login setPage={setPage} dark={dark} setDark={setDark} setUser={setUser} />
+            <Login setPage={setPage} dark={dark} setDark={setDark} setUser={setUser} themeId={themeId} setThemeId={setThemeId} />
           )}
         </>
       ) : page === "chat" && user ? (

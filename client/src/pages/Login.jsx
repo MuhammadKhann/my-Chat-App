@@ -1,5 +1,6 @@
 import { useState, useEffect, memo } from "react";
 import { api } from "../services/api";
+import ThemePicker from "../components/ThemePicker";
 import {
   ArrowRight,
   Code2,
@@ -18,6 +19,7 @@ import {
   Layers,
   Smartphone,
   CheckCircle2,
+  Palette,
 } from "lucide-react";
 
 /*
@@ -252,25 +254,18 @@ const LeftPanel = memo(({
               <h2 className="text-[10px] uppercase font-bold tracking-[0.3em] whitespace-nowrap" style={{ color: "var(--ink2)", opacity: 0.8 }}>Core Capabilities</h2>
               <div className="h-px flex-1" style={{ background: "linear-gradient(to right, transparent, var(--border), transparent)" }}></div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {features.map((f) => (
-                <div 
-                  key={f.label} 
-                  className="flex items-center gap-3 p-4 rounded-xl border transition-all duration-300 hover:shadow-md group"
-                  style={{
-                    background: "var(--card)",
-                    borderColor: "var(--border)",
-                    color: "var(--ink)"
-                  }}
-                >
-                  <div 
-                    className="p-2 rounded-lg transition-colors group-hover:bg-opacity-20"
-                    style={{ background: "var(--accent2)" }}
-                  >
-                    <f.icon className="h-4 w-4 flex-shrink-0" style={{ color: "var(--accent)" }} />
-                  </div>
-                  <span className="text-[11px] font-bold leading-tight">{f.label}</span>
-                </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 px-2">
+              {[0, 1, 2].map((colIndex) => (
+                <ul key={colIndex} className="space-y-4">
+                  {features.slice(colIndex * 4, colIndex * 4 + 4).map((f) => (
+                    <li key={f.label} className="flex items-start gap-3 group">
+                      <div className="mt-1">
+                        <f.icon className="h-3.5 w-3.5 opacity-60 group-hover:opacity-100 transition-opacity" style={{ color: "var(--accent)" }} />
+                      </div>
+                      <span className="text-[12px] font-medium leading-tight" style={{ color: "var(--ink2)" }}>{f.label}</span>
+                    </li>
+                  ))}
+                </ul>
               ))}
             </div>
           </div>
@@ -308,7 +303,9 @@ function useViewport() {
   return vw;
 }
 
-function TopBar({ dark, onToggle }) {
+function TopBar({ dark, onToggle, themeId, setThemeId }) {
+  const [showPicker, setShowPicker] = useState(false);
+
   return (
     <nav style={{
       display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -318,6 +315,9 @@ function TopBar({ dark, onToggle }) {
       position: "sticky", top: 0, zIndex: 50,
       transition: "background 0.3s, border-color 0.3s",
     }}>
+      <style>{`
+        .hover-bg:hover { background: var(--bg2); }
+      `}</style>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{
           width: 32, height: 32, borderRadius: 8,
@@ -343,24 +343,49 @@ function TopBar({ dark, onToggle }) {
         }}>Beta</span>
       </div>
 
-      <button
-        onClick={onToggle}
-        style={{
-          width: 44, height: 24, borderRadius: 100,
-          border: `1.5px solid ${dark ? "var(--accent)" : "var(--border2)"}`,
-          background: dark ? "var(--accent2)" : "var(--bg3)",
-          cursor: "pointer", position: "relative",
-          display: "flex", alignItems: "center", padding: "0 3px",
-          transition: "all 0.25s",
-        }}
-      >
-        <div style={{
-          width: 15, height: 15, borderRadius: "50%",
-          background: dark ? "var(--accent)" : "var(--ink3)",
-          transform: dark ? "translateX(20px)" : "translateX(0)",
-          transition: "all 0.25s",
-        }} />
-      </button>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ position: "relative" }}>
+          <button
+            onClick={() => setShowPicker(!showPicker)}
+            style={{
+              background: "none", border: "none", cursor: "pointer",
+              padding: 8, borderRadius: 8,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              transition: "background 0.2s",
+              color: "var(--ink2)",
+            }}
+            className="hover-bg"
+          >
+            <Palette className="h-5 w-5" />
+          </button>
+          {showPicker && (
+            <ThemePicker 
+              currentTheme={themeId} 
+              onThemeChange={setThemeId} 
+              onClose={() => setShowPicker(false)} 
+            />
+          )}
+        </div>
+
+        <button
+          onClick={onToggle}
+          style={{
+            width: 44, height: 24, borderRadius: 100,
+            border: `1.5px solid ${dark ? "var(--accent)" : "var(--border2)"}`,
+            background: dark ? "var(--accent2)" : "var(--bg3)",
+            cursor: "pointer", position: "relative",
+            display: "flex", alignItems: "center", padding: "0 3px",
+            transition: "all 0.25s",
+          }}
+        >
+          <div style={{
+            width: 15, height: 15, borderRadius: "50%",
+            background: dark ? "var(--accent)" : "var(--ink3)",
+            transform: dark ? "translateX(20px)" : "translateX(0)",
+            transition: "all 0.25s",
+          }} />
+        </button>
+      </div>
     </nav>
   );
 }
@@ -392,7 +417,7 @@ function FormField({ label, type, placeholder, value, onChange, onFocus, onBlur,
 }
 
 // 1. ADD PROPS TO THE FUNCTION SIGNATURE
-function Login({ setPage, dark, setDark, setUser }) {
+function Login({ setPage, dark, setDark, setUser, themeId, setThemeId }) {
   const vw = useViewport();
 
   // 2. INTERNAL THEME STATE REMOVED
@@ -480,7 +505,7 @@ function Login({ setPage, dark, setDark, setUser }) {
       <div style={{ height: "calc(var(--vh, 1vh) * 100)", display: "flex", flexDirection: "column", background: "var(--bg)", transition: "background 0.3s" }}>
         
         {/* TOPBAR */}
-        <TopBar dark={dark} onToggle={() => setDark(!dark)} />
+        <TopBar dark={dark} onToggle={() => setDark(!dark)} themeId={themeId} setThemeId={setThemeId} />
 
         {/* MAIN CONTENT - FULL SCREEN SPLIT */}
         <div style={{
