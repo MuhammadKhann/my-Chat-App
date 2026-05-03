@@ -115,9 +115,9 @@ function Login({ setPage, dark, setDark, setUser }) {
   const [rememberMe, setRememberMe] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
-  const isMobile  = vw < 480;
-  const isTablet  = vw >= 480 && vw < 820;
-  const isDesktop = vw >= 820;
+  const isMobile  = vw < 900;
+  const isTablet  = vw >= 900 && vw < 1200;
+  const isDesktop = vw >= 1200;
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -183,9 +183,6 @@ function Login({ setPage, dark, setDark, setUser }) {
       </span>
     );
   };
-
-  const leftPad           = isMobile ? "24px 20px" : isTablet ? "28px 24px" : "52px 48px";
-  const rightPad          = isMobile ? "28px 20px" : isTablet ? "32px 28px" : "52px 48px";
 
   return (
     <>
@@ -255,12 +252,13 @@ function Login({ setPage, dark, setDark, setUser }) {
             flex: isMobile ? "1" : "0 0 30%",
             width: isMobile ? "100%" : "auto",
             height: isMobile ? "auto" : "100%",
-            padding: rightPad,
+            padding: isMobile ? "32px 20px" : "52px 48px",
             background: "var(--card)",
-            display: "flex", flexDirection: "column", justifyContent: "center",
+            display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center",
             transition: "background 0.3s",
             overflow: "auto",
           }}>
+            <div style={{ width: "100%", maxWidth: 439, margin: "0 auto" }}>
               <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--ink3)", marginBottom: 10 }}>Sign in to continue</p>
               <h2 style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 700, fontSize: isMobile ? 22 : 27, color: "var(--ink)", letterSpacing: "-0.02em", marginBottom: 6, lineHeight: 1.1 }}>Chat App Login</h2>
               <p style={{ fontSize: 13, color: "var(--ink3)", marginBottom: 28 }}>Enter your credentials to access your workspace.</p>
@@ -382,6 +380,7 @@ function Login({ setPage, dark, setDark, setUser }) {
                 Don't have an account?{" "}
                 <span onClick={() => setPage("register")} style={{ color: "var(--accent)", fontWeight: 500, cursor: "pointer", textDecoration: "underline" }}>Sign up free</span>
               </p>
+            </div>
           </div>
 
         </div>
