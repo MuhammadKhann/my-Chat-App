@@ -794,6 +794,14 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   const handleAvatarUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+    
+    // Check if the file is an image
+    if (!file.type.startsWith('image/')) {
+      alert("⚠️ Please select a valid image file (JPG, PNG, WebP).");
+      e.target.value = "";
+      return;
+    }
+
     if (file.size > 5 * 1024 * 1024) {
       alert("⚠️ Image too large. Please select a photo under 5MB.");
       e.target.value = "";
@@ -803,7 +811,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
     const formData = new FormData();
     formData.append("avatar", file);
     try {
-      const res = await fetchWithAuth(api("/api/users/avatar"), {
+      const res = await fetchWithAuth(api("/api/uploads/avatar"), {
         method: "POST", credentials: "include", body: formData,
       });
       const data = await res.json();
@@ -2299,7 +2307,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                           {/* Document */}
                           {msg.fileUrl && !msg.fileType?.startsWith('image/') && !msg.fileType?.startsWith('audio/') && !msg.fileType?.startsWith('video/') && (
                             <a
-                              href={api(`/download?url=${encodeURIComponent(msg.fileUrl)}&filename=${encodeURIComponent(msg.fileName || 'document.pdf')}`)}
+                              href={api(`/api/uploads/download?url=${encodeURIComponent(msg.fileUrl)}&filename=${encodeURIComponent(msg.fileName || 'document.pdf')}`)}
                               style={{
                                 display: "flex", alignItems: "center", gap: 8,
                                 color: isMe ? "rgba(255,255,255,0.9)" : "var(--accent)",
@@ -2594,12 +2602,24 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
               textAlign: "center",
             }}>
               <div style={{
-                width: 72, height: 72, borderRadius: "50%",
+                width: isNarrowMobile ? 48 : 72,
+                height: isNarrowMobile ? 48 : 72,
+                borderRadius: "50%",
                 background: "var(--card)", border: "1px solid var(--border)",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 marginBottom: 4,
               }}>
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.4 }}>
+                <svg 
+                  width={isNarrowMobile ? 20 : 30} 
+                  height={isNarrowMobile ? 20 : 30} 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="1.5" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  style={{ opacity: 0.4 }}
+                >
                   <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" />
                 </svg>
               </div>
