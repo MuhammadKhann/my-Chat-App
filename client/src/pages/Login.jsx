@@ -72,12 +72,7 @@ function TopBar({ dark, onToggle }) {
 
 function FormField({ label, type, placeholder, value, onChange, onFocus, onBlur, focused }) {
   return (
-    <div style={{ marginBottom: 14 }}>
-      <label style={{
-        display: "block", fontSize: 11, fontWeight: 500,
-        letterSpacing: "0.06em", color: "var(--ink2)",
-        marginBottom: 6, textTransform: "uppercase",
-      }}>{label}</label>
+    <div style={{ marginBottom: 24 }}>
       <input
         type={type}
         placeholder={placeholder}
@@ -87,15 +82,14 @@ function FormField({ label, type, placeholder, value, onChange, onFocus, onBlur,
         onBlur={onBlur}
         required
         style={{
-          width: "100%", padding: "11px 14px",
-          background: focused ? "var(--card)" : "var(--bg2)",
-          border: `1.5px solid ${focused ? "var(--accent)" : "var(--border)"}`,
-          borderRadius: "var(--rs)",
+          width: "100%", padding: "12px 0",
+          background: "transparent",
+          border: "none",
+          borderBottom: `2px solid ${focused ? "var(--accent)" : "var(--border)"}`,
           fontFamily: "'Inter', sans-serif",
-          fontSize: 14, color: "var(--ink)",
+          fontSize: 15, color: "var(--ink)",
           outline: "none",
-          boxShadow: focused ? "0 0 0 4px rgba(26,86,240,0.08)" : "none",
-          transition: "all 0.2s",
+          transition: "border-color 0.2s",
         }}
       />
     </div>
@@ -177,11 +171,7 @@ function Login({ setPage, dark, setDark, setUser }) {
       </span>
     );
     if (btnState === "success") return "✓ Welcome back!";
-    return (
-      <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        Sign in <span>→</span>
-      </span>
-    );
+    return "Login Now";
   };
 
   return (
@@ -252,22 +242,44 @@ function Login({ setPage, dark, setDark, setUser }) {
             flex: isMobile ? "1" : "0 0 30%",
             width: isMobile ? "100%" : "auto",
             height: isMobile ? "auto" : "100%",
-            padding: isMobile ? "32px 20px" : "52px 48px",
+            padding: isMobile ? "40px 24px" : "52px 48px",
             background: "var(--card)",
             display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center",
             transition: "background 0.3s",
             overflow: "auto",
           }}>
             <div style={{ width: "100%", maxWidth: 439, margin: "0 auto" }}>
-              <p style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.14em", textTransform: "uppercase", color: "var(--ink3)", marginBottom: 10 }}>Sign in to continue</p>
-              <h2 style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontWeight: 700, fontSize: isMobile ? 22 : 27, color: "var(--ink)", letterSpacing: "-0.02em", marginBottom: 6, lineHeight: 1.1 }}>Chat App Login</h2>
-              <p style={{ fontSize: 13, color: "var(--ink3)", marginBottom: 28 }}>Enter your credentials to access your workspace.</p>
+              {/* Title */}
+              <h1 style={{
+                fontFamily: "'Bricolage Grotesque', sans-serif",
+                fontWeight: 700,
+                fontSize: 32,
+                color: "var(--accent)",
+                marginBottom: 8,
+                letterSpacing: "-0.02em",
+              }}>Chat App</h1>
+              
+              <h2 style={{
+                fontFamily: "'Bricolage Grotesque', sans-serif",
+                fontWeight: 700,
+                fontSize: 28,
+                color: "var(--ink)",
+                marginBottom: 12,
+                letterSpacing: "-0.02em",
+              }}>Welcome Back!</h2>
+              
+              <p style={{ fontSize: 14, color: "var(--ink2)", marginBottom: 32, lineHeight: 1.5 }}>
+                Don't have an account?{" "}
+                <span 
+                  onClick={() => setPage("register")} 
+                  style={{ color: "var(--accent)", fontWeight: 500, cursor: "pointer", textDecoration: "underline" }}
+                >Create a new account now</span>, it's FREE! Takes less than a minute.
+              </p>
 
               <form onSubmit={handleLogin}>
                 <FormField
-                  label="Email or Username"
                   type="text"
-                  placeholder="you@company.com or username"
+                  placeholder="Email or Username"
                   value={formData.identifier}
                   onChange={e => setFormData({ ...formData, identifier: e.target.value })}
                   onFocus={() => setFocused("identifier")}
@@ -275,58 +287,38 @@ function Login({ setPage, dark, setDark, setUser }) {
                   focused={focused === "identifier"}
                 />
 
-                <div style={{ marginBottom: 20 }}>
-                  <label style={{ display: "block", fontSize: 11, fontWeight: 500, letterSpacing: "0.06em", color: "var(--ink2)", marginBottom: 6, textTransform: "uppercase" }}>Password</label>
-                  <div style={{ position: "relative" }}>
-                    <input
-                      type={showPw ? "text" : "password"}
-                      placeholder="Your password"
-                      value={formData.password}
-                      onChange={e => setFormData({ ...formData, password: e.target.value })}
-                      onFocus={() => setFocused("password")}
-                      onBlur={() => setFocused(null)}
-                      required
-                      style={{
-                        width: "100%", padding: "11px 44px 11px 14px",
-                        background: focused === "password" ? "var(--card)" : "var(--bg2)",
-                        border: `1.5px solid ${focused === "password" ? "var(--accent)" : "var(--border)"}`,
-                        borderRadius: "var(--rs)",
-                        fontFamily: "'Inter', sans-serif",
-                        fontSize: 14, color: "var(--ink)",
-                        outline: "none",
-                        boxShadow: focused === "password" ? "0 0 0 4px rgba(26,86,240,0.08)" : "none",
-                        transition: "all 0.2s",
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPw(p => !p)}
-                      style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--ink3)", display: "flex", alignItems: "center" }}
-                    >
-                      {showPw ? "Hide" : "Show"}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Remember Me Checkbox */}
-                <div style={{ 
-                  display: "flex", 
-                  alignItems: "center", 
-                  gap: "8px", 
-                  marginBottom: "16px",
-                  fontSize: "13px",
-                  color: "var(--ink2)"
-                }}>
-                  <input 
-                    type="checkbox" 
-                    id="rememberMe"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    style={{ cursor: "pointer" }}
+                <div style={{ position: "relative", marginBottom: 24 }}>
+                  <input
+                    type={showPw ? "text" : "password"}
+                    placeholder="Password"
+                    value={formData.password}
+                    onChange={e => setFormData({ ...formData, password: e.target.value })}
+                    onFocus={() => setFocused("password")}
+                    onBlur={() => setFocused(null)}
+                    required
+                    style={{
+                      width: "100%", padding: "12px 50px 12px 0",
+                      background: "transparent",
+                      border: "none",
+                      borderBottom: `2px solid ${focused === "password" ? "var(--accent)" : "var(--border)"}`,
+                      fontFamily: "'Inter', sans-serif",
+                      fontSize: 15, color: "var(--ink)",
+                      outline: "none",
+                      transition: "border-color 0.2s",
+                    }}
                   />
-                  <label htmlFor="rememberMe" style={{ cursor: "pointer", fontWeight: 500 }}>
-                    Remember me on this device
-                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowPw(p => !p)}
+                    style={{ 
+                      position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", 
+                      background: "none", border: "none", cursor: "pointer", 
+                      color: "var(--ink3)", fontSize: 13, fontWeight: 500,
+                      display: "flex", alignItems: "center" 
+                    }}
+                  >
+                    {showPw ? "Hide" : "Show"}
+                  </button>
                 </div>
 
                 {/* Aesthetic Error Reminder */}
@@ -339,7 +331,7 @@ function Login({ setPage, dark, setDark, setUser }) {
                     borderRadius: "var(--rs)", 
                     fontSize: "12px", 
                     fontWeight: 500, 
-                    marginBottom: "14px",
+                    marginBottom: "16px",
                     display: "flex",
                     alignItems: "center",
                     gap: "8px",
@@ -354,32 +346,54 @@ function Login({ setPage, dark, setDark, setUser }) {
                   type="submit"
                   disabled={btnState !== "idle"}
                   style={{
-                    width: "100%", padding: "13px",
+                    width: "100%", padding: "14px",
                     background: btnState === "success" ? "#16a34a" : "var(--accent)",
                     color: "#fff", border: "none",
-                    borderRadius: "var(--rs)",
-                    fontFamily: "'Bricolage Grotesque', sans-serif",
-                    fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em",
+                    borderRadius: 8,
+                    fontFamily: "'Inter', sans-serif",
+                    fontSize: 15, fontWeight: 600,
                     cursor: btnState !== "idle" ? "not-allowed" : "pointer",
                     opacity: btnState === "loading" ? 0.85 : 1,
                     transition: "background 0.25s, transform 0.15s",
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    marginBottom: 16,
                   }}
                 >
                   {btnContent()}
                 </button>
               </form>
 
-              <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "20px 0" }}>
-                <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
-                <span style={{ fontSize: 11, fontWeight: 500, color: "var(--ink3)", textTransform: "uppercase" }}>or</span>
-                <div style={{ flex: 1, height: 1, background: "var(--border)" }} />
-              </div>
+              {/* Google Login Button */}
+              <button
+                disabled
+                style={{
+                  width: "100%", padding: "14px",
+                  background: "transparent",
+                  color: "var(--ink2)",
+                  border: "1.5px solid var(--border)",
+                  borderRadius: 8,
+                  fontFamily: "'Inter', sans-serif",
+                  fontSize: 14, fontWeight: 500,
+                  cursor: "not-allowed",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  marginBottom: 20,
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                Login with Google — Coming Soon
+              </button>
 
-              <p style={{ textAlign: "center", fontSize: 13, color: "var(--ink3)" }}>
-                Don't have an account?{" "}
-                <span onClick={() => setPage("register")} style={{ color: "var(--accent)", fontWeight: 500, cursor: "pointer", textDecoration: "underline" }}>Sign up free</span>
-              </p>
+              {/* Footer Links */}
+              <div style={{ textAlign: "center" }}>
+                <p style={{ fontSize: 13, color: "var(--ink3)", marginBottom: 8 }}>
+                  Forget password? <span style={{ color: "var(--ink3)", fontWeight: 500 }}>Coming Soon</span>
+                </p>
+              </div>
             </div>
           </div>
 

@@ -114,14 +114,9 @@ function TrustItem({ icon, text, delay = 0 }) {
   );
 }
 
-function FormField({ label, type, placeholder, value, onChange, onFocus, onBlur, focused }) {
+function FormField({ type, placeholder, value, onChange, onFocus, onBlur, focused }) {
   return (
-    <div style={{ marginBottom: 14 }}>
-      <label style={{
-        display: "block", fontSize: 11, fontWeight: 500,
-        letterSpacing: "0.06em", color: "var(--ink2)",
-        marginBottom: 6, textTransform: "uppercase",
-      }}>{label}</label>
+    <div style={{ marginBottom: 24 }}>
       <input
         type={type}
         placeholder={placeholder}
@@ -131,15 +126,14 @@ function FormField({ label, type, placeholder, value, onChange, onFocus, onBlur,
         onBlur={onBlur}
         required
         style={{
-          width: "100%", padding: "11px 14px",
-          background: focused ? "var(--card)" : "var(--bg2)",
-          border: `1.5px solid ${focused ? "var(--accent)" : "var(--border)"}`,
-          borderRadius: "var(--rs)",
+          width: "100%", padding: "12px 0",
+          background: "transparent",
+          border: "none",
+          borderBottom: `2px solid ${focused ? "var(--accent)" : "var(--border)"}`,
           fontFamily: "'Inter', sans-serif",
-          fontSize: 14, color: "var(--ink)",
+          fontSize: 15, color: "var(--ink)",
           outline: "none",
-          boxShadow: focused ? "0 0 0 4px rgba(26,86,240,0.08)" : "none",
-          transition: "all 0.2s",
+          transition: "border-color 0.2s",
         }}
       />
     </div>
@@ -158,9 +152,9 @@ function Register({ setPage, dark, setDark }) {
   const [errorMsg, setErrorMsg] = useState("");
 
   // Breakpoints
-  const isMobile  = vw < 480;
-  const isTablet  = vw >= 480 && vw < 820;
-  const isDesktop = vw >= 820;
+  const isMobile  = vw < 900;
+  const isTablet  = vw >= 900 && vw < 1200;
+  const isDesktop = vw >= 1200;
 
   // ── handleRegister (your backend logic) ──────────────────────────────────
   const handleRegister = async (e) => {
@@ -233,9 +227,6 @@ function Register({ setPage, dark, setDark }) {
     </svg>
   );
 
-  // ── Responsive layout values ──────────────────────────────────────────────
-  const leftPad   = isMobile ? "24px 20px" : isTablet ? "32px 28px" : "56px 48px";
-  const rightPad  = isMobile ? "28px 20px" : isTablet ? "32px 28px" : "56px 48px";
 
   return (
     <>
@@ -252,19 +243,19 @@ function Register({ setPage, dark, setDark }) {
           overflow: "hidden",
         }}>
 
-          {/* LEFT PANEL - WELCOME (70% on desktop, full on mobile) */}
+          {/* LEFT PANEL - WELCOME (70% on desktop, hidden on mobile) */}
+          {!isMobile && (
           <div style={{
-            flex: isMobile ? "none" : "0 0 70%",
-            width: isMobile ? "100%" : "auto",
-            height: isMobile ? "auto" : "100%",
-            padding: leftPad,
+            flex: "0 0 70%",
+            width: "auto",
+            height: "100%",
+            padding: "56px 48px",
             background: "var(--card2)",
-            borderRight: isMobile ? "none" : "1px solid var(--border)",
-            borderBottom: isMobile ? "1px solid var(--border)" : "none",
+            borderRight: "1px solid var(--border)",
             display: "flex",
             flexDirection: "column",
             justifyContent: "space-between",
-            alignItems: isMobile ? "center" : "flex-start",
+            alignItems: "flex-start",
             transition: "background 0.3s, border-color 0.3s",
             overflow: "auto",
           }}>
@@ -350,18 +341,20 @@ function Register({ setPage, dark, setDark }) {
               </div>
             )}
           </div>
+          )}
 
           {/* RIGHT PANEL — FORM (30% on desktop, full on mobile) */}
           <div style={{
             flex: isMobile ? "1" : "0 0 30%",
             width: isMobile ? "100%" : "auto",
             height: isMobile ? "auto" : "100%",
-            padding: rightPad,
+            padding: isMobile ? "40px 24px" : "52px 48px",
             background: "var(--card)",
-            display: "flex", flexDirection: "column", justifyContent: "center",
+            display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center",
             transition: "background 0.3s",
             overflow: "auto",
           }}>
+            <div style={{ width: "100%", maxWidth: 439, margin: "0 auto" }}>
               <p style={{
                 fontSize: 10, fontWeight: 600, letterSpacing: "0.14em",
                 textTransform: "uppercase", color: "var(--ink3)", marginBottom: 10,
@@ -382,9 +375,8 @@ function Register({ setPage, dark, setDark }) {
               {/* Form */}
               <form onSubmit={handleRegister}>
                 <FormField
-                  label="Username"
                   type="text"
-                  placeholder="e.g. alex.morgan"
+                  placeholder="Username"
                   value={formData.username}
                   onChange={e => setFormData({ ...formData, username: e.target.value })}
                   onFocus={() => setFocused("username")}
@@ -392,9 +384,8 @@ function Register({ setPage, dark, setDark }) {
                   focused={focused === "username"}
                 />
                 <FormField
-                  label="Work Email"
                   type="email"
-                  placeholder="you@company.com"
+                  placeholder="Work Email"
                   value={formData.email}
                   onChange={e => setFormData({ ...formData, email: e.target.value })}
                   onFocus={() => setFocused("email")}
@@ -402,9 +393,8 @@ function Register({ setPage, dark, setDark }) {
                   focused={focused === "email"}
                 />
                 <FormField
-                  label="Password"
                   type="password"
-                  placeholder="Min. 8 characters"
+                  placeholder="Password (Min. 8 characters)"
                   value={formData.password}
                   onChange={e => setFormData({ ...formData, password: e.target.value })}
                   onFocus={() => setFocused("password")}
@@ -485,6 +475,7 @@ function Register({ setPage, dark, setDark }) {
                 {" "}and{" "}
                 <span style={{ textDecoration: "underline", cursor: "pointer" }}>Privacy Policy</span>
               </p>
+            </div>
           </div>
 
         </div>
