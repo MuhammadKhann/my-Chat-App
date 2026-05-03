@@ -205,7 +205,7 @@ function Login({ setPage, dark, setDark, setUser }) {
             flex: "0 0 70%",
             width: "auto",
             height: "100%",
-            padding: leftPad,
+            padding: "52px 48px",
             background: "var(--card2)",
             borderRight: "1px solid var(--border)",
             display: "flex",
