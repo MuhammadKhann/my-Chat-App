@@ -165,14 +165,16 @@ const LeftPanel = memo(({
   features = defaultFeatures,
   deployments = defaultDeployments,
   className = "",
+  disableScroll = false,
 }) => {
   return (
     <section
-      className={`h-full overflow-hidden transition-colors duration-300 ${className}`}
+      className={`${disableScroll ? "h-auto" : "h-full"} overflow-hidden transition-colors duration-300 ${className}`}
       style={{
         background: "var(--bg2)",
         color: "var(--ink)",
-        borderRight: "1px solid var(--border)"
+        borderRight: disableScroll ? "none" : "1px solid var(--border)",
+        borderTop: disableScroll ? "1px solid var(--border)" : "none",
       }}
     >
       <style>{`
@@ -180,7 +182,7 @@ const LeftPanel = memo(({
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
       {/* SCROLL CONTAINER */}
-      <div className="h-full overflow-y-auto scroll-smooth px-6 py-6 sm:px-10 lg:px-14 hide-scrollbar">
+      <div className={`h-full ${disableScroll ? "" : "overflow-y-auto"} scroll-smooth px-6 py-10 sm:px-10 lg:px-14 hide-scrollbar`}>
 
         {/* TOP CREATOR BADGE */}
         <div className="mb-8 flex items-center justify-between">
@@ -202,24 +204,13 @@ const LeftPanel = memo(({
           </span>
         </div>
 
-        {/* HEADER */}
-        <div className="flex items-center gap-3 mb-10">
-          <div 
-            className="h-10 w-10 flex items-center justify-center rounded-xl"
-            style={{ background: "var(--accent)" }}
-          >
-            <MessageSquare className="h-5 w-5 text-white" />
-          </div>
-          <span className="font-bold text-lg" style={{ color: "var(--ink)" }}>Chat App</span>
-        </div>
-
         {/* MAIN CONTENT */}
         <div className="space-y-10">
 
           {/* HEADLINE */}
           <div>
             <h1 
-              className="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight"
+              className="text-xl sm:text-2xl lg:text-3xl font-bold leading-tight"
               style={{ 
                 fontFamily: "'Bricolage Grotesque', sans-serif",
                 color: "var(--ink)"
@@ -476,7 +467,7 @@ function Login({ setPage, dark, setDark, setUser }) {
           flex: 1,
           display: "flex",
           flexDirection: isMobile ? "column" : "row",
-          overflow: "hidden",
+          overflow: isMobile ? "auto" : "hidden",
         }}>
 
           {/* LEFT PANEL - WELCOME (70% on desktop, hidden on mobile) */}
@@ -486,14 +477,14 @@ function Login({ setPage, dark, setDark, setUser }) {
 
           {/* RIGHT PANEL — FORM (30% on desktop, full on mobile) */}
           <div style={{
-            flex: isMobile ? "1" : "0 0 30%",
+            flex: isMobile ? "0 0 auto" : "0 0 30%",
             width: isMobile ? "100%" : "auto",
             height: isMobile ? "auto" : "100%",
             padding: isMobile ? "40px 24px" : "52px 48px",
             background: "var(--card)",
             display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center",
             transition: "background 0.3s",
-            overflow: "auto",
+            overflow: isMobile ? "visible" : "auto",
           }}>
             <div style={{ width: "100%", maxWidth: 439, margin: "0 auto" }}>
               {/* Title */}
@@ -679,6 +670,10 @@ function Login({ setPage, dark, setDark, setUser }) {
             </div>
           </div>
 
+          {/* MOBILE VIEW: LEFT PANEL AT BOTTOM */}
+          {isMobile && (
+            <LeftPanel className="w-full" disableScroll={true} />
+          )}
 
         </div>
       </div>
