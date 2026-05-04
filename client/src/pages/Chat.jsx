@@ -506,6 +506,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showBlockConfirm, setShowBlockConfirm] = useState(false);
   const [viewingMedia, setViewingMedia] = useState(null);
   const [viewingVideo, setViewingVideo] = useState(null);
   const [showThemeMenu, setShowThemeMenu] = useState(false);
@@ -2225,7 +2226,14 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                         {/* Block / Unblock */}
                         <div
                           className="theme-item"
-                          onClick={() => blockedUsers.has(selectedUser._id) ? handleUnblockUser(selectedUser._id) : handleBlockUser(selectedUser._id)}
+                          onClick={() => {
+                            if (blockedUsers.has(selectedUser._id)) {
+                              handleUnblockUser(selectedUser._id);
+                            } else {
+                              setShowBlockConfirm(true);
+                              setShowOptionsMenu(false);
+                            }
+                          }}
                           style={{
                             padding: "10px 12px", borderRadius: 8, display: "flex",
                             alignItems: "center", gap: 10, color: "var(--ink)"
@@ -2942,6 +2950,63 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
           </div>
         </div>
       )}
+      {/* Block User Confirmation Modal */}
+      {showBlockConfirm && (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 9999,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)",
+          animation: "fadeIn 0.2s ease", padding: 20
+        }}>
+          <div style={{
+            background: "var(--card)",
+            width: "100%", maxWidth: 360,
+            borderRadius: 16,
+            padding: 24,
+            boxShadow: "0 10px 30px rgba(0,0,0,0.2)",
+            border: "1px solid var(--border)",
+            animation: "rise 0.2s ease"
+          }}>
+            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8, color: "var(--ink)" }}>Block User?</h3>
+            <p style={{ fontSize: 14, color: "var(--ink3)", lineHeight: 1.5, marginBottom: 24 }}>
+              Are you sure you want to block <span style={{ fontWeight: 600, color: "var(--ink)" }}>{selectedUser?.username}</span>? They will no longer be able to message you or see your online status.
+            </p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button
+                onClick={() => setShowBlockConfirm(false)}
+                style={{
+                  padding: "10px 18px", borderRadius: 10,
+                  background: "var(--bg2)", color: "var(--ink2)",
+                  fontSize: 13, fontWeight: 600, cursor: "pointer",
+                  border: "1px solid var(--border)",
+                  transition: "background 0.2s"
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  handleBlockUser(selectedUser._id);
+                  setShowBlockConfirm(false);
+                }}
+                style={{
+                  padding: "10px 18px", borderRadius: 10,
+                  background: "var(--accent)", color: "#fff",
+                  fontSize: 13, fontWeight: 600, cursor: "pointer",
+                  border: "none",
+                  boxShadow: "0 4px 12px var(--accent2)",
+                  transition: "opacity 0.2s"
+                }}
+                onMouseOver={(e) => e.currentTarget.style.opacity = "0.85"}
+                onMouseOut={(e) => e.currentTarget.style.opacity = "1"}
+              >
+                Block User
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Clear Chat Confirmation Modal */}
       {showClearConfirm && (
         <div style={{
