@@ -159,20 +159,34 @@ const socket = io(BACKEND_URL, {
 
 // ─── Small Avatar helper ──────────────────────────────────────────────────────
 function Avatar({ src, name, size = 38, border = false, accent = false }) {
+  const [imgError, setImgError] = React.useState(false);
   const s = {
     width: size, height: size, borderRadius: "50%", flexShrink: 0,
     objectFit: "cover",
     border: border ? `2px solid var(--accent)` : accent ? `2px solid var(--accent)` : "none",
   };
-  if (src) return <img src={src} alt={name} style={s} onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${name}&background=random`; }} />;
+  
+  if (src && !imgError) {
+    return (
+      <img 
+        src={src} 
+        alt={name} 
+        style={s} 
+        onError={() => setImgError(true)} 
+      />
+    );
+  }
+
   return (
     <div style={{
-      ...s, background: "var(--accent)",
+      ...s, 
+      background: "linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%)",
       display: "flex", alignItems: "center", justifyContent: "center",
-      color: "#fff", fontWeight: 600, fontSize: size * 0.38,
+      color: "#fff", fontWeight: 700, fontSize: size * 0.38,
       letterSpacing: "-0.01em",
+      boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
     }}>
-      {name?.[0]?.toUpperCase()}
+      {name?.[0]?.toUpperCase() || "?"}
     </div>
   );
 }
@@ -1903,21 +1917,22 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
             {["chats", "search"].map((tab) => (
               <button
                 key={tab}
-                className="tab-btn"
+                className={activeTab === tab ? "gradient-btn" : "tab-btn"}
                 onClick={() => setActiveTab(tab)}
                 style={{
                   flex: 1, padding: "8px 0",
                   background: activeTab === tab
-                    ? "color-mix(in srgb, var(--accent) 14%, transparent)"
+                    ? "linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%)"
                     : "transparent",
                   border: "none",
                   borderRadius: 8,
                   cursor: "pointer",
-                  fontSize: 12, fontWeight: 600,
-                  color: activeTab === tab ? "var(--accent)" : "var(--ink3)",
+                  fontSize: 12, fontWeight: 700,
+                  color: activeTab === tab ? "#fff" : "var(--ink3)",
                   textTransform: "capitalize",
                   letterSpacing: "0.02em",
-                  transition: "background 0.15s, color 0.15s",
+                  transition: "all 0.2s",
+                  boxShadow: activeTab === tab ? "0 2px 8px rgba(0,0,0,0.12)" : "none",
                 }}
               >
                 {tab === "chats" ? "Chats" : "Search"}
@@ -2057,11 +2072,13 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                             </span>
                             {chat.unreadCount > 0 && (
                               <div style={{
-                                background: "var(--accent)", color: "#fff",
-                                fontSize: 10, fontWeight: 700,
+                                background: "linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%)",
+                                color: "#fff",
+                                fontSize: 10, fontWeight: 800,
                                 width: 20, height: 20, borderRadius: "50%",
                                 display: "flex", alignItems: "center", justifyContent: "center",
                                 flexShrink: 0,
+                                boxShadow: "0 2px 6px rgba(0,0,0,0.2)",
                               }}>
                                 {chat.unreadCount > 9 ? "9+" : chat.unreadCount}
                               </div>
@@ -2130,7 +2147,14 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                     )}
                   </div>
                   <div>
-                    <div style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>{selectedUser?.username}</div>
+                    <div style={{ 
+                      fontSize: 14, fontWeight: 700, 
+                      background: "linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%)",
+                      WebkitBackgroundClip: "text",
+                      WebkitTextFillColor: "transparent",
+                    }}>
+                      {selectedUser?.username}
+                    </div>
                     <div style={{ fontSize: 11, color: onlineUsers.has(selectedUser._id) ? "#22c55e" : "var(--ink3)" }}>
                       {onlineUsers.has(selectedUser._id) ? "Online" : "Offline"}
                     </div>
@@ -2142,17 +2166,14 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                   <button
                     onClick={() => initiateCall('audio')}
                     title="Start Audio Call"
-                    className="nav-icon-btn"
+                    className="gradient-btn"
                     style={{
                       height: 34, width: 34, justifyContent: "center",
                       borderRadius: 9,
-                      color: "var(--accent)", border: "1px solid var(--border)", cursor: "pointer",
+                      color: "#fff", border: "none", cursor: "pointer",
                       display: "flex", alignItems: "center",
-                      background: "var(--bg2)",
-                      transition: "all 0.2s",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
                     }}
-                    onMouseOver={(e) => { e.currentTarget.style.background = "var(--accent)"; e.currentTarget.style.color = "#fff"; }}
-                    onMouseOut={(e) => { e.currentTarget.style.background = "var(--bg2)"; e.currentTarget.style.color = "var(--accent)"; }}
                   >
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.79 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l2.27-2.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
@@ -2428,16 +2449,29 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                               href={api(`/api/uploads/download?url=${encodeURIComponent(msg.fileUrl)}&filename=${encodeURIComponent(msg.fileName || 'document.pdf')}`)}
                               style={{
                                 display: "flex", alignItems: "center", gap: 8,
-                                color: isMe ? "rgba(255,255,255,0.9)" : "var(--accent)",
+                                color: isMe ? "rgba(255,255,255,0.95)" : "var(--ink)",
                                 textDecoration: "none",
                                 background: isMe ? "rgba(255,255,255,0.12)" : "var(--bg2)",
-                                padding: "9px 12px", borderRadius: 9, fontSize: 13, fontWeight: 500,
+                                padding: "9px 12px", borderRadius: 9, fontSize: 13, fontWeight: 700,
+                                border: isMe ? "1px solid rgba(255,255,255,0.2)" : "1px solid var(--border)",
                               }}
                             >
-                              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z" /><polyline points="13 2 13 9 20 9" />
-                              </svg>
-                              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              <div style={{
+                                width: 28, height: 28, borderRadius: 6,
+                                background: isMe ? "rgba(255,255,255,0.2)" : "linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%)",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                flexShrink: 0
+                              }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={isMe ? "#fff" : "#fff"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z" /><polyline points="13 2 13 9 20 9" />
+                                </svg>
+                              </div>
+                              <span style={{ 
+                                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                                background: isMe ? "none" : "linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%)",
+                                WebkitBackgroundClip: isMe ? "none" : "text",
+                                WebkitTextFillColor: isMe ? "inherit" : "transparent",
+                              }}>
                                 {msg.fileName || "Download Document"}
                               </span>
                             </a>
