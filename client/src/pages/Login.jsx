@@ -68,7 +68,9 @@ const defaultDeployments = [];
 function InfoPill({ icon: Icon, children, href }) {
   const content = (
     <>
-      <Icon className="h-4 w-4" style={{ color: "var(--accent)" }} />
+      <div className="premium-text-gradient">
+        <Icon className="h-4 w-4" />
+      </div>
       <span>{children}</span>
     </>
   );
@@ -200,6 +202,12 @@ const LeftPanel = memo(({
         .premium-gradient {
           background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
         }
+        .premium-text-gradient {
+          background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
       `}</style>
       {/* SCROLL CONTAINER */}
       <div className={`h-full ${disableScroll ? "" : "overflow-y-auto"} scroll-smooth px-6 py-10 sm:px-10 lg:px-14 hide-scrollbar`}>
@@ -239,7 +247,7 @@ const LeftPanel = memo(({
               {headline.split("\n").map((line, i) => (
                 <span key={i} className="block">
                   {i === 1 ? (
-                    <span className="premium-gradient inline-block bg-clip-text text-transparent" style={{ WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
+                    <span className="premium-text-gradient inline-block">
                       {line}
                     </span>
                   ) : (
@@ -272,8 +280,8 @@ const LeftPanel = memo(({
                 <ul key={colIndex} className="space-y-4">
                   {features.slice(colIndex * 4, colIndex * 4 + 4).map((f) => (
                     <li key={f.label} className="flex items-start gap-3 group">
-                      <div className="mt-1">
-                        <f.icon className="h-3.5 w-3.5 opacity-60 group-hover:opacity-100 transition-opacity" style={{ color: "var(--accent)" }} />
+                      <div className="mt-1 premium-text-gradient">
+                        <f.icon className="h-3.5 w-3.5 opacity-80 group-hover:opacity-100 transition-opacity" />
                       </div>
                       <span className="text-[12px] font-medium leading-tight" style={{ color: "var(--ink2)" }}>{f.label}</span>
                     </li>
@@ -556,13 +564,13 @@ function Login({ setPage, dark, setDark, setUser, themeId, setThemeId }) {
           }}>
             <div style={{ width: "100%", maxWidth: 439, margin: "0 auto" }}>
               {/* Title */}
-              <h1 style={{
+              <h1 className="premium-text-gradient" style={{
                 fontFamily: "'Bricolage Grotesque', sans-serif",
                 fontWeight: 700,
                 fontSize: 32,
-                color: "var(--accent)",
                 marginBottom: 8,
                 letterSpacing: "-0.02em",
+                display: "inline-block"
               }}>Chat App</h1>
               
               <h2 style={{
@@ -675,19 +683,22 @@ function Login({ setPage, dark, setDark, setUser, themeId, setThemeId }) {
                 <button
                   type="submit"
                   disabled={btnState !== "idle"}
+                  className="premium-gradient"
                   style={{
                     width: "100%", padding: "14px",
-                    background: btnState === "success" ? "#16a34a" : "var(--accent)",
                     color: "#fff", border: "none",
                     borderRadius: 8,
                     fontFamily: "'Inter', sans-serif",
-                    fontSize: 15, fontWeight: 600,
+                    fontSize: 15, fontWeight: 700,
                     cursor: btnState !== "idle" ? "not-allowed" : "pointer",
                     opacity: btnState === "loading" ? 0.85 : 1,
-                    transition: "background 0.25s, transform 0.15s",
+                    transition: "transform 0.15s, opacity 0.15s",
                     display: "flex", alignItems: "center", justifyContent: "center",
                     marginBottom: 16,
+                    boxShadow: "0 4px 15px -5px var(--accent)",
                   }}
+                  onMouseOver={e => { if (btnState === "idle") e.currentTarget.style.transform = "translateY(-1px)"; }}
+                  onMouseOut={e => { e.currentTarget.style.transform = "translateY(0)"; }}
                 >
                   {btnContent()}
                 </button>
