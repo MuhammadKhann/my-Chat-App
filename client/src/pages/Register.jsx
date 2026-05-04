@@ -455,7 +455,7 @@ function Register({ setPage, dark, setDark, themeId, setThemeId }) {
     setBtnState("loading");
 
     try {
-        const response = await fetch(api("/register"), {
+        const response = await fetch(api("/api/auth/register"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             credentials: 'include',
