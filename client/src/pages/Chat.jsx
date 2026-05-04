@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import EmojiPicker from 'emoji-picker-react';
 import io from "socket.io-client";
 import Peer from "simple-peer";
+import { Palette } from "lucide-react";
 import { THEMES } from "../components/GlobalStyles";
 import { BACKEND_URL, api, fetchWithAuth } from "../services/api";
 import { sounds } from "../services/soundService";
@@ -1659,9 +1660,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
               onClick={() => { setShowThemeMenu(!showThemeMenu); setShowPrivacyMenu(false); }}
               title="Change Theme"
             >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z" />
-              </svg>
+              <Palette size={15} strokeWidth={2} />
             </button>
 
             {showThemeMenu && (
