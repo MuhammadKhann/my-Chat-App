@@ -186,7 +186,7 @@ const LeftPanel = memo(({
 }) => {
   return (
     <section
-      className={`${disableScroll ? "h-auto" : "h-full"} overflow-hidden transition-colors duration-300 ${className}`}
+      className={`${disableScroll ? "h-auto" : "h-full"} transition-colors duration-300 ${className}`}
       style={{
         background: "var(--bg2)",
         color: "var(--ink)",
@@ -517,7 +517,7 @@ function Login({ setPage, dark, setDark, setUser, themeId, setThemeId }) {
 
   return (
     <>
-      <div style={{ height: "calc(var(--vh, 1vh) * 100)", display: "flex", flexDirection: "column", background: "var(--bg)", transition: "background 0.3s" }}>
+      <div style={{ minHeight: "calc(var(--vh, 1vh) * 100)", display: "flex", flexDirection: "column", background: "var(--bg)", transition: "background 0.3s" }}>
         
         {/* TOPBAR */}
         <TopBar dark={dark} onToggle={() => setDark(!dark)} themeId={themeId} setThemeId={setThemeId} />
@@ -527,7 +527,7 @@ function Login({ setPage, dark, setDark, setUser, themeId, setThemeId }) {
           flex: 1,
           display: "flex",
           flexDirection: isMobile ? "column" : "row",
-          overflow: isMobile ? "auto" : "hidden",
+          overflow: "auto",
         }}>
 
           {/* LEFT PANEL - WELCOME (70% on desktop, hidden on mobile) */}

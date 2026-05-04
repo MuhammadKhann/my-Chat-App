@@ -43,7 +43,7 @@ const ChatStyles = () => (
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     html, body, #root {
-      height: 100%;
+      min-height: 100%;
       font-family: 'DM Sans', sans-serif;
       -webkit-font-smoothing: antialiased;
     }
@@ -1573,11 +1573,11 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   // ─── JSX ────────────────────────────────────────────────────────────────────
   return (
     <div style={{
-      height: "calc(var(--vh, 1vh) * 100)", display: "flex", flexDirection: "column",
+      minHeight: "calc(var(--vh, 1vh) * 100)", display: "flex", flexDirection: "column",
       background: "var(--bg)", color: "var(--ink)",
       transition: "background 0.3s, color 0.3s",
       fontFamily: "'DM Sans', sans-serif",
-      overflow: "hidden", position: "fixed", width: "100%", top: 0, left: 0,
+      overflow: "auto", width: "100%",
     }}>
       <ChatStyles />
 
@@ -1591,6 +1591,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
         borderBottom: "1px solid var(--border)",
         flexShrink: 0,
         gap: 12,
+        position: "sticky", top: 0, zIndex: 1000,
       }}>
 
         {/* LEFT — logo + user identity */}
@@ -1820,7 +1821,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       {/* ══════════════════════════════════════════════════════════════════
           MAIN LAYOUT — sidebar + chat window
       ══════════════════════════════════════════════════════════════════ */}
-      <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative" }}>
+      <div style={{ flex: 1, display: "flex", overflow: "auto", position: "relative" }}>
 
 
 

@@ -264,7 +264,7 @@ function Register({ setPage, dark, setDark, themeId, setThemeId }) {
 
   return (
     <>
-      <div style={{ height: "calc(var(--vh, 1vh) * 100)", display: "flex", flexDirection: "column", background: "var(--bg)", transition: "background 0.3s" }}>
+      <div style={{ minHeight: "calc(var(--vh, 1vh) * 100)", display: "flex", flexDirection: "column", background: "var(--bg)", transition: "background 0.3s" }}>
         
         {/* TopBar */}
         <TopBar dark={dark} onToggle={() => setDark(!dark)} />
@@ -274,7 +274,7 @@ function Register({ setPage, dark, setDark, themeId, setThemeId }) {
           flex: 1,
           display: "flex",
           flexDirection: isMobile ? "column" : "row",
-          overflow: "hidden",
+          overflow: "auto",
         }}>
 
           {/* LEFT PANEL - WELCOME (70% on desktop, hidden on mobile) */}
