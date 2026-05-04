@@ -464,6 +464,7 @@ function SmartVideo({ src, onClick, isMe }) {
       style={{
         position: "relative",
         width: 250,
+        height: 180,
         borderRadius: 12,
         overflow: "hidden",
         border: isMe ? "1px solid rgba(255,255,255,0.15)" : "1px solid var(--border)",
@@ -474,7 +475,7 @@ function SmartVideo({ src, onClick, isMe }) {
       <video
         src={src}
         preload="metadata"
-        style={{ display: "block", width: "100%", objectFit: "cover", opacity: 0.8 }}
+        style={{ display: "block", width: "100%", height: "100%", objectFit: "cover", opacity: 0.8 }}
       />
       <div style={{
         position: "absolute", top: "50%", left: "50%",
