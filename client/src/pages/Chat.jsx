@@ -541,7 +541,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   useEffect(() => {
     const fetchBlockedUsers = async () => {
       try {
-        const res = await fetchWithAuth(api("/privacy/blocked"));
+        const res = await fetchWithAuth(api("/api/users/privacy/blocked"));
         if (res.ok) {
           const data = await res.json();
           setBlockedUsers(new Set(data));
@@ -555,7 +555,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
 
   const handleBlockUser = async (targetId) => {
     try {
-      const res = await fetchWithAuth(api(`/privacy/block/${targetId}`), { method: "POST" });
+      const res = await fetchWithAuth(api(`/api/users/privacy/block/${targetId}`), { method: "POST" });
       if (res.ok) {
         setBlockedUsers(prev => new Set(prev).add(targetId));
         setShowOptionsMenu(false);
@@ -567,7 +567,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
 
   const handleUnblockUser = async (targetId) => {
     try {
-      const res = await fetchWithAuth(api(`/privacy/unblock/${targetId}`), { method: "POST" });
+      const res = await fetchWithAuth(api(`/api/users/privacy/unblock/${targetId}`), { method: "POST" });
       if (res.ok) {
         setBlockedUsers(prev => {
           const next = new Set(prev);
