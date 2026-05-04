@@ -8,16 +8,20 @@ class SoundService {
   }
 
   init() {
-    if (!this.audioCtx) {
-      const AudioContext = window.AudioContext || window.webkitAudioContext;
-      if (!AudioContext) return;
-      this.audioCtx = new AudioContext();
-      this.masterGain = this.audioCtx.createGain();
-      this.masterGain.connect(this.audioCtx.destination);
-      this.masterGain.gain.value = 0.3;
-    }
-    if (this.audioCtx.state === 'suspended') {
-      this.audioCtx.resume().catch(() => {});
+    try {
+      if (!this.audioCtx) {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContext) return;
+        this.audioCtx = new AudioContext();
+        this.masterGain = this.audioCtx.createGain();
+        this.masterGain.connect(this.audioCtx.destination);
+        this.masterGain.gain.value = 0.3;
+      }
+      if (this.audioCtx.state === 'suspended') {
+        this.audioCtx.resume().catch(() => {});
+      }
+    } catch (e) {
+      // Defer initialization until a user gesture occurs
     }
   }
 
