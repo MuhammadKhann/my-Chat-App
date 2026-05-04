@@ -462,6 +462,7 @@ function Login({ setPage, dark, setDark, setUser, themeId, setThemeId }) {
   const [showPw, setShowPw]     = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [comingSoon, setComingSoon] = useState(null);
   const [googlePending, setGooglePending] = useState(null);
   const [googleUsername, setGoogleUsername] = useState("");
   const [googleErrorMsg, setGoogleErrorMsg] = useState("");
