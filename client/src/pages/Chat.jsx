@@ -611,6 +611,43 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
     return () => window.removeEventListener("resize", handleResize);
   }, [selectedUser]);
 
+  // Keyboard detection for mobile - only when chat is open
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+  
+  useEffect(() => {
+    if (!isMobile || !selectedUser) {
+      setKeyboardHeight(0);
+      setIsKeyboardOpen(false);
+      return;
+    }
+    
+    const handleVisualViewportChange = () => {
+      const viewport = window.visualViewport;
+      if (!viewport) return;
+      
+      const windowHeight = window.innerHeight;
+      const viewportHeight = viewport.height;
+      const heightDiff = windowHeight - viewportHeight;
+      
+      // Keyboard is open if height difference is significant (>150px)
+      const keyboardOpen = heightDiff > 150;
+      setIsKeyboardOpen(keyboardOpen);
+      setKeyboardHeight(keyboardOpen ? heightDiff : 0);
+    };
+    
+    window.visualViewport?.addEventListener("resize", handleVisualViewportChange);
+    window.visualViewport?.addEventListener("scroll", handleVisualViewportChange);
+    
+    // Initial check
+    handleVisualViewportChange();
+    
+    return () => {
+      window.visualViewport?.removeEventListener("resize", handleVisualViewportChange);
+      window.visualViewport?.removeEventListener("scroll", handleVisualViewportChange);
+    };
+  }, [isMobile, selectedUser]);
+
   const [message, setMessage] = useState("");
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const emojiPickerRef = useRef(null);
@@ -2557,11 +2594,12 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
 
               {/* ── Input Area ── */}
               <div style={{
-                padding: "12px 16px 16px",
+                padding: isKeyboardOpen ? "8px 12px" : "12px 16px 16px",
                 borderTop: "1px solid var(--border)",
                 background: "var(--card)",
                 flexShrink: 0,
                 position: "relative",
+                transition: "padding 0.2s ease",
               }}>
                 {showEmojiPicker && (
                   <div

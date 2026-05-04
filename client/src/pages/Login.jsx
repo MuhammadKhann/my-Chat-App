@@ -233,7 +233,7 @@ const LeftPanel = memo(({
             <div>
               <p className="text-xs font-medium opacity-60" style={{ color: "var(--ink3)" }}>Created By</p>
               <p className="text-lg font-bold" style={{ color: "var(--ink)" }}>{name}</p>
-              <p className="text-xs font-medium opacity-60" style={{ color: "var(--ink3)" }}>Full Stack Developer</p>
+              <p className="text-xs font-medium opacity-60" style={{ color: "var(--ink3)" }}>Junior Full Stack Developer</p>
             </div>
           </div>
 
