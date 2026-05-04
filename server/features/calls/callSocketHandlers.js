@@ -1,9 +1,17 @@
-const { onlineUsers, privacyCache } = require('../../utils/onlineState');
+const { onlineUsers, privacyCache, blockCache } = require('../../utils/onlineState');
 
 const setupCallHandlers = (io, socket) => {
     // 1. Caller initiates the ring
     socket.on("call_user", ({ userToCall, signalData, from, callerName, callType }) => {
         console.log(`📞 CALL REQUEST: ${callerName} (${from}) → ${userToCall} [Type: ${callType || 'video'}]`);
+
+        // Isolation: Check if target has blocked the caller
+        if (blockCache.get(userToCall)?.has(from)) {
+            console.log(`🚫 BLOCK: ${userToCall} blocked ${from}. Call rejected.`);
+            // Silently fail or send error? Let's send a generic error to match isolation.
+            socket.emit("call_error", { error: "User is unavailable" });
+            return;
+        }
 
         // Debug: Check rooms
         const rooms = Array.from(socket.rooms);

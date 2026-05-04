@@ -1,13 +1,17 @@
 const mongoose = require('mongoose');
 const Message = require('../../models/Message');
 const User = require('../../models/User');
-const { onlineUsers, privacyCache } = require('../../utils/onlineState');
+const { onlineUsers, privacyCache, blockCache } = require('../../utils/onlineState');
 
 // Helper: Get list of online users that should be visible to others
 // (excludes users with hide_online or ghost privacy settings)
-const getVisibleOnlineUsers = () => {
+const getVisibleOnlineUsers = (requestingUserId) => {
     const visible = [];
     for (const [userId] of onlineUsers) {
+        // Strict Isolation: If userId has blocked requestingUserId, don't show them online
+        const userBlockedRequestor = blockCache.get(userId)?.has(requestingUserId);
+        if (userBlockedRequestor) continue;
+
         const privacyLevel = privacyCache.get(userId);
         // Only show users with standard or hide_read privacy (not hide_online or ghost)
         if (!privacyLevel || privacyLevel === 'standard' || privacyLevel === 'hide_read') {
@@ -26,15 +30,25 @@ const setupMessageHandlers = (io, socket) => {
         const user = await User.findById(userId);
         if (user) {
             privacyCache.set(userId, user.privacyLevel);
+            if (user.blockedUsers && user.blockedUsers.length > 0) {
+                blockCache.set(userId, new Set(user.blockedUsers.map(id => id.toString())));
+            }
         }
 
         const level = privacyCache.get(userId);
         if (!level || level === 'standard') {
             onlineUsers.set(userId, socket.id);
-            io.emit("user_status_change", { userId, isOnline: true });
+            // Notify others, but respect isolation
+            for (const [otherUserId, otherSocketId] of onlineUsers) {
+                if (otherUserId === userId) continue;
+                // If userId has blocked otherUserId, don't notify them
+                if (blockCache.get(userId)?.has(otherUserId)) continue;
+                
+                io.to(otherSocketId).emit("user_status_change", { userId, isOnline: true });
+            }
         }
 
-        socket.emit("online_users_list", getVisibleOnlineUsers());
+        socket.emit("online_users_list", getVisibleOnlineUsers(userId));
 
         try {
             const pendingMessages = await Message.find({ receiver: userId, status: 'sent' });
@@ -67,6 +81,9 @@ const setupMessageHandlers = (io, socket) => {
             const user = await User.findById(userId);
             if (user) {
                 privacyCache.set(userId, user.privacyLevel);
+                if (user.blockedUsers && user.blockedUsers.length > 0) {
+                    blockCache.set(userId, new Set(user.blockedUsers.map(id => id.toString())));
+                }
                 console.log(`✅ User ${userId} privacy level: ${user.privacyLevel}`);
             } else {
                 console.log(`⚠️ User ${userId} not found in DB`);
@@ -77,14 +94,19 @@ const setupMessageHandlers = (io, socket) => {
             
             if (!level || level === 'standard') {
                 onlineUsers.set(userId, socket.id);
-                io.emit("user_status_change", { userId, isOnline: true });
+                // Notify others, but respect isolation
+                for (const [otherUserId, otherSocketId] of onlineUsers) {
+                    if (otherUserId === userId) continue;
+                    if (blockCache.get(userId)?.has(otherUserId)) continue;
+                    io.to(otherSocketId).emit("user_status_change", { userId, isOnline: true });
+                }
                 console.log(`✅ User ${userId} added to onlineUsers, socket: ${socket.id}`);
             } else {
                 console.log(`🔒 User ${userId} not added (privacy: ${level})`);
             }
 
             console.log(`📊 Total online users: ${onlineUsers.size}`);
-            socket.emit("online_users_list", getVisibleOnlineUsers());
+            socket.emit("online_users_list", getVisibleOnlineUsers(userId));
 
             const pendingMessages = await Message.find({ receiver: userId, status: 'sent' });
             console.log(`📨 ${pendingMessages.length} pending messages for ${userId}`);
@@ -131,6 +153,34 @@ const setupMessageHandlers = (io, socket) => {
                 socket.emit("send_error", { error: "Invalid user ID format" });
                 return;
             }
+
+            // --- BLOCK ISOLATION ---
+            const receiverBlockedSender = blockCache.get(receiverId.toString())?.has(senderId.toString());
+            if (receiverBlockedSender) {
+                console.log(`🚫 BLOCK: ${receiverId} blocked ${senderId}. Message dropped.`);
+                
+                // Send "You are blocked" system message back to the sender
+                const systemMsg = {
+                    _id: new mongoose.Types.ObjectId(),
+                    sender: receiverId, // Make it look like it's from the receiver or a system notice
+                    receiver: senderId,
+                    text: "You are blocked",
+                    room: data.room || [senderId.toString(), receiverId.toString()].sort().join("_"),
+                    status: "sent",
+                    isSystem: true, // Marker for frontend
+                    createdAt: new Date()
+                };
+
+                socket.emit("receive_message", systemMsg);
+                socket.emit("message_confirmed", {
+                    tempId: data.tempId,
+                    dbId: new mongoose.Types.ObjectId(),
+                    status: "sent",
+                    createdAt: systemMsg.createdAt
+                });
+                return;
+            }
+            // -----------------------
 
             const calculatedRoom = [senderId.toString(), receiverId.toString()].sort().join("_");
             const room = data.room || calculatedRoom;
@@ -197,6 +247,10 @@ const setupMessageHandlers = (io, socket) => {
 
     // Handle typing indicators
     socket.on("typing_start", (data) => {
+        // Isolation check
+        if (blockCache.get(data.receiver)?.has(data.senderId)) return;
+        if (blockCache.get(data.senderId)?.has(data.receiver)) return;
+
         const level = privacyCache.get(data.senderId);
         if (!level || level === 'standard') {
             socket.to(data.receiver).emit("user_typing", {
@@ -217,6 +271,9 @@ const setupMessageHandlers = (io, socket) => {
     socket.on("update_status", async ({ msgId, senderId, status, receiverId }) => {
         try {
             if (!msgId || !senderId || !receiverId || !status) return;
+
+            // Isolation: If receiver blocked sender, sender shouldn't get status updates
+            if (blockCache.get(receiverId)?.has(senderId)) return;
 
             const readerLevel = privacyCache.get(receiverId) || 'standard';
             let finalStatus = status;
@@ -252,6 +309,9 @@ const setupMessageHandlers = (io, socket) => {
     // Handle marking room as seen
     socket.on("mark_room_seen", async ({ room, userId, partnerId }) => {
         try {
+            // Isolation check
+            if (blockCache.get(userId)?.has(partnerId)) return;
+
             const readerLevel = privacyCache.get(userId) || 'standard';
             let finalStatus = 'seen';
 

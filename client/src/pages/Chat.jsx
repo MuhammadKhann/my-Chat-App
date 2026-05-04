@@ -510,10 +510,13 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   const [viewingVideo, setViewingVideo] = useState(null);
   const [showThemeMenu, setShowThemeMenu] = useState(false);
   const [showPrivacyMenu, setShowPrivacyMenu] = useState(false);
+  const [showOptionsMenu, setShowOptionsMenu] = useState(false);
+  const [blockedUsers, setBlockedUsers] = useState(new Set());
 
   // Refs for dropdown containers to detect click-outside
   const themeMenuRef = useRef(null);
   const privacyMenuRef = useRef(null);
+  const optionsMenuRef = useRef(null);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -524,6 +527,9 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       if (privacyMenuRef.current && !privacyMenuRef.current.contains(e.target)) {
         setShowPrivacyMenu(false);
       }
+      if (optionsMenuRef.current && !optionsMenuRef.current.contains(e.target)) {
+        setShowOptionsMenu(false);
+      }
       if (emojiPickerRef.current && !emojiPickerRef.current.contains(e.target)) {
         setShowEmojiPicker(false);
       }
@@ -531,6 +537,49 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    const fetchBlockedUsers = async () => {
+      try {
+        const res = await fetchWithAuth(api("/privacy/blocked"));
+        if (res.ok) {
+          const data = await res.json();
+          setBlockedUsers(new Set(data));
+        }
+      } catch (err) {
+        console.error("Failed to fetch blocked users", err);
+      }
+    };
+    fetchBlockedUsers();
+  }, []);
+
+  const handleBlockUser = async (targetId) => {
+    try {
+      const res = await fetchWithAuth(api(`/privacy/block/${targetId}`), { method: "POST" });
+      if (res.ok) {
+        setBlockedUsers(prev => new Set(prev).add(targetId));
+        setShowOptionsMenu(false);
+      }
+    } catch (err) {
+      console.error("Block failed", err);
+    }
+  };
+
+  const handleUnblockUser = async (targetId) => {
+    try {
+      const res = await fetchWithAuth(api(`/privacy/unblock/${targetId}`), { method: "POST" });
+      if (res.ok) {
+        setBlockedUsers(prev => {
+          const next = new Set(prev);
+          next.delete(targetId);
+          return next;
+        });
+        setShowOptionsMenu(false);
+      }
+    } catch (err) {
+      console.error("Unblock failed", err);
+    }
+  };
 
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
   const [isNarrowMobile, setIsNarrowMobile] = useState(window.innerWidth < 430);
@@ -905,11 +954,19 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
     socket.on("receive_message", (incomingMsg) => {
       const normalizedMsg = {
         ...incomingMsg,
-        sender: incomingMsg.sender || incomingMsg.senderId,
+        sender: (incomingMsg.sender || incomingMsg.senderId)?.toString(),
         timestamp: incomingMsg.timestamp || incomingMsg.createdAt || new Date().toISOString(),
         status: incomingMsg.status || "delivered"
       };
       const currentSelectedUser = selectedUserRef.current;
+
+      if (normalizedMsg.isSystem) {
+        if (currentSelectedUser && normalizedMsg.sender === currentSelectedUser._id) {
+          setChatHistory((prev) => [...prev, normalizedMsg]);
+        }
+        return;
+      }
+
       if (currentSelectedUser && normalizedMsg.sender === currentSelectedUser._id) {
         // Smart read receipts will upgrade to "seen" only when the message is
         // actually visible + tab focused + user recently interacted.
@@ -2123,17 +2180,67 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                     {isMobile ? null : "Video"}
                   </button>
 
-                  {/* Clear chat */}
-                  <button
-                    onClick={() => setShowClearConfirm(true)}
-                    title="Delete all messages"
-                    className="nav-icon-btn"
-                    style={{ color: "#ef4444" }}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2" />
-                    </svg>
-                  </button>
+                  {/* Options Menu (3 dots) */}
+                  <div ref={optionsMenuRef} style={{ position: "relative" }}>
+                    <button
+                      onClick={() => setShowOptionsMenu(!showOptionsMenu)}
+                      title="More Options"
+                      className="nav-icon-btn"
+                      style={{
+                        height: 34, width: 34, justifyContent: "center",
+                        borderRadius: 9,
+                        color: "var(--ink2)", border: "1px solid var(--border)", cursor: "pointer",
+                        display: "flex", alignItems: "center",
+                        background: "var(--bg2)",
+                        transition: "all 0.2s",
+                      }}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="1" /><circle cx="12" cy="5" r="1" /><circle cx="12" cy="19" r="1" />
+                      </svg>
+                    </button>
+
+                    {showOptionsMenu && (
+                      <div style={{
+                        position: "absolute", top: "calc(100% + 8px)", right: 0,
+                        width: 180, background: "var(--card)", border: "1px solid var(--border)",
+                        borderRadius: 12, boxShadow: "0 8px 30px rgba(0,0,0,0.15)",
+                        padding: 6, zIndex: 1000, overflow: "hidden"
+                      }}>
+                        {/* Clear Chat */}
+                        <div
+                          className="theme-item"
+                          onClick={() => { setShowClearConfirm(true); setShowOptionsMenu(false); }}
+                          style={{
+                            padding: "10px 12px", borderRadius: 8, display: "flex",
+                            alignItems: "center", gap: 10, color: "#ef4444"
+                          }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2" />
+                          </svg>
+                          <span style={{ fontSize: 13, fontWeight: 500 }}>Clear Chat</span>
+                        </div>
+
+                        {/* Block / Unblock */}
+                        <div
+                          className="theme-item"
+                          onClick={() => blockedUsers.has(selectedUser._id) ? handleUnblockUser(selectedUser._id) : handleBlockUser(selectedUser._id)}
+                          style={{
+                            padding: "10px 12px", borderRadius: 8, display: "flex",
+                            alignItems: "center", gap: 10, color: "var(--ink)"
+                          }}
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10" /><line x1="4.93" y1="4.93" x2="19.07" y2="19.07" />
+                          </svg>
+                          <span style={{ fontSize: 13, fontWeight: 500 }}>
+                            {blockedUsers.has(selectedUser._id) ? "Unblock User" : "Block User"}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 

@@ -47,6 +47,26 @@ function MessageBubble({
   onVideoClick,
   showAvatar = true 
 }) {
+  if (msg.isSystem) {
+    return (
+      <div style={{ display: "flex", justifyContent: "center", margin: "16px 0", width: "100%" }}>
+        <div style={{
+          padding: "6px 14px",
+          background: "rgba(0,0,0,0.05)",
+          color: "var(--ink3)",
+          fontSize: 12,
+          fontWeight: 500,
+          borderRadius: 20,
+          border: "1px solid var(--border)",
+          textTransform: "uppercase",
+          letterSpacing: "0.5px"
+        }}>
+          {msg.text}
+        </div>
+      </div>
+    );
+  }
+
   const isImage = msg.fileType?.startsWith('image/');
   const isVideo = msg.fileType?.startsWith('video/');
   const isAudio = msg.fileType?.startsWith('audio/');

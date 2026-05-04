@@ -90,6 +90,12 @@ const io = new Server(server, {
     pingInterval: 25000,
 });
 
+// Expose io to req
+app.use((req, res, next) => {
+    req.io = io;
+    next();
+});
+
 // Socket Authentication Middleware
 io.use(socketAuthMiddleware);
 

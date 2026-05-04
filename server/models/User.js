@@ -14,7 +14,8 @@ const UserSchema = new mongoose.Schema({
   theme: { type: String, default: "cosmic" },    // User's preferred theme
   darkMode: { type: Boolean, default: true },   // Dark mode preference
   requests: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }], // Pending requests
-  friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]   // Accepted connections
+  friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],   // Accepted connections
+  blockedUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }] // Blocked users
 });
 
 module.exports = mongoose.model('User', UserSchema);
