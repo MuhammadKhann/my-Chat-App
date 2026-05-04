@@ -68,9 +68,7 @@ const defaultDeployments = [];
 function InfoPill({ icon: Icon, children, href }) {
   const content = (
     <>
-      <div className="premium-text-gradient">
-        <Icon className="h-4 w-4" />
-      </div>
+      <Icon className="h-4 w-4" color="url(#theme-gradient)" />
       <span>{children}</span>
     </>
   );
@@ -209,6 +207,17 @@ const LeftPanel = memo(({
           background-clip: text;
         }
       `}</style>
+
+      {/* SVG Gradient Definition for Icons */}
+      <svg width="0" height="0" style={{ position: "absolute", visibility: "hidden" }}>
+        <defs>
+          <linearGradient id="theme-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="var(--gradient-start)" />
+            <stop offset="100%" stopColor="var(--gradient-end)" />
+          </linearGradient>
+        </defs>
+      </svg>
+
       {/* SCROLL CONTAINER */}
       <div className={`h-full ${disableScroll ? "" : "overflow-y-auto"} scroll-smooth px-6 py-10 sm:px-10 lg:px-14 hide-scrollbar`}>
 
@@ -216,9 +225,10 @@ const LeftPanel = memo(({
         <div className="mb-10 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div 
-              className="h-12 w-12 flex items-center justify-center rounded-2xl premium-gradient"
+              className="h-12 w-12 flex items-center justify-center rounded-2xl"
+              style={{ background: "var(--card2)", border: "1px solid var(--border)" }}
             >
-              <Code2 className="h-6 w-6 text-white" />
+              <Code2 className="h-6 w-6" color="url(#theme-gradient)" />
             </div>
             <div>
               <p className="text-xs font-medium opacity-60" style={{ color: "var(--ink3)" }}>Created By</p>
@@ -228,7 +238,7 @@ const LeftPanel = memo(({
           </div>
 
           <span className="hidden sm:flex items-center gap-2 text-xs" style={{ color: "var(--ink3)" }}>
-            <Sparkles className="h-4 w-4" style={{ color: "var(--accent)" }} />
+            <Sparkles className="h-4 w-4" color="url(#theme-gradient)" />
           </span>
         </div>
 
@@ -280,8 +290,8 @@ const LeftPanel = memo(({
                 <ul key={colIndex} className="space-y-4">
                   {features.slice(colIndex * 4, colIndex * 4 + 4).map((f) => (
                     <li key={f.label} className="flex items-start gap-3 group">
-                      <div className="mt-1 premium-text-gradient">
-                        <f.icon className="h-3.5 w-3.5 opacity-80 group-hover:opacity-100 transition-opacity" />
+                      <div className="mt-1">
+                        <f.icon className="h-3.5 w-3.5 opacity-80 group-hover:opacity-100 transition-opacity" color="url(#theme-gradient)" />
                       </div>
                       <span className="text-[12px] font-medium leading-tight" style={{ color: "var(--ink2)" }}>{f.label}</span>
                     </li>
