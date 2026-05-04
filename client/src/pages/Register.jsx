@@ -1,7 +1,113 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo } from "react";
 import { api } from "../services/api";
-import { Palette } from "lucide-react";
+import { Palette, Code2, MapPin, Mail, ExternalLink, Sparkles, MessageSquare, Video, Lock, Globe, Image, Layers, Smartphone, CheckCircle2, Zap, Search, ShieldCheck, Database, Cloud, Bell, Cpu } from "lucide-react";
 import ThemePicker from "../components/ThemePicker";
+
+/*
+UPDATED LEFT PANEL
+------------------
+✔ Scrollable panel (independent scroll)
+✔ Top creator badge (moved from bottom)
+✔ Safe for adding more sections (auto scroll)
+✔ Clean + production-ready
+*/
+
+const defaultTechStack = [
+  { name: "MongoDB", subtitle: "Database" },
+  { name: "Express.js", subtitle: "Backend" },
+  { name: "React", subtitle: "Frontend" },
+  { name: "Node.js", subtitle: "Runtime" },
+  { name: "Azure", subtitle: "Cloud", live: true },
+  { name: "Vercel", subtitle: "Edge", live: true },
+];
+
+const defaultFeatures = [
+  { label: "Real-time Messaging", icon: MessageSquare },
+  { label: "Voice & Video Calls", icon: Video },
+  { label: "End-to-End Encryption", icon: Lock },
+  { label: "Online Status Tracking", icon: Globe },
+  { label: "File & Image Sharing", icon: Image },
+  { label: "Multiple UI Themes", icon: Layers },
+  { label: "Responsive Interface", icon: Smartphone },
+  { label: "Message Receipts", icon: CheckCircle2 },
+  { label: "Typing Indicators", icon: Zap },
+  { label: "Global User Search", icon: Search },
+  { label: "JWT Secure Auth", icon: ShieldCheck },
+  { label: "Persistent History", icon: Database },
+  { label: "Smart Link Previews", icon: ExternalLink },
+  { label: "Secure Cloud Backup", icon: Cloud },
+  { label: "Real-time Alerts", icon: Bell },
+  { label: "High Performance", icon: Cpu },
+];
+
+const defaultDeployments = [];
+
+function InfoPill({ icon: Icon, children, href }) {
+  const content = (
+    <>
+      <Icon className="h-4 w-4" color="url(#theme-gradient)" />
+      <span>{children}</span>
+    </>
+  );
+
+  if (href) {
+    return (
+      <a 
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-2 rounded-full border px-4 py-2 text-xs sm:text-sm backdrop-blur transition hover:opacity-80 no-underline"
+        style={{
+          borderColor: "var(--border)",
+          background: "var(--card2)",
+          color: "var(--ink2)"
+        }}
+      >
+        {content}
+      </a>
+    );
+  }
+
+  return (
+    <div 
+      className="flex items-center gap-2 rounded-full border px-4 py-2 text-xs sm:text-sm backdrop-blur"
+      style={{
+        borderColor: "var(--border)",
+        background: "var(--card2)",
+        color: "var(--ink2)"
+      }}
+    >
+      {content}
+    </div>
+  );
+}
+
+function TechCard({ name, subtitle, live, isDarkBG }) {
+  return (
+    <div 
+      className="rounded-lg border p-3 transition-all duration-300 hover:shadow-md"
+      style={{
+        borderColor: isDarkBG ? "rgba(255,255,255,0.1)" : "var(--border)",
+        background: isDarkBG ? "rgba(255,255,255,0.05)" : "var(--card)",
+        backdropFilter: isDarkBG ? "blur(8px)" : "none",
+      }}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-xs font-bold" style={{ color: isDarkBG ? "#fff" : "var(--ink)" }}>{name}</h3>
+        {live && (
+          <div className="flex items-center gap-1">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+            </span>
+            <span className="text-[8px] font-bold uppercase tracking-tighter text-green-500">Live</span>
+          </div>
+        )}
+      </div>
+      <p className="text-[10px] mt-1 font-bold uppercase tracking-wider" style={{ color: isDarkBG ? "rgba(255,255,255,0.6)" : "var(--ink)" }}>{subtitle}</p>
+    </div>
+  );
+}
 
 // GlobalStyles and FontLoader are now imported in App.jsx
 
@@ -174,6 +280,158 @@ function FormField({ type, placeholder, value, onChange, onFocus, onBlur, focuse
   );
 }
 
+// ─── LeftPanel Component (from Login.jsx) ───────────────────────────────────
+const LeftPanel = memo(({
+  name = "Muhammad Bin Nasir",
+  description = "Computer Science student building scalable MERN applications.",
+  location = "Multan, Pakistan",
+  email = "Muhammad.243595@gmail.com",
+  linkedin = "https://www.linkedin.com/in/muhammad-bin-nasir-5b790b308/",
+  headline = "MERN stack\npractice project.",
+  techStack = defaultTechStack,
+  features = defaultFeatures,
+  deployments = defaultDeployments,
+  className = "",
+  disableScroll = false,
+}) => {
+  return (
+    <section
+      className={`${disableScroll ? "h-auto" : "h-full"} overflow-hidden transition-colors duration-300 ${className}`}
+      style={{
+        background: "var(--bg2)",
+        color: "var(--ink)",
+        borderRight: disableScroll ? "none" : "1px solid var(--border)",
+        borderTop: disableScroll ? "1px solid var(--border)" : "none",
+      }}
+    >
+      <style>{`
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .premium-gradient {
+          background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+        }
+        .premium-text-gradient {
+          background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+      `}</style>
+
+      {/* SVG Gradient Definition for Icons */}
+      <svg width="0" height="0" style={{ position: "absolute", visibility: "hidden" }}>
+        <defs>
+          <linearGradient id="theme-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="var(--gradient-start)" />
+            <stop offset="100%" stopColor="var(--gradient-end)" />
+          </linearGradient>
+        </defs>
+      </svg>
+
+      {/* SCROLL CONTAINER */}
+      <div className={`h-full ${disableScroll ? "" : "overflow-y-auto"} scroll-smooth px-6 py-10 sm:px-10 lg:px-14 hide-scrollbar`}>
+
+        {/* TOP CREATOR BADGE */}
+        <div className="mb-10 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div 
+              className="h-12 w-12 flex items-center justify-center rounded-2xl"
+              style={{ background: "var(--card2)", border: "1px solid var(--border)" }}
+            >
+              <Code2 className="h-6 w-6" color="url(#theme-gradient)" />
+            </div>
+            <div>
+              <p className="text-xs font-medium opacity-60" style={{ color: "var(--ink3)" }}>Created By</p>
+              <p className="text-lg font-bold" style={{ color: "var(--ink)" }}>{name}</p>
+              <p className="text-xs font-medium opacity-60" style={{ color: "var(--ink3)" }}>Junior Full Stack Developer</p>
+            </div>
+          </div>
+
+          <span className="hidden sm:flex items-center gap-2 text-xs" style={{ color: "var(--ink3)" }}>
+            <Sparkles className="h-4 w-4" color="url(#theme-gradient)" />
+          </span>
+        </div>
+
+        {/* MAIN CONTENT */}
+        <div className="space-y-10">
+
+          {/* HEADLINE */}
+          <div>
+            <h1 
+              className="text-lg sm:text-xl lg:text-2xl font-bold leading-tight"
+              style={{ 
+                fontFamily: "'Bricolage Grotesque', sans-serif",
+                color: "var(--ink)"
+              }}
+            >
+              {headline.split("\n").map((line, i) => (
+                <span key={i} className="block">
+                  {i === 1 ? (
+                    <span className="premium-text-gradient inline-block">
+                      {line}
+                    </span>
+                  ) : (
+                    line
+                  )}
+                </span>
+              ))}
+            </h1>
+            <p className="mt-3 max-w-xl text-xs sm:text-sm opacity-70" style={{ color: "var(--ink2)" }}>
+              {description}
+            </p>
+          </div>
+
+          {/* INFO */}
+          <div className="flex flex-wrap gap-2">
+            <InfoPill icon={MapPin}>{location}</InfoPill>
+            <InfoPill icon={Mail}>{email}</InfoPill>
+            <InfoPill icon={ExternalLink} href={linkedin}>LinkedIn Profile</InfoPill>
+          </div>
+
+          {/* FEATURES */}
+          <div>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-px flex-1" style={{ background: "linear-gradient(to right, transparent, var(--border), transparent)" }}></div>
+              <h2 className="text-[11px] uppercase font-extrabold tracking-[0.3em] whitespace-nowrap" style={{ color: "var(--ink)" }}>Core Capabilities</h2>
+              <div className="h-px flex-1" style={{ background: "linear-gradient(to right, transparent, var(--border), transparent)" }}></div>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-8 gap-y-6 px-2">
+              {[0, 1, 2, 3].map((colIndex) => (
+                <ul key={colIndex} className="space-y-4">
+                  {features.slice(colIndex * 4, colIndex * 4 + 4).map((f) => (
+                    <li key={f.label} className="flex items-start gap-3 group">
+                      <div className="mt-1">
+                        <f.icon className="h-3.5 w-3.5 opacity-80 group-hover:opacity-100 transition-opacity" color="url(#theme-gradient)" />
+                      </div>
+                      <span className="text-[12px] font-medium leading-tight" style={{ color: "var(--ink2)" }}>{f.label}</span>
+                    </li>
+                  ))}
+                </ul>
+              ))}
+            </div>
+          </div>
+
+          {/* TECH STACK */}
+          <div>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-px flex-1" style={{ background: "linear-gradient(to right, transparent, var(--border), transparent)" }}></div>
+              <h2 className="text-[11px] uppercase font-extrabold tracking-[0.3em] whitespace-nowrap" style={{ color: "var(--ink)" }}>Architecture & Stack</h2>
+              <div className="h-px flex-1" style={{ background: "linear-gradient(to right, transparent, var(--border), transparent)" }}></div>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+              {techStack.map((t) => (
+                <TechCard key={t.name} {...t} />
+              ))}
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+  );
+});
+
 // ─── Main Register Component (Modified signature) ───────────────────────────
 function Register({ setPage, dark, setDark, themeId, setThemeId }) { 
   const vw = useViewport();
@@ -287,109 +545,7 @@ function Register({ setPage, dark, setDark, themeId, setThemeId }) {
 
           {/* LEFT PANEL - WELCOME (70% on desktop, hidden on mobile) */}
           {!isMobile && (
-          <div style={{
-            flex: "0 0 70%",
-            width: "auto",
-            height: "100%",
-            padding: "56px 48px",
-            background: "var(--card2)",
-            borderRight: "1px solid var(--border)",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: "center",
-            transition: "background 0.3s, border-color 0.3s",
-            overflow: "auto",
-          }}>
-            <style>{`
-              .premium-gradient {
-                background: linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
-              }
-            `}</style>
-            {/* Centered Content Container */}
-            <div style={{
-              maxWidth: 600,
-              width: "100%",
-              margin: "0 auto",
-            }}>
-              {/* Top section */}
-              <div>
-                <p style={{
-                  fontSize: 10, fontWeight: 600, letterSpacing: "0.14em",
-                  textTransform: "uppercase", color: "var(--accent)",
-                  marginBottom: 18,
-                  display: "flex", alignItems: "center", gap: 6,
-                }}>
-                  <span style={{ display: "inline-block", width: 16, height: 1.5, background: "var(--accent)" }} />
-                  Business messaging
-                </p>
-
-                <h1 style={{
-                  fontFamily: "'Bricolage Grotesque', sans-serif",
-                  fontWeight: 700,
-                  fontSize: isTablet ? 36 : 48,
-                  lineHeight: 1.2,
-                  color: "var(--ink)", letterSpacing: "-0.03em",
-                  marginBottom: 24,
-                  textAlign: "left",
-                }}>
-                  <>Where teams<br />get things<br />
-                    <span className="premium-gradient inline-block bg-clip-text text-transparent" style={{ WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>
-                      done.
-                    </span>
-                  </>
-                </h1>
-
-                <p style={{
-                  fontSize: 15,
-                  color: "var(--ink3)", 
-                  fontWeight: 400,
-                  lineHeight: 1.7, 
-                  maxWidth: 420, 
-                  marginTop: 8,
-                }}>
-                  A focused workspace for professional teams — secure, fast, and built for real work.
-                </p>
-              </div>
-
-              {/* Stats grid — desktop only */}
-              {isDesktop && (
-                <div>
-                  <div style={{
-                    display: "flex", border: "1px solid var(--border)",
-                    borderRadius: "var(--rs)", overflow: "hidden", marginTop: 32,
-                  }}>
-                    <StatCard value="99.9%" label="Uptime SLA" />
-                    <StatCard value="<80ms" label="Latency" />
-                    <div style={{ flex: 1, padding: "14px 16px", background: "var(--card)", transition: "background 0.3s" }}>
-                      <div style={{ fontFamily: "'Bricolage Grotesque', sans-serif", fontSize: 20, fontWeight: 700, color: "var(--ink)", letterSpacing: "-0.02em" }}>E2EE</div>
-                      <div style={{ fontSize: 11, color: "var(--ink3)", marginTop: 3 }}>Encrypted</div>
-                    </div>
-                  </div>
-
-                  {/* Trust items */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 24 }}>
-                    <TrustItem icon={ShieldIcon} text="SOC 2 Type II compliant infrastructure" delay={0.1} />
-                    <TrustItem icon={LockIcon}   text="Zero-knowledge end-to-end encryption"   delay={0.2} />
-                    <TrustItem icon={BoltIcon}   text="Real-time sync across all your devices"  delay={0.3} />
-                  </div>
-                </div>
-              )}
-
-              {/* Tablet: compact trust badges inline */}
-              {isTablet && (
-                <div style={{ display: "flex", gap: 8, flexShrink: 0, marginTop: 24 }}>
-                  {[ShieldIcon, LockIcon, BoltIcon].map((icon, i) => (
-                    <div key={i} style={{
-                      width: 32, height: 32, borderRadius: "50%",
-                      background: "var(--accent2)",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}>{icon}</div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+            <LeftPanel className="flex-[0_0_70%]" />
           )}
 
           {/* RIGHT PANEL — FORM (30% on desktop, full on mobile) */}
@@ -529,6 +685,12 @@ function Register({ setPage, dark, setDark, themeId, setThemeId }) {
 
         </div>
       </div>
+
+      {/* MOBILE VIEW: LEFT PANEL AT BOTTOM */}
+      {isMobile && (
+        <LeftPanel className="w-full" disableScroll={true} />
+      )}
+
     </>
   );
 }
