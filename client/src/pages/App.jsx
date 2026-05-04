@@ -45,11 +45,13 @@ function App() {
   
   const [dark, setDark] = useState(() => {
     const savedTheme = localStorage.getItem("chat-app-theme");
-    return savedTheme === "dark";
+    if (savedTheme) return savedTheme === "dark";
+    // Default to system preference if no saved theme
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
 
   const [themeId, setThemeId] = useState(() => {
-    return localStorage.getItem("chat-app-color-theme") || "cosmic";
+    return localStorage.getItem("chat-app-color-theme") || "orchid";
   });
 
   useEffect(() => {
