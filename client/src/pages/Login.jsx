@@ -1,7 +1,6 @@
 import { useState, useEffect, memo } from "react";
 import { api } from "../services/api";
 import ThemePicker from "../components/ThemePicker";
-import { GoogleLogin } from '@react-oauth/google';
 import {
   ArrowRight,
   Code2,
@@ -469,13 +468,6 @@ function Login({ setPage, dark, setDark, setUser, themeId, setThemeId }) {
     setTimeout(() => setComingSoon(null), 2000);
   };
 
-  // Google Auth states
-  const [googleCredential, setGoogleCredential] = useState(null);
-  const [googleUserInfo, setGoogleUserInfo] = useState(null);
-  const [showUsernameModal, setShowUsernameModal] = useState(false);
-  const [googleUsername, setGoogleUsername] = useState("");
-  const [googleError, setGoogleError] = useState("");
-
   const isMobile  = vw < 900;
   const isTablet  = vw >= 900 && vw < 1200;
   const isDesktop = vw >= 1200;
@@ -539,102 +531,6 @@ function Login({ setPage, dark, setDark, setUser, themeId, setThemeId }) {
     );
     if (btnState === "success") return "✓ Welcome back!";
     return "Login Now";
-  };
-
-  // Google Login Handler
-  const handleGoogleSuccess = async (credentialResponse) => {
-    const credential = credentialResponse.credential;
-    setGoogleCredential(credential);
-    
-    try {
-      const response = await fetch(api("/google"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: 'include',
-        body: JSON.stringify({ credential }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        if (data.isNewUser) {
-          // New user - show username modal
-          setGoogleUserInfo({
-            email: data.email,
-            name: data.name,
-            picture: data.picture
-          });
-          setShowUsernameModal(true);
-        } else {
-          // Existing user - log them in
-          data.id = data._id || data.id;
-          
-          if (data.token) {
-            localStorage.setItem("chatAppToken", data.token);
-          }
-          
-          if (rememberMe) {
-            localStorage.setItem("chatAppUser", JSON.stringify(data));
-          }
-          
-          setUser(data);
-          setPage("chat");
-        }
-      } else {
-        setGoogleError(data.error || "Google authentication failed");
-        setTimeout(() => setGoogleError(""), 4000);
-      }
-    } catch (err) {
-      setGoogleError("Could not connect to server");
-      setTimeout(() => setGoogleError(""), 4000);
-    }
-  };
-
-  // Handle Google Register (new user with username)
-  const handleGoogleRegister = async (e) => {
-    e.preventDefault();
-    
-    if (!googleUsername.trim()) {
-      setGoogleError("Please enter a username");
-      return;
-    }
-
-    try {
-      const response = await fetch(api("/google/register"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: 'include',
-        body: JSON.stringify({
-          credential: googleCredential,
-          username: googleUsername,
-          email: googleUserInfo.email,
-          name: googleUserInfo.name,
-          picture: googleUserInfo.picture
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        data.id = data._id || data.id;
-        
-        if (data.token) {
-          localStorage.setItem("chatAppToken", data.token);
-        }
-        
-        if (rememberMe) {
-          localStorage.setItem("chatAppUser", JSON.stringify(data));
-        }
-        
-        setUser(data);
-        setShowUsernameModal(false);
-        setPage("chat");
-      } else {
-        setGoogleError(data.error || "Registration failed");
-      }
-    } catch (err) {
-      setGoogleError("Could not connect to server");
-    }
   };
 
   return (
@@ -819,21 +715,33 @@ function Login({ setPage, dark, setDark, setUser, themeId, setThemeId }) {
               </form>
 
               {/* Google Login Button */}
-              <div style={{ width: "100%", marginBottom: 20, display: "flex", justifyContent: "center" }}>
-                <GoogleLogin
-                  onSuccess={handleGoogleSuccess}
-                  onError={() => {
-                    setGoogleError("Google login failed");
-                    setTimeout(() => setGoogleError(""), 4000);
-                  }}
-                  size="large"
-                  shape="pill"
-                  theme="filled_black"
-                />
-              </div>
-              {googleError && (
-                <p style={{ fontSize: 12, color: "#ef4444", textAlign: "center", marginBottom: 20, fontWeight: 500 }}>
-                  {googleError}
+              <button
+                onClick={() => showComingSoon('google')}
+                style={{
+                  width: "100%", padding: "14px",
+                  background: "transparent",
+                  color: "var(--ink2)",
+                  border: "1.5px solid var(--border)",
+                  borderRadius: 8,
+                  fontFamily: "'Inter', sans-serif",
+                  fontSize: 14, fontWeight: 500,
+                  cursor: "pointer",
+                  display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  marginBottom: comingSoon === 'google' ? 8 : 20,
+                  position: "relative",
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24">
+                  <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                  <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                  <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                  <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                </svg>
+                Login with Google
+              </button>
+              {comingSoon === 'google' && (
+                <p style={{ fontSize: 12, color: "var(--accent)", textAlign: "center", marginBottom: 20, fontWeight: 500 }}>
+                  Coming Soon
                 </p>
               )}
 
@@ -858,116 +766,6 @@ function Login({ setPage, dark, setDark, setUser, themeId, setThemeId }) {
 
         </div>
       </div>
-
-      {/* Google Username Modal for New Users */}
-      {showUsernameModal && (
-        <div style={{
-          position: "fixed",
-          top: 0, left: 0, right: 0, bottom: 0,
-          background: "rgba(0,0,0,0.7)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          zIndex: 1000,
-          backdropFilter: "blur(8px)",
-        }}>
-          <div style={{
-            background: "var(--card)",
-            border: "1px solid var(--border)",
-            borderRadius: 16,
-            padding: "32px",
-            maxWidth: 400,
-            width: "90%",
-            boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
-          }}>
-            <div style={{ textAlign: "center", marginBottom: 24 }}>
-              <div style={{
-                width: 60, height: 60,
-                borderRadius: "50%",
-                margin: "0 auto 16px",
-                overflow: "hidden",
-                border: "3px solid var(--accent)",
-              }}>
-                {googleUserInfo?.picture && (
-                  <img 
-                    src={googleUserInfo.picture} 
-                    alt="Profile" 
-                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  />
-                )}
-              </div>
-              <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--ink)", marginBottom: 8 }}>
-                Welcome, {googleUserInfo?.name}!
-              </h2>
-              <p style={{ fontSize: 14, color: "var(--ink2)" }}>
-                Choose a username for your account
-              </p>
-            </div>
-
-            <form onSubmit={handleGoogleRegister}>
-              <div style={{ marginBottom: 20 }}>
-                <input
-                  type="text"
-                  placeholder="Enter username"
-                  value={googleUsername}
-                  onChange={(e) => setGoogleUsername(e.target.value)}
-                  autoFocus
-                  style={{
-                    width: "100%",
-                    padding: "14px 16px",
-                    borderRadius: 8,
-                    border: `2px solid ${googleError ? "#ef4444" : "var(--border)"}`,
-                    background: "var(--card2)",
-                    color: "var(--ink)",
-                    fontSize: 15,
-                    outline: "none",
-                    transition: "border-color 0.2s",
-                  }}
-                />
-                {googleError && (
-                  <p style={{ fontSize: 12, color: "#ef4444", marginTop: 8 }}>
-                    {googleError}
-                  </p>
-                )}
-              </div>
-
-              <div style={{ display: "flex", gap: 12 }}>
-                <button
-                  type="button"
-                  onClick={() => setShowUsernameModal(false)}
-                  style={{
-                    flex: 1,
-                    padding: "12px",
-                    borderRadius: 8,
-                    border: "1px solid var(--border)",
-                    background: "transparent",
-                    color: "var(--ink2)",
-                    fontSize: 14,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="premium-gradient"
-                  style={{
-                    flex: 1,
-                    padding: "12px",
-                    borderRadius: 8,
-                    border: "none",
-                    color: "#fff",
-                    fontSize: 14,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                  }}
-                >
-                  Create Account
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </>
   );
 }
