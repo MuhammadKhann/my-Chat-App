@@ -1573,11 +1573,14 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   // ─── JSX ────────────────────────────────────────────────────────────────────
   return (
     <div style={{
-      height: "calc(var(--vh, 1vh) * 100)", display: "flex", flexDirection: "column",
+      height: isMobile ? "auto" : "calc(var(--vh, 1vh) * 100)", 
+      minHeight: "calc(var(--vh, 1vh) * 100)",
+      display: "flex", flexDirection: "column",
       background: "var(--bg)", color: "var(--ink)",
       transition: "background 0.3s, color 0.3s",
       fontFamily: "'DM Sans', sans-serif",
-      overflow: "hidden", width: "100%",
+      overflow: isMobile ? "visible" : "hidden", 
+      width: "100%",
     }}>
       <ChatStyles />
 
@@ -1821,7 +1824,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       {/* ══════════════════════════════════════════════════════════════════
           MAIN LAYOUT — sidebar + chat window
       ══════════════════════════════════════════════════════════════════ */}
-      <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative" }}>
+      <div style={{ flex: 1, display: "flex", overflow: isMobile ? "visible" : "hidden", position: "relative" }}>
 
 
 
