@@ -20,6 +20,10 @@ import {
   Smartphone,
   CheckCircle2,
   Palette,
+  Bell,
+  Search,
+  Database,
+  Cpu,
 } from "lucide-react";
 
 /*
@@ -50,9 +54,13 @@ const defaultFeatures = [
   { label: "Responsive Interface", icon: Smartphone },
   { label: "Message Receipts", icon: CheckCircle2 },
   { label: "Typing Indicators", icon: Zap },
-  { label: "Global User Search", icon: Globe },
+  { label: "Global User Search", icon: Search },
   { label: "JWT Secure Auth", icon: ShieldCheck },
-  { label: "Persistent History", icon: Code2 },
+  { label: "Persistent History", icon: Database },
+  { label: "Smart Link Previews", icon: ExternalLink },
+  { label: "Secure Cloud Backup", icon: Cloud },
+  { label: "Real-time Alerts", icon: Bell },
+  { label: "High Performance", icon: Cpu },
 ];
 
 const defaultDeployments = [];
@@ -256,11 +264,11 @@ const LeftPanel = memo(({
           <div>
             <div className="flex items-center gap-3 mb-6">
               <div className="h-px flex-1" style={{ background: "linear-gradient(to right, transparent, var(--border), transparent)" }}></div>
-              <h2 className="text-[10px] uppercase font-bold tracking-[0.3em] whitespace-nowrap" style={{ color: "var(--ink2)", opacity: 0.8 }}>Core Capabilities</h2>
+              <h2 className="text-[11px] uppercase font-extrabold tracking-[0.3em] whitespace-nowrap" style={{ color: "var(--ink)" }}>Core Capabilities</h2>
               <div className="h-px flex-1" style={{ background: "linear-gradient(to right, transparent, var(--border), transparent)" }}></div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 px-2">
-              {[0, 1, 2].map((colIndex) => (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-8 gap-y-6 px-2">
+              {[0, 1, 2, 3].map((colIndex) => (
                 <ul key={colIndex} className="space-y-4">
                   {features.slice(colIndex * 4, colIndex * 4 + 4).map((f) => (
                     <li key={f.label} className="flex items-start gap-3 group">
@@ -279,7 +287,7 @@ const LeftPanel = memo(({
           <div>
             <div className="flex items-center gap-3 mb-6">
               <div className="h-px flex-1" style={{ background: "linear-gradient(to right, transparent, var(--border), transparent)" }}></div>
-              <h2 className="text-[10px] uppercase font-bold tracking-[0.3em] whitespace-nowrap" style={{ color: "var(--ink2)", opacity: 0.8 }}>Architecture & Stack</h2>
+              <h2 className="text-[11px] uppercase font-extrabold tracking-[0.3em] whitespace-nowrap" style={{ color: "var(--ink)" }}>Architecture & Stack</h2>
               <div className="h-px flex-1" style={{ background: "linear-gradient(to right, transparent, var(--border), transparent)" }}></div>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
