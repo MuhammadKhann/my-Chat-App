@@ -463,7 +463,8 @@ function SmartVideo({ src, onClick, isMe }) {
       onClick={onClick}
       style={{
         position: "relative",
-        width: 250,
+        width: "100%",
+        maxWidth: 250,
         height: 180,
         borderRadius: 12,
         overflow: "hidden",
