@@ -55,9 +55,9 @@ function App() {
     return localStorage.getItem("chat-app-color-theme") || "orchid";
   });
 
-  // Update favicon based on selected theme
+  // Update favicon based on selected theme (with exact gradient colors)
   const currentTheme = THEMES[themeId] || THEMES.orchid;
-  useFavicon(currentTheme.accent, "C");
+  useFavicon(currentTheme, "C");
 
   useEffect(() => {
     localStorage.setItem("chat-app-theme", dark ? "dark" : "light");
