@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import Register from "./Register";
 import Login from "./Login";
 import Chat from "./Chat";
-import { GlobalStyles, FontLoader } from "../components/GlobalStyles";
+import { GlobalStyles, FontLoader, THEMES } from "../components/GlobalStyles";
 import { api, fetchWithAuth } from "../services/api";
+import useFavicon from "../hooks/useFavicon";
 
 function App() {
   // --- INDESTRUCTIBLE INITIALIZER ---
@@ -53,6 +54,10 @@ function App() {
   const [themeId, setThemeId] = useState(() => {
     return localStorage.getItem("chat-app-color-theme") || "orchid";
   });
+
+  // Update favicon based on selected theme
+  const currentTheme = THEMES[themeId] || THEMES.orchid;
+  useFavicon(currentTheme.accent, "C");
 
   useEffect(() => {
     localStorage.setItem("chat-app-theme", dark ? "dark" : "light");
