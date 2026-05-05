@@ -1,4 +1,4 @@
-# Nexus Chat 💬
+# Chat App 💬
 
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-green?logo=node.js)](https://nodejs.org/)
 [![React](https://img.shields.io/badge/React-19-blue?logo=react)](https://react.dev/)
@@ -8,7 +8,7 @@
 
 A real-time chat application with video/voice calling, privacy controls, and social features. Built with the MERN stack and WebRTC.
 
-![Nexus Chat Screenshot](https://via.placeholder.com/800x400/1a1a2e/ffffff?text=Nexus+Chat+Preview)
+![Chat App Screenshot](https://via.placeholder.com/800x400/1a1a2e/ffffff?text=Chat+App+Preview)
 
 ## ✨ Features
 
