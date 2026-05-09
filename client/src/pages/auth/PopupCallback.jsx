@@ -1,13 +1,11 @@
 import { useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
 
 function PopupCallback() {
-  const [searchParams] = useSearchParams();
-
   useEffect(() => {
-    const code = searchParams.get('code');
-    const state = searchParams.get('state');
-    const error = searchParams.get('error');
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    const state = urlParams.get('state');
+    const error = urlParams.get('error');
 
     if (window.opener) {
       if (error) {

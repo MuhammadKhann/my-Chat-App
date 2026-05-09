@@ -1,26 +1,24 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
 import { api } from '../../services/api';
 
 function RedirectCallback() {
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const code = searchParams.get('code');
-    const state = searchParams.get('state');
-    const errorParam = searchParams.get('error');
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    const state = urlParams.get('state');
+    const errorParam = urlParams.get('error');
 
     if (errorParam) {
       setError('Authentication was cancelled or failed.');
-      setTimeout(() => navigate('/login'), 3000);
+      setTimeout(() => { window.location.href = '/login'; }, 3000);
       return;
     }
 
     if (!code || !state) {
       setError('Invalid authentication response.');
-      setTimeout(() => navigate('/login'), 3000);
+      setTimeout(() => { window.location.href = '/login'; }, 3000);
       return;
     }
 
@@ -48,23 +46,23 @@ function RedirectCallback() {
           // Store temp data and redirect to username flow
           sessionStorage.setItem('oauth_pending', JSON.stringify(result));
           sessionStorage.removeItem('pkce_session_id');
-          navigate('/login?oauth=pending');
+          window.location.href = '/login?oauth=pending';
         } else if (result.user) {
           // Success - store and go to chat
           localStorage.setItem('chatAppToken', result.token);
           localStorage.setItem('chatAppUser', JSON.stringify(result.user));
           sessionStorage.removeItem('pkce_session_id');
-          navigate('/chat');
+          window.location.href = '/chat';
         }
       } catch (err) {
         console.error('Auth completion error:', err);
         setError('Failed to complete authentication.');
-        setTimeout(() => navigate('/login'), 3000);
+        setTimeout(() => { window.location.href = '/login'; }, 3000);
       }
     };
 
     completeAuth();
-  }, [searchParams, navigate]);
+  }, []);
 
   if (error) {
     return (
