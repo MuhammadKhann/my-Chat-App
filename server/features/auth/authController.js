@@ -249,7 +249,17 @@ const googleRegister = async (req, res) => {
 // Tier 1: Initiate PKCE flow
 const initiatePKCE = async (req, res) => {
     try {
-        const { preferredMode = 'popup' } = req.body;
+        const { preferredMode = 'popup', frontendOrigin } = req.body;
+
+        // Use frontend-provided origin, fallback to env var for backward compatibility
+        const origin = frontendOrigin || process.env.FRONTEND_URL;
+        if (!origin) {
+            return res.status(500).json({
+                success: false,
+                error: 'Frontend origin not provided',
+                code: 'MISSING_ORIGIN'
+            });
+        }
 
         const session = await PKCEService.createSession({
             ipAddress: req.ip,
@@ -262,8 +272,8 @@ const initiatePKCE = async (req, res) => {
         authUrl.searchParams.set('client_id', process.env.GOOGLE_CLIENT_ID);
         authUrl.searchParams.set('redirect_uri',
             preferredMode === 'popup'
-                ? `${process.env.FRONTEND_URL}/auth/callback/popup`
-                : `${process.env.FRONTEND_URL}/auth/callback`
+                ? `${origin}/auth/callback/popup`
+                : `${origin}/auth/callback`
         );
         authUrl.searchParams.set('response_type', 'code');
         authUrl.searchParams.set('scope', 'openid email profile');
@@ -293,7 +303,7 @@ const initiatePKCE = async (req, res) => {
 // Tier 1: Complete PKCE flow
 const completePKCE = async (req, res) => {
     try {
-        const { code, state, sessionId } = req.body;
+        const { code, state, sessionId, frontendOrigin } = req.body;
         const { mode = 'redirect' } = req.query;
 
         // Input validation
@@ -302,6 +312,16 @@ const completePKCE = async (req, res) => {
                 success: false,
                 error: 'Missing required parameters',
                 code: 'MISSING_PARAMS'
+            });
+        }
+
+        // Use frontend-provided origin, fallback to env var for backward compatibility
+        const origin = frontendOrigin || process.env.FRONTEND_URL;
+        if (!origin) {
+            return res.status(500).json({
+                success: false,
+                error: 'Frontend origin not provided',
+                code: 'MISSING_ORIGIN'
             });
         }
 
@@ -328,8 +348,8 @@ const completePKCE = async (req, res) => {
                 code,
                 codeVerifier: session.codeVerifier,
                 redirectUri: mode === 'popup'
-                    ? `${process.env.FRONTEND_URL}/auth/callback/popup`
-                    : `${process.env.FRONTEND_URL}/auth/callback`,
+                    ? `${origin}/auth/callback/popup`
+                    : `${origin}/auth/callback`,
             });
         } catch (err) {
             console.error('Token exchange failed:', err);

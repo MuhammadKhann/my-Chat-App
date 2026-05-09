@@ -24,7 +24,10 @@ class AuthService {
       const response = await fetch(api('/api/auth/pkce/initiate'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ preferredMode: 'popup' }),
+        body: JSON.stringify({
+          preferredMode: 'popup',
+          frontendOrigin: window.location.origin
+        }),
         signal: controller.signal,
         credentials: 'include',
       });
@@ -106,7 +109,7 @@ class AuthService {
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, state, sessionId }),
+        body: JSON.stringify({ code, state, sessionId, frontendOrigin: window.location.origin }),
         credentials: 'include',
       }
     );
