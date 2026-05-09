@@ -89,7 +89,10 @@ const GoogleAuthButton = ({
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ preferredMode: 'redirect' }),
+            body: JSON.stringify({
+              preferredMode: 'redirect',
+              frontendOrigin: window.location.origin
+            }),
             credentials: 'include',
           }
         );
@@ -115,6 +118,15 @@ const GoogleAuthButton = ({
 
     } catch (err) {
       console.error('Auth error:', err);
+
+      // Don't retry on rate limit - show error and stop
+      if (err.message === 'RATE_LIMITED' || err.message?.includes('429')) {
+        setError(ERROR_MESSAGES.RATE_LIMITED);
+        setLoading(false);
+        onError?.('RATE_LIMITED');
+        return;
+      }
+
       const message = ERROR_MESSAGES[err.message] ||
         'Authentication failed. Please try again.';
       setError(message);
