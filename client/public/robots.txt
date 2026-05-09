@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /chat
+Disallow: /auth/callback
+Disallow: /auth/callback/popup
+
+Sitemap: https://my-chat-app-sand-delta.vercel.app/sitemap.xml
