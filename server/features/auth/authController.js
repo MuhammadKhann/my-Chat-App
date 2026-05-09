@@ -2,6 +2,9 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../../models/User');
 const { OAuth2Client } = require('google-auth-library');
+const PKCEService = require('../../services/PKCEService');
+const OAuthProviderService = require('../../services/OAuthProviderService');
+const crypto = require('crypto');
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -241,6 +244,269 @@ const googleRegister = async (req, res) => {
     }
 };
 
+// ============ PKCE OAUTH FLOW ============
+
+// Tier 1: Initiate PKCE flow
+const initiatePKCE = async (req, res) => {
+    try {
+        const { preferredMode = 'popup' } = req.body;
+
+        const session = await PKCEService.createSession({
+            ipAddress: req.ip,
+            userAgent: req.headers['user-agent'],
+            provider: 'google',
+        });
+
+        // Build Google OAuth URL
+        const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+        authUrl.searchParams.set('client_id', process.env.GOOGLE_CLIENT_ID);
+        authUrl.searchParams.set('redirect_uri',
+            preferredMode === 'popup'
+                ? `${process.env.FRONTEND_URL}/auth/callback/popup`
+                : `${process.env.FRONTEND_URL}/auth/callback`
+        );
+        authUrl.searchParams.set('response_type', 'code');
+        authUrl.searchParams.set('scope', 'openid email profile');
+        authUrl.searchParams.set('state', session.state);
+        authUrl.searchParams.set('code_challenge', session.codeChallenge);
+        authUrl.searchParams.set('code_challenge_method', 'S256');
+        authUrl.searchParams.set('prompt', 'select_account');
+        authUrl.searchParams.set('access_type', 'offline');
+
+        res.json({
+            success: true,
+            authUrl: authUrl.toString(),
+            sessionId: session.sessionId,
+            state: session.state,
+            mode: preferredMode,
+        });
+    } catch (error) {
+        console.error('PKCE initiation failed:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Authentication initialization failed',
+            code: 'INIT_FAILED'
+        });
+    }
+};
+
+// Tier 1: Complete PKCE flow
+const completePKCE = async (req, res) => {
+    try {
+        const { code, state, sessionId } = req.body;
+        const { mode = 'redirect' } = req.query;
+
+        // Input validation
+        if (!code || !state || !sessionId) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required parameters',
+                code: 'MISSING_PARAMS'
+            });
+        }
+
+        // Validate session
+        let session;
+        try {
+            session = await PKCEService.validateSession({
+                sessionId,
+                state,
+                ipAddress: req.ip,
+            });
+        } catch (err) {
+            return res.status(400).json({
+                success: false,
+                error: 'Session expired or invalid',
+                code: 'INVALID_SESSION'
+            });
+        }
+
+        // Exchange code for tokens
+        let tokens;
+        try {
+            tokens = await OAuthProviderService.exchangeCodeForTokens({
+                code,
+                codeVerifier: session.codeVerifier,
+                redirectUri: mode === 'popup'
+                    ? `${process.env.FRONTEND_URL}/auth/callback/popup`
+                    : `${process.env.FRONTEND_URL}/auth/callback`,
+            });
+        } catch (err) {
+            console.error('Token exchange failed:', err);
+            return res.status(400).json({
+                success: false,
+                error: 'Failed to verify with Google',
+                code: 'TOKEN_EXCHANGE_FAILED'
+            });
+        }
+
+        // Verify ID token
+        let googleUser;
+        try {
+            googleUser = await OAuthProviderService.verifyIdToken(tokens.id_token);
+        } catch (err) {
+            console.error('ID token verification failed:', err);
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid identity token',
+                code: 'INVALID_TOKEN'
+            });
+        }
+
+        // Mark session as used
+        await PKCEService.consumeSession(sessionId);
+
+        // Check for existing user
+        let user = await User.findOne({ email: googleUser.email });
+
+        if (!user) {
+            // New user - create temp session for username flow
+            const tempToken = await PKCEService.createTempUserSession({
+                email: googleUser.email,
+                name: googleUser.name,
+                picture: googleUser.picture,
+                providerId: googleUser.sub,
+                ipAddress: req.ip,
+            });
+
+            return res.json({
+                success: true,
+                requiresUsername: true,
+                tempToken,
+                profile: {
+                    email: googleUser.email,
+                    name: googleUser.name,
+                    picture: googleUser.picture,
+                },
+            });
+        }
+
+        // Existing user - create session
+        const authToken = generateTokenAndSetCookie(user._id, res);
+
+        return res.json({
+            success: true,
+            user: {
+                _id: user._id,
+                username: user.username,
+                email: user.email,
+                avatar: user.avatar,
+                theme: user.theme,
+                darkMode: user.darkMode,
+                privacyLevel: user.privacyLevel,
+            },
+            token: authToken,
+        });
+
+    } catch (error) {
+        console.error('PKCE completion failed:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Authentication failed',
+            code: 'INTERNAL_ERROR',
+        });
+    }
+};
+
+// Complete registration with username (for new OAuth users)
+const completeOAuthRegistration = async (req, res) => {
+    try {
+        const { tempToken, username } = req.body;
+
+        // Validate input
+        if (!tempToken || !username) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing token or username',
+                code: 'MISSING_PARAMS',
+            });
+        }
+
+        // Validate username format
+        const usernameRegex = /^[a-zA-Z0-9_-]{3,20}$/;
+        if (!usernameRegex.test(username)) {
+            return res.status(400).json({
+                success: false,
+                error: 'Invalid username format',
+                code: 'INVALID_USERNAME',
+            });
+        }
+
+        // Check if username exists
+        const existingUser = await User.findOne({
+            username: username.toLowerCase()
+        });
+
+        if (existingUser) {
+            return res.status(400).json({
+                success: false,
+                error: 'Username already taken',
+                code: 'USERNAME_TAKEN',
+            });
+        }
+
+        // Get temp session
+        const tempData = await PKCEService.getTempSession(tempToken);
+        if (!tempData) {
+            return res.status(400).json({
+                success: false,
+                error: 'Session expired, please try again',
+                code: 'SESSION_EXPIRED',
+            });
+        }
+
+        // Check if email was registered meanwhile
+        const existingEmail = await User.findOne({ email: tempData.email });
+        if (existingEmail) {
+            return res.status(400).json({
+                success: false,
+                error: 'Email already registered',
+                code: 'EMAIL_EXISTS',
+            });
+        }
+
+        // Create user
+        const randomPassword = crypto.randomBytes(32).toString('hex');
+        const hashedPassword = await bcrypt.hash(randomPassword, 10);
+
+        const user = new User({
+            username: username.toLowerCase(),
+            email: tempData.email,
+            password: hashedPassword,
+            avatar: tempData.picture || '',
+            isGoogleAuth: true,
+            googleId: tempData.providerId,
+            theme: 'cosmic',
+            darkMode: true,
+            privacyLevel: 'standard',
+        });
+
+        await user.save();
+
+        // Create session
+        const authToken = generateTokenAndSetCookie(user._id, res);
+
+        res.json({
+            success: true,
+            user: {
+                _id: user._id,
+                username: user.username,
+                email: user.email,
+                avatar: user.avatar,
+            },
+            token: authToken,
+        });
+
+    } catch (error) {
+        console.error('OAuth registration failed:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Registration failed',
+            code: 'INTERNAL_ERROR',
+        });
+    }
+};
+
 module.exports = {
     generateTokenAndSetCookie,
     register,
@@ -248,5 +514,9 @@ module.exports = {
     logout,
     checkAuth,
     googleLogin,
-    googleRegister
+    googleRegister,
+    // New PKCE exports
+    initiatePKCE,
+    completePKCE,
+    completeOAuthRegistration,
 };

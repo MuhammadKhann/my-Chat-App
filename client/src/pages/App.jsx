@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import Register from "./Register";
 import Login from "./Login";
 import Chat from "./Chat";
+import PopupCallback from "./auth/PopupCallback";
+import RedirectCallback from "./auth/RedirectCallback";
 import { GlobalStyles, FontLoader, THEMES } from "../components/GlobalStyles";
 import { api, fetchWithAuth } from "../services/api";
 import useFavicon from "../hooks/useFavicon";
@@ -144,6 +146,20 @@ function App() {
         </div>
       </div>
     );
+  }
+
+  // Check for OAuth callback routes
+  const path = window.location.pathname;
+  const isPopupCallback = path === '/auth/callback/popup';
+  const isRedirectCallback = path === '/auth/callback';
+
+  // Handle OAuth callback routes first (before normal auth flow)
+  if (isPopupCallback) {
+    return <PopupCallback />;
+  }
+
+  if (isRedirectCallback) {
+    return <RedirectCallback />;
   }
 
   return (

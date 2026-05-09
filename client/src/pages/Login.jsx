@@ -2,6 +2,8 @@ import { useState, useEffect, memo } from "react";
 import { GoogleLogin } from "@react-oauth/google";
 import { api } from "../services/api";
 import ThemePicker from "../components/ThemePicker";
+import GoogleAuthButton from "../components/GoogleAuthButton";
+import authService from "../services/authService";
 import {
   ArrowRight,
   Code2,
@@ -478,6 +480,30 @@ function Login({ setPage, dark, setDark, setUser, themeId, setThemeId }) {
     setGoogleErrorMsg("");
   };
 
+  // Check for OAuth pending state (returning from redirect flow)
+  useEffect(() => {
+    const oauthPending = sessionStorage.getItem('oauth_pending');
+    if (oauthPending) {
+      try {
+        const data = JSON.parse(oauthPending);
+        if (data.requiresUsername && data.tempToken) {
+          setGooglePending({
+            tempToken: data.tempToken,
+            email: data.profile.email,
+            name: data.profile.name,
+            picture: data.profile.picture,
+            isPKCE: true,
+          });
+          // Clear from sessionStorage so it doesn't trigger again
+          sessionStorage.removeItem('oauth_pending');
+        }
+      } catch (e) {
+        console.error('Failed to parse oauth_pending:', e);
+        sessionStorage.removeItem('oauth_pending');
+      }
+    }
+  }, []);
+
   const isMobile  = vw < 900;
   const isTablet  = vw >= 900 && vw < 1200;
   const isDesktop = vw >= 1200;
@@ -618,6 +644,80 @@ function Login({ setPage, dark, setDark, setUser, themeId, setThemeId }) {
     } catch (err) {
       console.error(err);
       setGoogleErrorMsg("Google registration failed. Please try again.");
+      setBtnState("idle");
+    }
+  };
+
+  // ============ NEW PKCE OAUTH HANDLERS ============
+
+  const handlePKCESuccess = (result) => {
+    const { user, token } = result;
+
+    if (token) localStorage.setItem("chatAppToken", token);
+    if (rememberMe) localStorage.setItem("chatAppUser", JSON.stringify(user));
+
+    setUser(user);
+    setTimeout(() => setPage("chat"), 500);
+  };
+
+  const handlePKCEUsernameRequired = (result) => {
+    // New user needs to choose username
+    setGooglePending({
+      tempToken: result.tempToken,
+      email: result.profile.email,
+      name: result.profile.name,
+      picture: result.profile.picture,
+      isPKCE: true, // Flag to indicate this is PKCE flow
+    });
+    setGoogleUsername("");
+    setBtnState("idle");
+  };
+
+  const handlePKCEError = (errorCode) => {
+    setErrorMsg("Google sign-in failed. Please try again.");
+    setBtnState("idle");
+  };
+
+  // Modified Google registration to handle both legacy and PKCE flows
+  const handlePKCEGoogleRegister = async (e) => {
+    e.preventDefault();
+    if (!googlePending) return;
+    if (!googleUsername.trim()) {
+      setGoogleErrorMsg("Username is required to complete sign in.");
+      return;
+    }
+
+    setBtnState("loading");
+    setGoogleErrorMsg("");
+
+    try {
+      // Check if this is PKCE flow or legacy flow
+      if (googlePending.isPKCE) {
+        // PKCE flow registration
+        const result = await authService.completeOAuthRegistration(
+          googlePending.tempToken,
+          googleUsername.trim()
+        );
+
+        if (!result.success) {
+          setGoogleErrorMsg(result.error || "Could not complete registration.");
+          setBtnState("idle");
+          return;
+        }
+
+        const { user, token } = result;
+        if (token) localStorage.setItem("chatAppToken", token);
+        if (rememberMe) localStorage.setItem("chatAppUser", JSON.stringify(user));
+        setUser(user);
+        resetGoogleState();
+        setTimeout(() => setPage("chat"), 500);
+      } else {
+        // Legacy flow - use original handler
+        await handleGoogleRegister(e);
+      }
+    } catch (err) {
+      console.error(err);
+      setGoogleErrorMsg("Registration failed. Please try again.");
       setBtnState("idle");
     }
   };
@@ -819,7 +919,7 @@ function Login({ setPage, dark, setDark, setUser, themeId, setThemeId }) {
               </form>
 
               {googlePending ? (
-                <form onSubmit={handleGoogleRegister} style={{ marginTop: 16 }}>
+                <form onSubmit={handlePKCEGoogleRegister} style={{ marginTop: 16 }}>
                   <div style={{ marginBottom: 16 }}>
                     <input
                       type="text"
@@ -887,25 +987,12 @@ function Login({ setPage, dark, setDark, setUser, themeId, setThemeId }) {
                   </button>
                 </form>
               ) : (
-                <div style={{
-                  marginBottom: 20,
-                  width: "100%",
-                  height: 44,
-                  overflow: "hidden",
-                  borderRadius: 8,
-                  border: "1px solid var(--border)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center"
-                }}>
-                  <GoogleLogin
-                    width="100%"
-                    shape="rectangular"
-                    theme="outline"
-                    onSuccess={handleGoogleSuccess}
-                    onError={handleGoogleError}
-                  />
-                </div>
+                <GoogleAuthButton
+                  onSuccess={handlePKCESuccess}
+                  onError={handlePKCEError}
+                  onUsernameRequired={handlePKCEUsernameRequired}
+                  style={{ marginBottom: 20 }}
+                />
               )}
 
               {/* Footer Links */}
