@@ -887,8 +887,21 @@ function Login({ setPage, dark, setDark, setUser, themeId, setThemeId }) {
                   </button>
                 </form>
               ) : (
-                <div style={{ marginBottom: 20 }}>
+                <div style={{
+                  marginBottom: 20,
+                  width: "100%",
+                  height: 44,
+                  overflow: "hidden",
+                  borderRadius: 8,
+                  border: "1px solid var(--border)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}>
                   <GoogleLogin
+                    width="100%"
+                    shape="rectangular"
+                    theme="outline"
                     onSuccess={handleGoogleSuccess}
                     onError={handleGoogleError}
                   />
