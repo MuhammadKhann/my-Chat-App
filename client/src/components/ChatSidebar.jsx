@@ -59,6 +59,11 @@ function ChatSidebar({
             type="text"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                onSearch();
+              }
+            }}
             placeholder="Search users..."
             className="chat-app-input"
             style={{

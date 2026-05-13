@@ -1991,6 +1991,13 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                     placeholder="Search username…"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        fetchWithAuth(api(`/users/search?q=${searchQuery}`), { credentials: 'include' })
+                          .then(res => res.json())
+                          .then(data => setSearchResults(data));
+                      }
+                    }}
                     style={{
                       flex: 1, minWidth: 0, padding: "9px 12px",
                       borderRadius: 9, fontSize: 13,
