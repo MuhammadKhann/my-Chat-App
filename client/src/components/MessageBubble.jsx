@@ -2,6 +2,7 @@ import React from 'react';
 import SmartImage from './SmartImage';
 import SmartVideo from './SmartVideo';
 import Avatar from './Avatar';
+import AudioPlayer from './AudioPlayer';
 
 const formatMessageTime = (timestamp) => {
   if (!timestamp) return '';
@@ -116,10 +117,10 @@ function MessageBubble({
         )}
         
         {isAudio && msg.fileUrl && (
-          <audio
+          <AudioPlayer
             src={msg.fileUrl}
-            controls
-            style={{ width: 220, height: 40 }}
+            isMe={isMe}
+            id={msg._id || msg.id || msg.fileUrl}
           />
         )}
         

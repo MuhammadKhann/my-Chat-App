@@ -21,7 +21,8 @@
     "simple-peer": "^9.11.1",
     "socket.io-client": "^4.8.3",
     "stream-browserify": "^3.0.0",
-    "util": "^0.12.5"
+    "util": "^0.12.5",
+    "wavesurfer.js": "^7.12.7"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",

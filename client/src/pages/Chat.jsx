@@ -6,6 +6,7 @@ import { Palette, Eye, EyeOff } from "lucide-react";
 import { THEMES } from "../components/GlobalStyles";
 import { BACKEND_URL, api, fetchWithAuth } from "../services/api";
 import { sounds } from "../services/soundService";
+import AudioPlayer from "../components/AudioPlayer";
 
 // ─── CSS Design System (injected once via Login's GlobalStyles) ───────────────
 // All CSS variables (--bg, --card, --accent, --ink, --border, etc.) come from
@@ -2577,8 +2578,10 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
 
                           {/* Audio */}
                           {msg.fileUrl && msg.fileType?.startsWith('audio/') && (
-                            <audio controls src={msg.fileUrl}
-                              style={{ height: 36, width: 240, maxWidth: "100%", borderRadius: 20, outline: "none" }}
+                            <AudioPlayer
+                              src={msg.fileUrl}
+                              isMe={isMe}
+                              id={msg._id || msg.id || msg.fileUrl}
                             />
                           )}
                         </div>

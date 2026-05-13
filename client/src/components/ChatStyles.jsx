@@ -11,6 +11,7 @@ const ChatStyles = () => (
       from { transform: rotate(0deg); }
       to   { transform: rotate(360deg); }
     }
+    .spinning { animation: spin 1s linear infinite; }
     @keyframes fadeIn {
       from { opacity: 0; transform: translateY(6px); }
       to   { opacity: 1; transform: translateY(0); }
