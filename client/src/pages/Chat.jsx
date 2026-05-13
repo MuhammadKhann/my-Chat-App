@@ -2057,7 +2057,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                   searchResults.map((u) => (
                     <div
                       key={u._id}
-                      className="chat-item"
+                      className={`chat-item ${shouldBlur ? "privacy-blur" : ""}`}
                       onClick={() => {
                         setSelectedUser(u);
                         setActiveTab("chats");
@@ -2070,9 +2070,9 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                         marginBottom: 4, background: "transparent",
                       }}
                     >
-                      <div className={shouldBlur ? "privacy-blur" : ""} style={{ flexShrink: 0 }}>
-                          <Avatar src={u.avatar} name={u.username} size={36} />
-                        </div>
+                      <div style={{ flexShrink: 0 }}>
+                        <Avatar src={u.avatar} name={u.username} size={36} />
+                      </div>
                       <div>
                         <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>{u.username}</div>
                         {onlineUsers.has(u._id) && (
@@ -2101,7 +2101,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                     return (
                       <div
                         key={chat._id}
-                        className="chat-item"
+                        className={`chat-item ${shouldBlur ? "privacy-blur" : ""}`}
                         onClick={() => {
                           setSelectedUser(chat);
                           if (isMobile) setIsSidebarOpen(false);
@@ -2119,7 +2119,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                         }}
                       >
                         {/* Avatar with online dot */}
-                        <div className={shouldBlur ? "privacy-blur" : ""} style={{ position: "relative", flexShrink: 0 }}>
+                        <div style={{ position: "relative", flexShrink: 0 }}>
                           <Avatar src={chat.avatar} name={chat.username} size={40} />
                           {onlineUsers.has(chat._id) && (
                             <div style={{
@@ -2278,23 +2278,25 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                     {isMobile ? null : "Video"}
                   </button>
 
-                  {/* Privacy Mode Toggle */}
-                  <button
-                    onClick={togglePrivacyMode}
-                    title={privacyMode ? "Disable Privacy Mode" : "Enable Privacy Mode"}
-                    className="nav-icon-btn"
-                    style={{
-                      height: 34, width: 34, justifyContent: "center",
-                      borderRadius: 9,
-                      color: privacyMode ? "var(--accent)" : "var(--ink2)",
-                      border: privacyMode ? "1px solid var(--accent)" : "1px solid var(--border)",
-                      cursor: "pointer", display: "flex", alignItems: "center",
-                      background: privacyMode ? "var(--accent-bg)" : "var(--bg2)",
-                      transition: "all 0.2s",
-                    }}
-                  >
-                    {privacyMode ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
+                  {/* Privacy Mode Toggle - only show on large screens */}
+                  {isLargeScreen && (
+                    <button
+                      onClick={togglePrivacyMode}
+                      title={privacyMode ? "Disable Privacy Mode" : "Enable Privacy Mode"}
+                      className="nav-icon-btn"
+                      style={{
+                        height: 34, width: 34, justifyContent: "center",
+                        borderRadius: 9,
+                        color: privacyMode ? "var(--accent)" : "var(--ink2)",
+                        border: privacyMode ? "1px solid var(--accent)" : "1px solid var(--border)",
+                        cursor: "pointer", display: "flex", alignItems: "center",
+                        background: privacyMode ? "var(--accent-bg)" : "var(--bg2)",
+                        transition: "all 0.2s",
+                      }}
+                    >
+                      {privacyMode ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  )}
 
                   {/* Options Menu (3 dots) */}
                   <div ref={optionsMenuRef} style={{ position: "relative" }}>
