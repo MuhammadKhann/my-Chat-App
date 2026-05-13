@@ -79,12 +79,22 @@ function AudioPlayer({ src, isMe = true, id }) {
     });
 
     wavesurfer.on('error', (err) => {
+      // Ignore AbortError - it's expected when component unmounts during load
+      if (err?.name === 'AbortError' || err?.message?.includes('aborted')) {
+        return;
+      }
       console.error('Audio error:', err);
       setError(true);
       setIsLoading(false);
     });
 
-    wavesurfer.load(src);
+    wavesurfer.load(src).catch((err) => {
+      // Ignore AbortError - expected on unmount
+      if (err?.name === 'AbortError' || err?.message?.includes('aborted')) {
+        return;
+      }
+      console.error('Audio load error:', err);
+    });
 
     return () => {
       if (currentlyPlayingId === id) {
