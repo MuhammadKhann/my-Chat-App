@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import EmojiPicker from 'emoji-picker-react';
 import io from "socket.io-client";
 import Peer from "simple-peer";
-import { Palette } from "lucide-react";
+import { Palette, Eye, EyeOff } from "lucide-react";
 import { THEMES } from "../components/GlobalStyles";
 import { BACKEND_URL, api, fetchWithAuth } from "../services/api";
 import { sounds } from "../services/soundService";
@@ -528,6 +528,35 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   const [showThemeMenu, setShowThemeMenu] = useState(false);
   const [showPrivacyMenu, setShowPrivacyMenu] = useState(false);
   const [showOptionsMenu, setShowOptionsMenu] = useState(false);
+
+  // Privacy mode state with localStorage persistence
+  const [privacyMode, setPrivacyMode] = useState(() => {
+    try {
+      const saved = localStorage.getItem('privacyMode');
+      return saved ? JSON.parse(saved) : false;
+    } catch (e) {
+      return false;
+    }
+  });
+
+  // Screen size detection
+  const [isLargeScreen, setIsLargeScreen] = useState(window.innerWidth > 900);
+
+  useEffect(() => {
+    const handleResize = () => setIsLargeScreen(window.innerWidth > 900);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const shouldBlur = privacyMode && isLargeScreen;
+
+  // Toggle privacy mode with localStorage
+  const togglePrivacyMode = () => {
+    setPrivacyMode(prev => {
+      localStorage.setItem('privacyMode', JSON.stringify(!prev));
+      return !prev;
+    });
+  };
   const [blockedUsers, setBlockedUsers] = useState(new Set());
 
   // Refs for dropdown containers to detect click-outside
@@ -2041,7 +2070,9 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                         marginBottom: 4, background: "transparent",
                       }}
                     >
-                      <Avatar src={u.avatar} name={u.username} size={36} />
+                      <div className={shouldBlur ? "privacy-blur" : ""} style={{ flexShrink: 0 }}>
+                          <Avatar src={u.avatar} name={u.username} size={36} />
+                        </div>
                       <div>
                         <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>{u.username}</div>
                         {onlineUsers.has(u._id) && (
@@ -2088,7 +2119,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                         }}
                       >
                         {/* Avatar with online dot */}
-                        <div style={{ position: "relative", flexShrink: 0 }}>
+                        <div className={shouldBlur ? "privacy-blur" : ""} style={{ position: "relative", flexShrink: 0 }}>
                           <Avatar src={chat.avatar} name={chat.username} size={40} />
                           {onlineUsers.has(chat._id) && (
                             <div style={{
@@ -2245,6 +2276,24 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                       <polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
                     </svg>
                     {isMobile ? null : "Video"}
+                  </button>
+
+                  {/* Privacy Mode Toggle */}
+                  <button
+                    onClick={togglePrivacyMode}
+                    title={privacyMode ? "Disable Privacy Mode" : "Enable Privacy Mode"}
+                    className="nav-icon-btn"
+                    style={{
+                      height: 34, width: 34, justifyContent: "center",
+                      borderRadius: 9,
+                      color: privacyMode ? "var(--accent)" : "var(--ink2)",
+                      border: privacyMode ? "1px solid var(--accent)" : "1px solid var(--border)",
+                      cursor: "pointer", display: "flex", alignItems: "center",
+                      background: privacyMode ? "var(--accent-bg)" : "var(--bg2)",
+                      transition: "all 0.2s",
+                    }}
+                  >
+                    {privacyMode ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
 
                   {/* Options Menu (3 dots) */}
@@ -2450,7 +2499,8 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                         }}
                       >
                         {/* Bubble */}
-                        <div style={{
+                        <div className={shouldBlur ? "privacy-blur" : ""}
+                        style={{
                           maxWidth: "min(72%, 520px)",
                           background: isMe ? "linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%)" : "var(--card)",
                           color: isMe ? "#fff" : "var(--ink)",

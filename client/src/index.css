@@ -108,3 +108,15 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+/* Privacy Blur - blur messages on hover when enabled */
+@media (min-width: 901px) {
+  .privacy-blur {
+    filter: blur(8px);
+    transition: filter 0.2s ease;
+    cursor: pointer;
+  }
+  .privacy-blur:hover {
+    filter: none;
+  }
+}
