@@ -2192,7 +2192,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
           {selectedUser ? (
             <>
               {/* ── Chat Header ── */}
-              <div style={{
+              <div className={shouldBlur ? "privacy-blur" : ""} style={{
                 padding: "0 20px", height: 60,
                 borderBottom: "1px solid var(--border)",
                 background: "var(--card)",
