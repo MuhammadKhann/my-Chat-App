@@ -2479,7 +2479,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                     }} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: 11, color: "var(--accent)", fontWeight: 600 }}>
-                        Replying to {isMe ? 'yourself' : (selectedUser?.username || 'user')}
+                        Replying to {replyingTo.sender === user.id ? 'yourself' : (selectedUser?.username || 'user')}
                       </div>
                       <div style={{
                         fontSize: 12, color: "var(--ink2)",
