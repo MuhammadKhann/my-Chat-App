@@ -2460,49 +2460,6 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                   padding: "24px 20px 8px",
                   display: "flex", flexDirection: "column", gap: 4,
                 }}>
-                {/* Reply Bar (threaded replies) */}
-                {replyingTo && (
-                  <div
-                    data-reply-bar
-                    style={{
-                      display: "flex", alignItems: "center", gap: 10,
-                      padding: "8px 12px", margin: "0 0 8px 0",
-                      background: "var(--bg2)",
-                      borderRadius: 12, border: "1px solid var(--border)",
-                      animation: "fadeIn 0.2s ease",
-                    }}
-                  >
-                    <div style={{
-                      width: 3, height: "100%", minHeight: 36,
-                      background: "linear-gradient(var(--accent), var(--gradient-start))",
-                      borderRadius: 2,
-                    }} />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 11, color: "var(--accent)", fontWeight: 600 }}>
-                        Replying to {replyingTo.sender === user.id ? 'yourself' : (selectedUser?.username || 'user')}
-                      </div>
-                      <div style={{
-                        fontSize: 12, color: "var(--ink2)",
-                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                      }}>
-                        {replyingTo.text || (replyingTo.fileType?.startsWith('image/') ? '📷 Photo' : replyingTo.fileType?.startsWith('video/') ? '🎬 Video' : replyingTo.fileType?.startsWith('audio/') ? '🎵 Audio' : 'Message')}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setReplyingTo(null)}
-                      style={{
-                        background: "none", border: "none", cursor: "pointer",
-                        color: "var(--ink3)", padding: 4, borderRadius: 4,
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                      }}
-                      title="Cancel reply"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                      </svg>
-                    </button>
-                  </div>
-                )}
                 {chatHistory.map((msg, index) => {
                   const isMe = msg.sender === user.id;
                   const msgId = (typeof msg._id === "string")
@@ -2680,6 +2637,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                           {isMe && renderTicks(msg.status)}
                           {/* Reply button */}
                           <button
+                            type="button"
                             onClick={() => setReplyingTo(msg)}
                             title="Reply"
                             style={{
@@ -2790,8 +2748,54 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                     />
                   </div>
                 )}
-                <form onSubmit={sendMessage} autoComplete="off" style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <form onSubmit={sendMessage} autoComplete="off" style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
+                  {/* Reply Bar (threaded replies) - above input */}
+                  {replyingTo && (
+                    <div
+                      data-reply-bar
+                      style={{
+                        width: "100%",
+                        display: "flex", alignItems: "center", gap: 10,
+                        padding: "8px 12px",
+                        background: "var(--bg2)",
+                        borderRadius: 12, border: "1px solid var(--border)",
+                        animation: "fadeIn 0.2s ease",
+                      }}
+                    >
+                      <div style={{
+                        width: 3, height: "100%", minHeight: 36,
+                        background: "linear-gradient(var(--accent), var(--gradient-start))",
+                        borderRadius: 2,
+                      }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 11, color: "var(--accent)", fontWeight: 600 }}>
+                          Replying to {replyingTo.sender === user.id ? 'yourself' : (selectedUser?.username || 'user')}
+                        </div>
+                        <div style={{
+                          fontSize: 12, color: "var(--ink2)",
+                          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        }}>
+                          {replyingTo.text || (replyingTo.fileType?.startsWith('image/') ? '📷 Photo' : replyingTo.fileType?.startsWith('video/') ? '🎬 Video' : replyingTo.fileType?.startsWith('audio/') ? '🎵 Audio' : 'Message')}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setReplyingTo(null)}
+                        style={{
+                          background: "none", border: "none", cursor: "pointer",
+                          color: "var(--ink3)", padding: 4, borderRadius: 4,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                        }}
+                        title="Cancel reply"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
 
+                  <div style={{ display: "flex", gap: 8, alignItems: "center", width: "100%" }}>
                   {isRecording ? (
                     /* Recording UI */
                     <div style={{
@@ -2947,6 +2951,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                       )}
                     </>
                   )}
+                  </div>
                 </form>
               </div>
             </>
