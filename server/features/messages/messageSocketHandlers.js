@@ -199,6 +199,27 @@ const setupMessageHandlers = (io, socket) => {
                 hasFile: !!data.fileUrl
             });
 
+            let replyToId = null;
+
+            // Validate and process replyTo if provided
+            if (data.replyTo) {
+                try {
+                    const parentMsg = await Message.findById(data.replyTo);
+                    if (parentMsg) {
+                        // Verify parent is in the same room
+                        if (parentMsg.room === room) {
+                            replyToId = parentMsg._id;
+                        } else {
+                            console.log("⚠️ Reply to message from different room ignored");
+                        }
+                    } else {
+                        console.log("⚠️ Parent message not found, reply link removed");
+                    }
+                } catch (err) {
+                    console.log("⚠️ Invalid replyTo ID format:", err.message);
+                }
+            }
+
             const newMessage = new Message({
                 sender: senderId,
                 receiver: receiverId,
@@ -208,10 +229,16 @@ const setupMessageHandlers = (io, socket) => {
                 fileType: data.fileType || null,
                 fileSize: data.fileSize || null,
                 room: room,
-                status: "sent"
+                status: "sent",
+                replyTo: replyToId
             });
 
             const savedMessage = await newMessage.save();
+
+            // Increment replyCount on parent if this is a valid reply
+            if (replyToId) {
+                await Message.findByIdAndUpdate(replyToId, { $inc: { replyCount: 1 } });
+            }
 
             console.log("✅ MESSAGE SAVED TO DB:", savedMessage._id);
 

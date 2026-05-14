@@ -40,13 +40,13 @@ const renderTicks = (status) => {
   );
 };
 
-function MessageBubble({ 
-  msg, 
-  isMe, 
-  partnerName, 
-  onImageClick, 
+function MessageBubble({
+  msg,
+  isMe,
+  partnerName,
+  onImageClick,
   onVideoClick,
-  showAvatar = true 
+  showAvatar = true
 }) {
   if (msg.isSystem) {
     return (
@@ -85,7 +85,7 @@ function MessageBubble({
       {showAvatar && !isMe && (
         <Avatar src={msg.senderAvatar} name={partnerName} size={28} />
       )}
-      
+
       <div
         className="msg-bubble"
         style={{
@@ -107,7 +107,7 @@ function MessageBubble({
             onClick={() => onImageClick(msg.fileUrl)}
           />
         )}
-        
+
         {isVideo && msg.fileUrl && (
           <SmartVideo
             src={msg.fileUrl}
@@ -115,7 +115,7 @@ function MessageBubble({
             isMe={isMe}
           />
         )}
-        
+
         {isAudio && msg.fileUrl && (
           <AudioPlayer
             src={msg.fileUrl}
@@ -123,11 +123,11 @@ function MessageBubble({
             id={msg._id || msg.id || msg.fileUrl}
           />
         )}
-        
+
         {msg.text && (
           <div style={{ fontSize: 14, lineHeight: 1.4 }}>{msg.text}</div>
         )}
-        
+
         <div
           style={{
             display: "flex",

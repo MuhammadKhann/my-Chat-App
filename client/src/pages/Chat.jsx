@@ -692,6 +692,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [replyingTo, setReplyingTo] = useState(null); // Threaded reply state
 
   // ─── Smart Read Receipts (Enterprise) ───────────────────────────────────────
   const messagesViewportRef = useRef(null);
@@ -1637,16 +1638,18 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       _id: "temp_" + tempId, tempId: tempId, sender: user.id,
       receiver: selectedUser._id, text: message,
       fileUrl, fileName, fileType,
-      timestamp: new Date().toISOString(), status: "sent"
+      timestamp: new Date().toISOString(), status: "sent",
+      replyTo: replyingTo?._id || null
     };
     setChatHistory((prev) => [...prev, optimisticMessage]);
     socket.emit("send_message", {
       tempId, sender: user.id.toString(), receiver: selectedUser?._id?.toString(),
       text: message, fileUrl, fileName, fileType,
-      fileSize: selectedFile?.size || null, room, status: "sent"
+      fileSize: selectedFile?.size || null, room, status: "sent",
+      replyTo: replyingTo?._id || null
       });
       sounds.playSentMessage();
-      setMessage(""); setSelectedFile(null);    requestAnimationFrame(() => {
+      setMessage(""); setSelectedFile(null); setReplyingTo(null);    requestAnimationFrame(() => {
       messageInputRef.current?.focus();
     });
   };
@@ -2061,6 +2064,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                       className={`chat-item ${shouldBlur ? "privacy-blur" : ""}`}
                       onClick={() => {
                         setSelectedUser(u);
+                        setReplyingTo(null);
                         setActiveTab("chats");
                         setSearchQuery("");
                         if (isMobile) setIsSidebarOpen(false);
@@ -2105,6 +2109,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                         className={`chat-item ${shouldBlur ? "privacy-blur" : ""}`}
                         onClick={() => {
                           setSelectedUser(chat);
+                          setReplyingTo(null);
                           if (isMobile) setIsSidebarOpen(false);
                         }}
                         style={{
@@ -2205,6 +2210,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                     onClick={() => {
                       setSelectedUser(null);
                       setChatHistory([]);
+                      setReplyingTo(null);
                       setIsSidebarOpen(true);
                     }}
                     title="Close chat"
@@ -2454,6 +2460,49 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                   padding: "24px 20px 8px",
                   display: "flex", flexDirection: "column", gap: 4,
                 }}>
+                {/* Reply Bar (threaded replies) */}
+                {replyingTo && (
+                  <div
+                    data-reply-bar
+                    style={{
+                      display: "flex", alignItems: "center", gap: 10,
+                      padding: "8px 12px", margin: "0 0 8px 0",
+                      background: "var(--bg2)",
+                      borderRadius: 12, border: "1px solid var(--border)",
+                      animation: "fadeIn 0.2s ease",
+                    }}
+                  >
+                    <div style={{
+                      width: 3, height: "100%", minHeight: 36,
+                      background: "linear-gradient(var(--accent), var(--gradient-start))",
+                      borderRadius: 2,
+                    }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 11, color: "var(--accent)", fontWeight: 600 }}>
+                        Replying to {isMe ? 'yourself' : (selectedUser?.username || 'user')}
+                      </div>
+                      <div style={{
+                        fontSize: 12, color: "var(--ink2)",
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      }}>
+                        {replyingTo.text || (replyingTo.fileType?.startsWith('image/') ? '📷 Photo' : replyingTo.fileType?.startsWith('video/') ? '🎬 Video' : replyingTo.fileType?.startsWith('audio/') ? '🎵 Audio' : 'Message')}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setReplyingTo(null)}
+                      style={{
+                        background: "none", border: "none", cursor: "pointer",
+                        color: "var(--ink3)", padding: 4, borderRadius: 4,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}
+                      title="Cancel reply"
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
                 {chatHistory.map((msg, index) => {
                   const isMe = msg.sender === user.id;
                   const msgId = (typeof msg._id === "string")
@@ -2461,6 +2510,11 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                     : (msg._id?.toString ? msg._id.toString() : "");
                   const timeStr = new Date(msg.createdAt || msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
                   const showSeparator = shouldShowDateSeparator(chatHistory, index);
+
+                  // Find parent message for replies (handles both loaded messages and missing parent)
+                  const parentMsg = msg.replyTo
+                    ? chatHistory.find(m => m._id === msg.replyTo || m._id?.toString() === msg.replyTo?.toString()) || { _id: msg.replyTo, text: null, fileType: null, sender: null }
+                    : null;
 
                   return (
                     <React.Fragment key={msgId || index}>
@@ -2488,6 +2542,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                       )}
                       <div
                         className="msg-bubble"
+                        data-msg-id={msgId}
                         ref={(node) => {
                           // Observe only real incoming messages (server IDs),
                           // never optimistic temp IDs / local placeholders.
@@ -2514,7 +2569,37 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                           boxShadow: isMe
                             ? "0 2px 10px rgba(0,0,0,0.18)"
                             : "0 1px 4px rgba(0,0,0,0.06)",
-                        }}>
+                          position: "relative",
+                        }}
+                        >
+
+                          {/* Reply preview (parent message) */}
+                          {parentMsg && (
+                            <div
+                              onClick={() => {
+                                const el = document.querySelector(`[data-msg-id="${parentMsg._id || parentMsg._id?.toString()}"]`);
+                                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                              }}
+                              style={{
+                                borderLeft: `3px solid ${isMe ? 'rgba(255,255,255,0.5)' : 'var(--accent)'}`,
+                                paddingLeft: 10,
+                                marginBottom: 6,
+                                cursor: 'pointer',
+                                fontSize: 12,
+                                opacity: 0.85,
+                              }}
+                            >
+                              <div style={{ fontWeight: 600, marginBottom: 2, color: isMe ? 'rgba(255,255,255,0.9)' : 'var(--ink2)' }}>
+                                {isMe ? 'You' : (selectedUser?.username || 'User')}
+                              </div>
+                              <div style={{
+                                color: isMe ? 'rgba(255,255,255,0.7)' : 'var(--ink2)',
+                                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                              }}>
+                                {parentMsg.text || (parentMsg.fileType?.startsWith('image/') ? '📷 Photo' : parentMsg.fileType?.startsWith('video/') ? '🎬 Video' : parentMsg.fileType?.startsWith('audio/') ? '🎵 Audio' : 'Message')}
+                              </div>
+                            </div>
+                          )}
 
                           {/* Text */}
                           {msg.text && (
@@ -2588,11 +2673,29 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
 
                         {/* Time + status */}
                         <div style={{
-                          display: "flex", alignItems: "center", gap: 4,
+                          display: "flex", alignItems: "center", gap: 6,
                           marginTop: 3, fontSize: 11, color: "var(--ink3)",
                         }}>
                           <span>{timeStr}</span>
                           {isMe && renderTicks(msg.status)}
+                          {/* Reply button */}
+                          <button
+                            onClick={() => setReplyingTo(msg)}
+                            title="Reply"
+                            style={{
+                              background: "none", border: "none", cursor: "pointer",
+                              color: "var(--ink3)", padding: "2px 4px", marginLeft: 2,
+                              display: "flex", alignItems: "center", borderRadius: 4,
+                              opacity: 0.6, transition: "opacity 0.15s",
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.opacity = 1}
+                            onMouseOut={(e) => e.currentTarget.style.opacity = 0.6}
+                          >
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <polyline points="9 17 4 12 9 7" />
+                              <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
+                            </svg>
+                          </button>
                         </div>
                       </div>
                     </React.Fragment>

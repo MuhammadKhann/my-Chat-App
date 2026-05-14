@@ -12,7 +12,11 @@ const messageSchema = new mongoose.Schema({
     fileSize: { type: Number, default: null }, // Track bytes for frontend display
 
     room: { type: String, required: true },
-    status: { type: String, default: 'sent' }
+    status: { type: String, default: 'sent' },
+
+    // Threaded replies
+    replyTo: { type: mongoose.Schema.Types.ObjectId, ref: 'Message', default: null },
+    replyCount: { type: Number, default: 0 }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Message', messageSchema);
