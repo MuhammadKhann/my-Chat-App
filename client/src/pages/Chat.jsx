@@ -693,6 +693,11 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [replyingTo, setReplyingTo] = useState(null); // Threaded reply state
+  const [editingMessage, setEditingMessage] = useState(null); // Edit state
+  const [showEditHistory, setShowEditHistory] = useState(null); // Edit history modal
+  const [editHistory, setEditHistory] = useState([]); // Edit history data
+  const [selectedMessageMenu, setSelectedMessageMenu] = useState(null); // Message action menu
+  const [showDeleteDropdown, setShowDeleteDropdown] = useState(false); // Delete dropdown state
 
   // ─── Smart Read Receipts (Enterprise) ───────────────────────────────────────
   const messagesViewportRef = useRef(null);
@@ -1145,6 +1150,92 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       endCall(false);
     });
 
+    // ─── Delete & Edit Handlers ────────────────────────────────────────────────
+    socket.on("delete_confirmed", ({ msgId, success, forMe, forEveryone }) => {
+      if (success) {
+        if (forMe) {
+          // Hide from sender only
+          setChatHistory(prev => prev.map(m =>
+            m._id === msgId ? { ...m, deletedBySender: true } : m
+          ));
+        } else if (forEveryone) {
+          // Hide from both
+          setChatHistory(prev => prev.map(m =>
+            m._id === msgId ? { ...m, deletedForEveryone: true, deletedAt: new Date() } : m
+          ));
+        }
+      }
+      setSelectedMessageMenu(null);
+    });
+
+    socket.on("delete_error", ({ msgId, error, retryAfter }) => {
+      console.error("Delete error:", error);
+      alert(error);
+    });
+
+    socket.on("message_deleted", ({ msgId, deletedForEveryone, deletedAt }) => {
+      setChatHistory(prev => prev.map(m =>
+        m._id === msgId ? { ...m, deletedForEveryone: true, deletedAt: new Date(deletedAt) } : m
+      ));
+    });
+
+    socket.on("edit_confirmed", ({ msgId, success, updatedMsg }) => {
+      if (success) {
+        setChatHistory(prev => prev.map(m =>
+          m._id === msgId ? {
+            ...m,
+            text: updatedMsg.text,
+            isEdited: updatedMsg.isEdited,
+            editedAt: updatedMsg.editedAt,
+            editCount: updatedMsg.editCount,
+            _version: updatedMsg._version
+          } : m
+        ));
+        setEditingMessage(null);
+      }
+    });
+
+    socket.on("edit_error", ({ msgId, error, retryAfter }) => {
+      console.error("Edit error:", error);
+      // Don't show alert for "no changes" - just close the modal
+      if (error === "No changes were made") {
+        setEditingMessage(null);
+        return;
+      }
+      // For other errors, show a toast-style notification
+      const toast = document.createElement('div');
+      toast.textContent = error;
+      toast.style.cssText = `
+        position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+        background: #ef4444; color: white; padding: 12px 20px; border-radius: 8px;
+        font-size: 14px; z-index: 9999; animation: fadeIn 0.2s ease;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2); max-width: 90%;
+      `;
+      document.body.appendChild(toast);
+      setTimeout(() => { toast.style.opacity = 0; setTimeout(() => toast.remove(), 200); }, 3000);
+    });
+
+    socket.on("message_edited", ({ msgId, newText, isEdited, editedAt, _version }) => {
+      setChatHistory(prev => prev.map(m =>
+        m._id === msgId ? {
+          ...m,
+          text: newText,
+          isEdited,
+          editedAt: new Date(editedAt),
+          _version
+        } : m
+      ));
+    });
+
+    socket.on("edit_history", ({ msgId, history, isEdited, error }) => {
+      if (error) {
+        alert(error);
+        return;
+      }
+      setEditHistory(history || []);
+      setShowEditHistory(msgId);
+    });
+
     return () => {
       socket.off("message_confirmed"); socket.off("send_error");
       socket.off("receive_message"); socket.off("status_changed");
@@ -1153,6 +1244,8 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       socket.off("user_status_change"); socket.off("user_typing");
       socket.off("incoming_call"); socket.off("call_ended"); socket.off("call_declined");
       socket.off("disconnect");
+      socket.off("delete_confirmed"); socket.off("delete_error"); socket.off("message_deleted");
+      socket.off("edit_confirmed"); socket.off("edit_error"); socket.off("message_edited"); socket.off("edit_history");
     };
   }, [user.id, callStatus]);
 
@@ -2558,73 +2651,91 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                             </div>
                           )}
 
-                          {/* Text */}
-                          {msg.text && (
-                            <span style={{ wordBreak: "break-word", lineHeight: 1.5, fontSize: 14 }}>
-                              {msg.text}
-                            </span>
+                          {/* Deleted message */}
+                          {msg.deletedForEveryone ? (
+                            <span style={{ fontStyle: "italic", opacity: 0.7 }}>[Message deleted]</span>
+                          ) : msg.deletedBySender && isMe ? (
+                            <span style={{ fontStyle: "italic", opacity: 0.7 }}>[You deleted this message]</span>
+                          ) : (
+                            <>
+                              {/* Text */}
+                              {msg.text && (
+                                <span style={{ wordBreak: "break-word", lineHeight: 1.5, fontSize: 14 }}>
+                                  {msg.text}
+                                </span>
+                              )}
+                              {/* Edited label */}
+                              {msg.isEdited && (
+                                <span style={{ fontSize: 10, opacity: 0.6, marginLeft: 4 }}>(edited)</span>
+                              )}
+                            </>
                           )}
 
-                          {/* Image */}
-                          {msg.fileUrl && msg.fileType?.startsWith('image/') && (
-                            <SmartImage
-                              src={msg.fileUrl}
-                              alt="Attached"
-                              style={{ border: isMe ? "1px solid rgba(255,255,255,0.15)" : "1px solid var(--border)" }}
-                              onClick={() => setViewingMedia(msg.fileUrl)}
-                            />
-                          )}
+                          {/* Only show media if not deleted for everyone */}
+                          {!msg.deletedForEveryone && (
+                            <>
+                              {/* Image */}
+                              {msg.fileUrl && msg.fileType?.startsWith('image/') && (
+                                <SmartImage
+                                  src={msg.fileUrl}
+                                  alt="Attached"
+                                  style={{ border: isMe ? "1px solid rgba(255,255,255,0.15)" : "1px solid var(--border)" }}
+                                  onClick={() => setViewingMedia(msg.fileUrl)}
+                                />
+                              )}
 
-                          {/* Video */}
-                          {msg.fileUrl && msg.fileType?.startsWith('video/') && (
-                            <SmartVideo
-                              src={msg.fileUrl}
-                              isMe={isMe}
-                              onClick={() => setViewingVideo(msg.fileUrl)}
-                            />
-                          )}
+                              {/* Video */}
+                              {msg.fileUrl && msg.fileType?.startsWith('video/') && (
+                                <SmartVideo
+                                  src={msg.fileUrl}
+                                  isMe={isMe}
+                                  onClick={() => setViewingVideo(msg.fileUrl)}
+                                />
+                              )}
 
-                          {/* Document */}
-                          {msg.fileUrl && !msg.fileType?.startsWith('image/') && !msg.fileType?.startsWith('audio/') && !msg.fileType?.startsWith('video/') && (
-                            <a
-                              href={api(`/api/uploads/download?url=${encodeURIComponent(msg.fileUrl)}&filename=${encodeURIComponent(msg.fileName || 'document.pdf')}`)}
-                              style={{
-                                display: "flex", alignItems: "center", gap: 8,
-                                color: isMe ? "rgba(255,255,255,0.95)" : "var(--ink)",
-                                textDecoration: "none",
-                                background: isMe ? "rgba(255,255,255,0.12)" : "var(--bg2)",
-                                padding: "9px 12px", borderRadius: 9, fontSize: 13, fontWeight: 700,
-                                border: isMe ? "1px solid rgba(255,255,255,0.2)" : "1px solid var(--border)",
-                              }}
-                            >
-                              <div style={{
-                                width: 28, height: 28, borderRadius: 6,
-                                background: isMe ? "rgba(255,255,255,0.2)" : "linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%)",
-                                display: "flex", alignItems: "center", justifyContent: "center",
-                                flexShrink: 0
-                              }}>
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={isMe ? "#fff" : "#fff"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z" /><polyline points="13 2 13 9 20 9" />
-                                </svg>
-                              </div>
-                              <span style={{ 
-                                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                                background: isMe ? "none" : "linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%)",
-                                WebkitBackgroundClip: isMe ? "none" : "text",
-                                WebkitTextFillColor: isMe ? "inherit" : "transparent",
-                              }}>
-                                {msg.fileName || "Download Document"}
-                              </span>
-                            </a>
-                          )}
+                              {/* Document */}
+                              {msg.fileUrl && !msg.fileType?.startsWith('image/') && !msg.fileType?.startsWith('audio/') && !msg.fileType?.startsWith('video/') && (
+                                <a
+                                  href={api(`/api/uploads/download?url=${encodeURIComponent(msg.fileUrl)}&filename=${encodeURIComponent(msg.fileName || 'document.pdf')}`)}
+                                  style={{
+                                    display: "flex", alignItems: "center", gap: 8,
+                                    color: isMe ? "rgba(255,255,255,0.95)" : "var(--ink)",
+                                    textDecoration: "none",
+                                    background: isMe ? "rgba(255,255,255,0.12)" : "var(--bg2)",
+                                    padding: "9px 12px", borderRadius: 9, fontSize: 13, fontWeight: 700,
+                                    border: isMe ? "1px solid rgba(255,255,255,0.2)" : "1px solid var(--border)",
+                                  }}
+                                >
+                                  <div style={{
+                                    width: 28, height: 28, borderRadius: 6,
+                                    background: isMe ? "rgba(255,255,255,0.2)" : "linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%)",
+                                    display: "flex", alignItems: "center", justifyContent: "center",
+                                    flexShrink: 0
+                                  }}>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={isMe ? "#fff" : "#fff"} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                      <path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z" /><polyline points="13 2 13 9 20 9" />
+                                    </svg>
+                                  </div>
+                                  <span style={{
+                                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                                    background: isMe ? "none" : "linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%)",
+                                    WebkitBackgroundClip: isMe ? "none" : "text",
+                                    WebkitTextFillColor: isMe ? "inherit" : "transparent",
+                                  }}>
+                                    {msg.fileName || "Download Document"}
+                                  </span>
+                                </a>
+                              )}
 
-                          {/* Audio */}
-                          {msg.fileUrl && msg.fileType?.startsWith('audio/') && (
-                            <AudioPlayer
-                              src={msg.fileUrl}
-                              isMe={isMe}
-                              id={msg._id || msg.id || msg.fileUrl}
-                            />
+                              {/* Audio */}
+                              {msg.fileUrl && msg.fileType?.startsWith('audio/') && (
+                                <AudioPlayer
+                                  src={msg.fileUrl}
+                                  isMe={isMe}
+                                  id={msg._id || msg.id || msg.fileUrl}
+                                />
+                              )}
+                            </>
                           )}
                         </div>
 
@@ -2635,11 +2746,12 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                         }}>
                           <span>{timeStr}</span>
                           {isMe && renderTicks(msg.status)}
-                          {/* Reply button */}
-                          <button
-                            type="button"
-                            onClick={() => setReplyingTo(msg)}
-                            title="Reply"
+                          {/* Reply button - hide if message is deleted */}
+                          {!msg.deletedForEveryone && (
+                            <button
+                              type="button"
+                              onClick={() => setReplyingTo(msg)}
+                              title="Reply"
                             style={{
                               background: "none", border: "none", cursor: "pointer",
                               color: "var(--ink3)", padding: "2px 4px", marginLeft: 2,
@@ -2654,11 +2766,271 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                               <path d="M20 18v-2a4 4 0 0 0-4-4H4" />
                             </svg>
                           </button>
+                          )}
+                          {/* More options button */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedMessageMenu(selectedMessageMenu?._id === msg._id ? null : msg);
+                            }}
+                            title="More options"
+                            style={{
+                              background: "none", border: "none", cursor: "pointer",
+                              color: "var(--ink3)", padding: "2px 4px",
+                              display: "flex", alignItems: "center", borderRadius: 4,
+                              opacity: 0.6, transition: "opacity 0.15s",
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.opacity = 1}
+                            onMouseOut={(e) => e.currentTarget.style.opacity = 0.6}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+                              <circle cx="12" cy="5" r="2" />
+                              <circle cx="12" cy="12" r="2" />
+                              <circle cx="12" cy="19" r="2" />
+                            </svg>
+                          </button>
                         </div>
                       </div>
                     </React.Fragment>
                   );
                 })}
+
+                {/* Message Action Menu */}
+                {selectedMessageMenu && (() => {
+                  const msg = selectedMessageMenu;
+                  const canDeleteForMe = msg.sender === user.id && !msg.deletedBySender;
+                  const canDeleteForEveryone = msg.sender === user.id && !msg.deletedForEveryone;
+                  const canEdit = msg.sender === user.id && !msg.fileUrl && !msg.deletedForEveryone;
+                  const canViewHistory = msg.isEdited && !msg.deletedForEveryone;
+                  const messageAge = Date.now() - new Date(msg.createdAt || msg.timestamp).getTime();
+                  const withinEditTime = messageAge < 30 * 60 * 1000;
+                  const alreadyDeletedByMe = msg.deletedBySender && msg.sender === user.id;
+
+                  return (
+                    <div
+                      onClick={() => { setSelectedMessageMenu(null); setShowDeleteDropdown(false); }}
+                      style={{
+                        position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+                        zIndex: 1000, background: "rgba(0,0,0,0.5)",
+                        display: "flex", alignItems: "flex-end", justifyContent: "center",
+                        paddingBottom: 120,
+                      }}
+                    >
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                          background: "var(--card)",
+                          borderRadius: 16, padding: 8, minWidth: 200,
+                          border: "1px solid var(--border)",
+                          boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
+                          animation: "rise 0.2s ease",
+                        }}
+                      >
+                        {canEdit && withinEditTime && (
+                          <button
+                            type="button"
+                            onClick={() => { setEditingMessage(msg); setSelectedMessageMenu(null); }}
+                            style={{
+                              width: "100%", padding: "12px 16px", background: "none",
+                              border: "none", cursor: "pointer", textAlign: "left",
+                              color: "var(--ink)", fontSize: 14, borderRadius: 8,
+                              display: "flex", alignItems: "center", gap: 12,
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.background = "var(--bg2)"}
+                            onMouseOut={(e) => e.currentTarget.style.background = "none"}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                            </svg>
+                            Edit
+                          </button>
+                        )}
+                        {canEdit && !withinEditTime && (
+                          <div style={{ padding: "12px 16px", fontSize: 12, color: "var(--ink3)", display: "flex", alignItems: "center", gap: 12 }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                            </svg>
+                            Edit time expired
+                          </div>
+                        )}
+                        {canViewHistory && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              socket.emit("get_edit_history", { msgId: msg._id || msg._id?.toString() });
+                            }}
+                            style={{
+                              width: "100%", padding: "12px 16px", background: "none",
+                              border: "none", cursor: "pointer", textAlign: "left",
+                              color: "var(--ink)", fontSize: 14, borderRadius: 8,
+                              display: "flex", alignItems: "center", gap: 12,
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.background = "var(--bg2)"}
+                            onMouseOut={(e) => e.currentTarget.style.background = "none"}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" />
+                            </svg>
+                            View edit history
+                          </button>
+                        )}
+                        {/* Delete for me - show dropdown if not deleted yet, otherwise just remove */}
+                        {canDeleteForMe && !msg.deletedBySender && !showDeleteDropdown && (
+                          <button
+                            type="button"
+                            onClick={() => setShowDeleteDropdown(true)}
+                            style={{
+                              width: "100%", padding: "12px 16px", background: "none",
+                              border: "none", cursor: "pointer", textAlign: "left",
+                              color: "var(--ink)", fontSize: 14, borderRadius: 8,
+                              display: "flex", alignItems: "center", gap: 12,
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.background = "var(--bg2)"}
+                            onMouseOut={(e) => e.currentTarget.style.background = "none"}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                            </svg>
+                            Delete for me
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginLeft: "auto" }}>
+                              <polyline points="6 9 12 15 18 9" />
+                            </svg>
+                          </button>
+                        )}
+                        {showDeleteDropdown && canDeleteForMe && !msg.deletedBySender && (
+                          <div style={{ paddingLeft: 8 }}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                socket.emit("delete_for_me", { msgId: msg._id || msg._id?.toString(), userId: user.id });
+                                setShowDeleteDropdown(false);
+                              }}
+                              style={{
+                                width: "100%", padding: "10px 16px", background: "none",
+                                border: "none", cursor: "pointer", textAlign: "left",
+                                color: "var(--ink)", fontSize: 14, borderRadius: 8,
+                                display: "flex", alignItems: "center", gap: 12,
+                              }}
+                              onMouseOver={(e) => e.currentTarget.style.background = "var(--bg2)"}
+                              onMouseOut={(e) => e.currentTarget.style.background = "none"}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
+                              </svg>
+                              Delete for me
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setChatHistory(prev => prev.filter(m => m._id !== msg._id));
+                                setSelectedMessageMenu(null);
+                                setShowDeleteDropdown(false);
+                              }}
+                              style={{
+                                width: "100%", padding: "10px 16px", background: "none",
+                                border: "none", cursor: "pointer", textAlign: "left",
+                                color: "var(--ink)", fontSize: 14, borderRadius: 8,
+                                display: "flex", alignItems: "center", gap: 12,
+                              }}
+                              onMouseOver={(e) => e.currentTarget.style.background = "var(--bg2)"}
+                              onMouseOut={(e) => e.currentTarget.style.background = "none"}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                              </svg>
+                              Remove from chat
+                            </button>
+                          </div>
+                        )}
+                        {/* If already deleted by sender, show only "Remove from chat" */}
+                        {msg.deletedBySender && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setChatHistory(prev => prev.filter(m => m._id !== msg._id));
+                              setSelectedMessageMenu(null);
+                            }}
+                            style={{
+                              width: "100%", padding: "12px 16px", background: "none",
+                              border: "none", cursor: "pointer", textAlign: "left",
+                              color: "var(--ink)", fontSize: 14, borderRadius: 8,
+                              display: "flex", alignItems: "center", gap: 12,
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.background = "var(--bg2)"}
+                            onMouseOut={(e) => e.currentTarget.style.background = "none"}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                            Remove from chat
+                          </button>
+                        )}
+                        {canDeleteForEveryone && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              socket.emit("delete_for_everyone", { msgId: msg._id || msg._id?.toString(), userId: user.id });
+                            }}
+                            style={{
+                              width: "100%", padding: "12px 16px", background: "none",
+                              border: "none", cursor: "pointer", textAlign: "left",
+                              color: "#ef4444", fontSize: 14, borderRadius: 8,
+                              display: "flex", alignItems: "center", gap: 12,
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.background = "var(--bg2)"}
+                            onMouseOut={(e) => e.currentTarget.style.background = "none"}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" /><line x1="10" y1="11" x2="10" y2="17" /><line x1="14" y1="11" x2="14" y2="17" />
+                            </svg>
+                            Delete for everyone
+                          </button>
+                        )}
+                        {!msg.deletedForEveryone && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const textToCopy = msg.text || "";
+                              if (textToCopy) {
+                                navigator.clipboard.writeText(textToCopy);
+                              }
+                              setSelectedMessageMenu(null);
+                            }}
+                            style={{
+                              width: "100%", padding: "12px 16px", background: "none",
+                              border: "none", cursor: "pointer", textAlign: "left",
+                              color: "var(--ink)", fontSize: 14, borderRadius: 8,
+                              display: "flex", alignItems: "center", gap: 12,
+                            }}
+                            onMouseOver={(e) => e.currentTarget.style.background = "var(--bg2)"}
+                            onMouseOut={(e) => e.currentTarget.style.background = "none"}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+                            </svg>
+                            Copy
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setSelectedMessageMenu(null)}
+                          style={{
+                            width: "100%", padding: "12px 16px", background: "none",
+                            border: "none", cursor: "pointer", textAlign: "left",
+                            color: "var(--ink3)", fontSize: 14, borderRadius: 8,
+                            display: "flex", alignItems: "center", gap: 12,
+                          }}
+                          onMouseOver={(e) => e.currentTarget.style.background = "var(--bg2)"}
+                          onMouseOut={(e) => e.currentTarget.style.background = "none"}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* ── Typing Indicator ── */}
@@ -2678,6 +3050,136 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                     ))}
                   </div>
                   {selectedUser.username} is typing…
+                </div>
+              )}
+
+              {/* ── Edit Message Modal ── */}
+              {editingMessage && (
+                <div
+                  style={{
+                    position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+                    zIndex: 1001, background: "rgba(0,0,0,0.5)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    padding: 20,
+                  }}
+                >
+                  <div
+                    style={{
+                      background: "var(--card)",
+                      borderRadius: 16, padding: 20, width: "100%", maxWidth: 500,
+                      border: "1px solid var(--border)",
+                      boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
+                      animation: "rise 0.2s ease",
+                    }}
+                  >
+                    <div style={{ marginBottom: 16, fontWeight: 600, fontSize: 16 }}>Edit Message</div>
+                    <textarea
+                      autoFocus
+                      defaultValue={editingMessage.text}
+                      id="edit-input"
+                      style={{
+                        width: "100%", minHeight: 80, padding: 12, borderRadius: 12,
+                        border: "1px solid var(--border)", background: "var(--bg2)",
+                        color: "var(--ink)", fontSize: 14, resize: "vertical",
+                        outline: "none", fontFamily: "inherit",
+                      }}
+                    />
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
+                      <span style={{ fontSize: 11, color: "var(--ink3)" }}>Max 2000 characters</span>
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button
+                          type="button"
+                          onClick={() => setEditingMessage(null)}
+                          style={{
+                            padding: "8px 16px", borderRadius: 8, border: "1px solid var(--border)",
+                            background: "var(--bg2)", color: "var(--ink)", cursor: "pointer",
+                          }}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newText = document.getElementById("edit-input").value;
+                            socket.emit("edit_message", {
+                              msgId: editingMessage._id || editingMessage._id?.toString(),
+                              userId: user.id,
+                              text: newText,
+                              _version: editingMessage._version
+                            });
+                          }}
+                          style={{
+                            padding: "8px 16px", borderRadius: 8, border: "none",
+                            background: "linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%)",
+                            color: "#fff", cursor: "pointer", fontWeight: 600,
+                          }}
+                        >
+                          Save
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Edit History Modal ── */}
+              {showEditHistory && (
+                <div
+                  style={{
+                    position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+                    zIndex: 1001, background: "rgba(0,0,0,0.5)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    padding: 20,
+                  }}
+                >
+                  <div
+                    style={{
+                      background: "var(--card)",
+                      borderRadius: 16, padding: 20, width: "100%", maxWidth: 500,
+                      maxHeight: "80vh", overflowY: "auto",
+                      border: "1px solid var(--border)",
+                      boxShadow: "0 4px 20px rgba(0,0,0,0.2)",
+                      animation: "rise 0.2s ease",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                      <span style={{ fontWeight: 600, fontSize: 16 }}>Edit History</span>
+                      <button
+                        type="button"
+                        onClick={() => setShowEditHistory(null)}
+                        style={{
+                          background: "none", border: "none", cursor: "pointer",
+                          color: "var(--ink3)", padding: 4,
+                        }}
+                      >
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                      </button>
+                    </div>
+                    {editHistory.length === 0 ? (
+                      <div style={{ color: "var(--ink3)", textAlign: "center", padding: 20 }}>
+                        No edit history available
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                        {editHistory.slice().reverse().map((entry, i) => (
+                          <div
+                            key={i}
+                            style={{
+                              padding: 12, background: "var(--bg2)",
+                              borderRadius: 8, border: "1px solid var(--border)",
+                            }}
+                          >
+                            <div style={{ fontSize: 11, color: "var(--ink3)", marginBottom: 6 }}>
+                              {new Date(entry.editedAt).toLocaleString()}
+                            </div>
+                            <div style={{ fontSize: 14 }}>{entry.text}</div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
