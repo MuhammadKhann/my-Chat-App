@@ -190,28 +190,22 @@ const setupMessageHandlers = (io, socket) => {
             }
 
             // --- BLOCK ISOLATION ---
+            const senderBlockedReceiver = blockCache.get(senderId.toString())?.has(receiverId.toString());
+            if (senderBlockedReceiver) {
+                console.log(`🚫 BLOCK: ${senderId} blocked ${receiverId}. Message dropped.`);
+                socket.emit("send_error", {
+                    tempId: data.tempId,
+                    error: "You blocked this user. Unblock them to send messages."
+                });
+                return;
+            }
+
             const receiverBlockedSender = blockCache.get(receiverId.toString())?.has(senderId.toString());
             if (receiverBlockedSender) {
                 console.log(`🚫 BLOCK: ${receiverId} blocked ${senderId}. Message dropped.`);
-                
-                // Send "You are blocked" system message back to the sender
-                const systemMsg = {
-                    _id: new mongoose.Types.ObjectId(),
-                    sender: receiverId, // Make it look like it's from the receiver or a system notice
-                    receiver: senderId,
-                    text: "You are blocked",
-                    room: data.room || [senderId.toString(), receiverId.toString()].sort().join("_"),
-                    status: "sent",
-                    isSystem: true, // Marker for frontend
-                    createdAt: new Date()
-                };
-
-                socket.emit("receive_message", systemMsg);
-                socket.emit("message_confirmed", {
+                socket.emit("send_error", {
                     tempId: data.tempId,
-                    dbId: new mongoose.Types.ObjectId(),
-                    status: "sent",
-                    createdAt: systemMsg.createdAt
+                    error: "Message could not be delivered."
                 });
                 return;
             }

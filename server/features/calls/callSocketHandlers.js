@@ -3,11 +3,33 @@ const { onlineUsers, privacyCache, blockCache } = require('../../utils/onlineSta
 const setupCallHandlers = (io, socket) => {
     // 1. Caller initiates the ring
     socket.on("call_user", ({ userToCall, signalData, from, callerName, callType }) => {
-        console.log(`📞 CALL REQUEST: ${callerName} (${from}) → ${userToCall} [Type: ${callType || 'video'}]`);
+        const callerId = (socket.userId || from)?.toString();
+        const targetId = userToCall?.toString();
+
+        console.log(`📞 CALL REQUEST: ${callerName} (${callerId}) → ${targetId} [Type: ${callType || 'video'}]`);
+
+        if (!callerId || !targetId) {
+            socket.emit("call_error", { error: "Invalid caller or receiver" });
+            return;
+        }
+
+        // Prevent calling self
+        if (callerId === targetId) {
+            console.log(`❌ REJECTED: User trying to call themselves`);
+            socket.emit("call_error", { error: "Cannot call yourself" });
+            return;
+        }
+
+        // Isolation: Check if caller has blocked the target
+        if (blockCache.get(callerId)?.has(targetId)) {
+            console.log(`🚫 BLOCK: ${callerId} blocked ${targetId}. Call rejected.`);
+            socket.emit("call_error", { error: "You blocked this user. Unblock them to call." });
+            return;
+        }
 
         // Isolation: Check if target has blocked the caller
-        if (blockCache.get(userToCall)?.has(from)) {
-            console.log(`🚫 BLOCK: ${userToCall} blocked ${from}. Call rejected.`);
+        if (blockCache.get(targetId)?.has(callerId)) {
+            console.log(`🚫 BLOCK: ${targetId} blocked ${callerId}. Call rejected.`);
             // Silently fail or send error? Let's send a generic error to match isolation.
             socket.emit("call_error", { error: "User is unavailable" });
             return;
@@ -16,37 +38,42 @@ const setupCallHandlers = (io, socket) => {
         // Debug: Check rooms
         const rooms = Array.from(socket.rooms);
         console.log(`📞 Caller socket rooms:`, rooms);
-        console.log(`📞 Target user online:`, onlineUsers.has(userToCall));
+        console.log(`📞 Target user online:`, onlineUsers.has(targetId));
 
-        // Prevent calling self
-        if (from === userToCall) {
-            console.log(`❌ REJECTED: User trying to call themselves`);
-            socket.emit("call_error", { error: "Cannot call yourself" });
-            return;
-        }
-
-        io.to(userToCall).emit("incoming_call", {
+        io.to(targetId).emit("incoming_call", {
             signal: signalData,
-            from,
+            from: callerId,
             callerName,
             callType: callType || 'video'
         });
-        console.log(`📞 EMITTED incoming_call to room: ${userToCall}`);
+        console.log(`📞 EMITTED incoming_call to room: ${targetId}`);
     });
 
     // 2. Receiver clicks "Answer"
     socket.on("answer_call", ({ to, signal }) => {
-        io.to(to).emit("call_accepted", signal);
+        const from = socket.userId?.toString();
+        const targetId = to?.toString();
+        if (!from || !targetId) return;
+        if (blockCache.get(from)?.has(targetId) || blockCache.get(targetId)?.has(from)) return;
+        io.to(targetId).emit("call_accepted", { signal, from });
     });
 
     // 3. Either party clicks "Hang Up"
     socket.on("end_call", ({ to }) => {
-        io.to(to).emit("call_ended");
+        const from = socket.userId?.toString();
+        const targetId = to?.toString();
+        if (!from || !targetId) return;
+        if (blockCache.get(from)?.has(targetId) || blockCache.get(targetId)?.has(from)) return;
+        io.to(targetId).emit("call_ended", { from });
     });
 
     // 4. Receiver explicitly clicks "Decline"
     socket.on("decline_call", ({ to }) => {
-        io.to(to).emit("call_declined");
+        const from = socket.userId?.toString();
+        const targetId = to?.toString();
+        if (!from || !targetId) return;
+        if (blockCache.get(from)?.has(targetId) || blockCache.get(targetId)?.has(from)) return;
+        io.to(targetId).emit("call_declined", { from });
     });
 
     // Handle privacy changes

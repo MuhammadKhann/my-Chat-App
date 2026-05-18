@@ -150,6 +150,35 @@ const getBlockedUsers = async (req, res) => {
     }
 };
 
+const getBlockStatus = async (req, res) => {
+    try {
+        const targetId = req.params.id;
+
+        if (!targetId) {
+            return res.status(400).json({ error: "Target user is required." });
+        }
+
+        const [currentUser, targetUser] = await Promise.all([
+            User.findById(req.user.id).select("blockedUsers"),
+            User.findById(targetId).select("blockedUsers")
+        ]);
+
+        if (!targetUser) {
+            return res.status(404).json({ error: "User not found." });
+        }
+
+        const iBlockedUser = (currentUser?.blockedUsers || [])
+            .some(id => id.toString() === targetId);
+        const userBlockedMe = (targetUser.blockedUsers || [])
+            .some(id => id.toString() === req.user.id);
+
+        res.status(200).json({ iBlockedUser, userBlockedMe });
+    } catch (error) {
+        console.error("Get Block Status Error:", error);
+        res.status(500).json({ error: "Failed to fetch block status." });
+    }
+};
+
 module.exports = {
     updatePrivacy,
     searchUsers,
@@ -157,5 +186,6 @@ module.exports = {
     getSettings,
     blockUser,
     unblockUser,
-    getBlockedUsers
+    getBlockedUsers,
+    getBlockStatus
 };

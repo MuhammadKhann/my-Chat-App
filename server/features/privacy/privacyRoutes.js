@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { protectRoute } = require('../auth/authMiddleware');
-const { updatePrivacy, searchUsers, saveSettings, getSettings, blockUser, unblockUser, getBlockedUsers } = require('./privacyController');
+const { updatePrivacy, searchUsers, saveSettings, getSettings, blockUser, unblockUser, getBlockedUsers, getBlockStatus } = require('./privacyController');
 
 router.put('/', protectRoute, updatePrivacy);
 router.get('/users/search', protectRoute, searchUsers);
@@ -11,5 +11,6 @@ router.get('/settings', protectRoute, getSettings);
 router.post('/block/:id', protectRoute, blockUser);
 router.post('/unblock/:id', protectRoute, unblockUser);
 router.get('/blocked', protectRoute, getBlockedUsers);
+router.get('/block-status/:id', protectRoute, getBlockStatus);
 
 module.exports = router;
