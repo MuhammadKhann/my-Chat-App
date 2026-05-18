@@ -559,6 +559,16 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
     });
   };
   const [blockedUsers, setBlockedUsers] = useState(new Set());
+  const [selectedUserBlockedMe, setSelectedUserBlockedMe] = useState(false);
+  const blockedUsersRef = useRef(blockedUsers);
+  const selectedUserIsBlocked = !!selectedUser?._id && blockedUsers.has(selectedUser._id);
+  const isChatBlocked = selectedUserIsBlocked || selectedUserBlockedMe;
+  const blockedChatMessage = selectedUserBlockedMe
+    ? "You can't message this person."
+    : "You blocked this user. Unblock them to send messages.";
+  const blockedCallMessage = selectedUserBlockedMe
+    ? "You can't call this person."
+    : "You blocked this user. Unblock them to call.";
 
   // Refs for dropdown containers to detect click-outside
   const themeMenuRef = useRef(null);
@@ -627,6 +637,33 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       console.error("Unblock failed", err);
     }
   };
+
+  useEffect(() => {
+    if (!selectedUser?._id) {
+      setSelectedUserBlockedMe(false);
+      return;
+    }
+
+    let cancelled = false;
+    setSelectedUserBlockedMe(false);
+
+    const fetchBlockStatus = async () => {
+      try {
+        const res = await fetchWithAuth(api(`/api/users/privacy/block-status/${selectedUser._id}`));
+        if (!res.ok) return;
+
+        const data = await res.json();
+        if (!cancelled) {
+          setSelectedUserBlockedMe(!!data.userBlockedMe);
+        }
+      } catch (err) {
+        console.error("Failed to fetch block status", err);
+      }
+    };
+
+    fetchBlockStatus();
+    return () => { cancelled = true; };
+  }, [selectedUser?._id]);
 
   const [isMobile, setIsMobile] = useState(window.innerWidth < 900);
   const [isNarrowMobile, setIsNarrowMobile] = useState(window.innerWidth < 430);
@@ -697,7 +734,6 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   const [showEditHistory, setShowEditHistory] = useState(null); // Edit history modal
   const [editHistory, setEditHistory] = useState([]); // Edit history data
   const [selectedMessageMenu, setSelectedMessageMenu] = useState(null); // Message action menu
-  const [showDeleteDropdown, setShowDeleteDropdown] = useState(false); // Delete dropdown state
 
   // ─── Smart Read Receipts (Enterprise) ───────────────────────────────────────
   const messagesViewportRef = useRef(null);
@@ -999,6 +1035,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   const getRoomId = (id1, id2) => [id1, id2].sort().join("_");
 
   useEffect(() => { selectedUserRef.current = selectedUser; }, [selectedUser]);
+  useEffect(() => { blockedUsersRef.current = blockedUsers; }, [blockedUsers]);
 
   useEffect(() => {
     if (user) { socket.emit("join_personal", user.id); }
@@ -1036,8 +1073,11 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       ));
     });
 
-    socket.on("send_error", ({ error }) => {
+    socket.on("send_error", ({ tempId, error }) => {
       console.error("❌ Message Send Error:", error);
+      if (tempId) {
+        setChatHistory(prev => prev.filter(m => m.tempId !== tempId && m._id !== "temp_" + tempId));
+      }
       alert(`Message Error: ${error}`);
     });
 
@@ -1121,6 +1161,10 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       }
     });
     socket.on("incoming_call", ({ from, callerName, signal, callType }) => {
+      if (blockedUsersRef.current.has(from)) {
+        console.warn("🚫 Ignoring incoming call from blocked user:", from);
+        return;
+      }
       console.log("🚨 INCOMING CALL DETECTED FROM:", callerName, "[Type:", callType, "]");
       if (callStatus !== "idle") {
         console.warn("🚫 Already in a call session, ignoring incoming call.");
@@ -1131,16 +1175,24 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       setActiveCallType(callType || 'video');
       setCallStatus("receiving");
     });
-    socket.on("call_ended", () => {
+    socket.on("call_ended", ({ from } = {}) => {
+      if (from && blockedUsersRef.current.has(from)) return;
       sounds.stopAll();
       endCall(false);
       setCallNotification({ text: "Call ended", type: "error" });
       setTimeout(() => { setCallNotification(null); }, 3000);
     });
-    socket.on("call_declined", () => {
+    socket.on("call_declined", ({ from } = {}) => {
+      if (from && blockedUsersRef.current.has(from)) return;
       sounds.stopAll();
       endCall(false);
       setCallNotification({ text: "Call declined by user", type: "error" });
+      setTimeout(() => { setCallNotification(null); }, 3000);
+    });
+    socket.on("call_error", ({ error }) => {
+      sounds.stopAll();
+      endCall(false);
+      setCallNotification({ text: error || "Call failed", type: "error" });
       setTimeout(() => { setCallNotification(null); }, 3000);
     });
 
@@ -1242,7 +1294,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
       socket.off("room_marked_seen");
       socket.off("online_users_list");
       socket.off("user_status_change"); socket.off("user_typing");
-      socket.off("incoming_call"); socket.off("call_ended"); socket.off("call_declined");
+      socket.off("incoming_call"); socket.off("call_ended"); socket.off("call_declined"); socket.off("call_error");
       socket.off("disconnect");
       socket.off("delete_confirmed"); socket.off("delete_error"); socket.off("message_deleted");
       socket.off("edit_confirmed"); socket.off("edit_error"); socket.off("message_edited"); socket.off("edit_history");
@@ -1418,6 +1470,11 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
         return;
       }
 
+      if (isChatBlocked) {
+        alert(blockedCallMessage);
+        return;
+      }
+
       if (callStatus !== "idle") {
         console.warn("⚠️ Cannot start call: already in a call or receiving one.");
         return;
@@ -1443,7 +1500,8 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
           if (userVideoRef.current) userVideoRef.current.srcObject = currentStream;
         }
       });
-      socket.on("call_accepted", (signal) => {
+      socket.on("call_accepted", (payload) => {
+        const signal = payload?.signal || payload;
         sounds.stopAll();
         setCallStatus("active"); peer.signal(signal);
         setCallNotification({ text: "Connected", type: "success" });
@@ -1696,6 +1754,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
     e.preventDefault();
     if (!user || !user.id) { console.error("❌ CRITICAL: User session lost."); alert("Session lost. Please log in again."); return; }
     if (!selectedUser || !selectedUser._id) { console.error("❌ CRITICAL: No user selected."); alert("Please select a user to message."); return; }
+    if (isChatBlocked) { alert(blockedChatMessage); return; }
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     if (isMeTyping) { setIsMeTyping(false); socket.emit("typing_stop", { senderId: user.id, receiver: selectedUser._id }); }
     if (!message.trim() && !selectedFile) return;
@@ -2342,12 +2401,14 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                   {/* Audio call */}
                   <button
                     onClick={() => initiateCall('audio')}
-                    title="Start Audio Call"
+                    title={isChatBlocked ? blockedCallMessage : "Start Audio Call"}
+                    disabled={isChatBlocked}
                     className="gradient-btn"
                     style={{
                       height: 34, width: 34, justifyContent: "center",
                       borderRadius: 9,
-                      color: "#fff", border: "none", cursor: "pointer",
+                      color: "#fff", border: "none", cursor: isChatBlocked ? "not-allowed" : "pointer",
+                      opacity: isChatBlocked ? 0.6 : 1,
                       display: "flex", alignItems: "center",
                       boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
                     }}
@@ -2360,13 +2421,15 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                   {/* Video call */}
                   <button
                     onClick={() => initiateCall('video')}
-                    title="Start Video Call"
+                    title={isChatBlocked ? blockedCallMessage : "Start Video Call"}
+                    disabled={isChatBlocked}
                     className="gradient-btn"
                     style={{
                       height: 34, padding: isMobile ? 0 : "0 14px",
                       width: isMobile ? 34 : "auto", justifyContent: "center",
                       borderRadius: 9,
-                      color: "#fff", border: "none", cursor: "pointer",
+                      color: "#fff", border: "none", cursor: isChatBlocked ? "not-allowed" : "pointer",
+                      opacity: isChatBlocked ? 0.6 : 1,
                       fontSize: 12, fontWeight: 600,
                       display: "flex", alignItems: "center", gap: 6,
                       boxShadow: "0 2px 8px rgba(0,0,0,0.18)",
@@ -2799,17 +2862,15 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                 {/* Message Action Menu */}
                 {selectedMessageMenu && (() => {
                   const msg = selectedMessageMenu;
-                  const canDeleteForMe = msg.sender === user.id && !msg.deletedBySender;
                   const canDeleteForEveryone = msg.sender === user.id && !msg.deletedForEveryone;
                   const canEdit = msg.sender === user.id && !msg.fileUrl && !msg.deletedForEveryone;
                   const canViewHistory = msg.isEdited && !msg.deletedForEveryone;
                   const messageAge = Date.now() - new Date(msg.createdAt || msg.timestamp).getTime();
                   const withinEditTime = messageAge < 30 * 60 * 1000;
-                  const alreadyDeletedByMe = msg.deletedBySender && msg.sender === user.id;
 
                   return (
                     <div
-                      onClick={() => { setSelectedMessageMenu(null); setShowDeleteDropdown(false); }}
+                      onClick={() => { setSelectedMessageMenu(null); }}
                       style={{
                         position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
                         zIndex: 1000, background: "rgba(0,0,0,0.5)",
@@ -2876,97 +2937,26 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                             View edit history
                           </button>
                         )}
-                        {/* Delete for me - show dropdown if not deleted yet, otherwise just remove */}
-                        {canDeleteForMe && !msg.deletedBySender && !showDeleteDropdown && (
-                          <button
-                            type="button"
-                            onClick={() => setShowDeleteDropdown(true)}
-                            style={{
-                              width: "100%", padding: "12px 16px", background: "none",
-                              border: "none", cursor: "pointer", textAlign: "left",
-                              color: "var(--ink)", fontSize: 14, borderRadius: 8,
-                              display: "flex", alignItems: "center", gap: 12,
-                            }}
-                            onMouseOver={(e) => e.currentTarget.style.background = "var(--bg2)"}
-                            onMouseOut={(e) => e.currentTarget.style.background = "none"}
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                            </svg>
-                            Delete for me
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ marginLeft: "auto" }}>
-                              <polyline points="6 9 12 15 18 9" />
-                            </svg>
-                          </button>
-                        )}
-                        {showDeleteDropdown && canDeleteForMe && !msg.deletedBySender && (
-                          <div style={{ paddingLeft: 8 }}>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                socket.emit("delete_for_me", { msgId: msg._id || msg._id?.toString(), userId: user.id });
-                                setShowDeleteDropdown(false);
-                              }}
-                              style={{
-                                width: "100%", padding: "10px 16px", background: "none",
-                                border: "none", cursor: "pointer", textAlign: "left",
-                                color: "var(--ink)", fontSize: 14, borderRadius: 8,
-                                display: "flex", alignItems: "center", gap: 12,
-                              }}
-                              onMouseOver={(e) => e.currentTarget.style.background = "var(--bg2)"}
-                              onMouseOut={(e) => e.currentTarget.style.background = "none"}
-                            >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
-                              </svg>
-                              Delete for me
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setChatHistory(prev => prev.filter(m => m._id !== msg._id));
-                                setSelectedMessageMenu(null);
-                                setShowDeleteDropdown(false);
-                              }}
-                              style={{
-                                width: "100%", padding: "10px 16px", background: "none",
-                                border: "none", cursor: "pointer", textAlign: "left",
-                                color: "var(--ink)", fontSize: 14, borderRadius: 8,
-                                display: "flex", alignItems: "center", gap: 12,
-                              }}
-                              onMouseOver={(e) => e.currentTarget.style.background = "var(--bg2)"}
-                              onMouseOut={(e) => e.currentTarget.style.background = "none"}
-                            >
-                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                              </svg>
-                              Remove from chat
-                            </button>
-                          </div>
-                        )}
-                        {/* If already deleted by sender, show only "Remove from chat" */}
-                        {msg.deletedBySender && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setChatHistory(prev => prev.filter(m => m._id !== msg._id));
-                              setSelectedMessageMenu(null);
-                            }}
-                            style={{
-                              width: "100%", padding: "12px 16px", background: "none",
-                              border: "none", cursor: "pointer", textAlign: "left",
-                              color: "var(--ink)", fontSize: 14, borderRadius: 8,
-                              display: "flex", alignItems: "center", gap: 12,
-                            }}
-                            onMouseOver={(e) => e.currentTarget.style.background = "var(--bg2)"}
-                            onMouseOut={(e) => e.currentTarget.style.background = "none"}
-                          >
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-                            </svg>
-                            Remove from chat
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setChatHistory(prev => prev.filter(m => m._id !== msg._id));
+                            setSelectedMessageMenu(null);
+                          }}
+                          style={{
+                            width: "100%", padding: "12px 16px", background: "none",
+                            border: "none", cursor: "pointer", textAlign: "left",
+                            color: "var(--ink)", fontSize: 14, borderRadius: 8,
+                            display: "flex", alignItems: "center", gap: 12,
+                          }}
+                          onMouseOver={(e) => e.currentTarget.style.background = "var(--bg2)"}
+                          onMouseOut={(e) => e.currentTarget.style.background = "none"}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                          </svg>
+                          Remove from chat
+                        </button>
                         {canDeleteForEveryone && (
                           <button
                             type="button"
@@ -3228,7 +3218,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                 position: "relative",
                 transition: "padding 0.2s ease",
               }}>
-                {showEmojiPicker && (
+                {showEmojiPicker && !isChatBlocked && (
                   <div
                     ref={emojiPickerRef}
                     style={{
@@ -3241,6 +3231,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                   >
                     <EmojiPicker
                       onEmojiClick={(emojiData) => {
+                        if (isChatBlocked) return;
                         setMessage((prev) => prev + emojiData.emoji);
                         handleKeystroke();
                       }}
@@ -3297,6 +3288,22 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                     </div>
                   )}
 
+                  {isChatBlocked && (
+                    <div style={{
+                      width: "100%",
+                      padding: "9px 12px",
+                      borderRadius: 10,
+                      border: "1px solid rgba(239, 68, 68, 0.22)",
+                      background: "rgba(239, 68, 68, 0.08)",
+                      color: "#ef4444",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      textAlign: "center",
+                    }}>
+                      {blockedChatMessage}
+                    </div>
+                  )}
+
                   <div style={{ display: "flex", gap: 8, alignItems: "center", width: "100%" }}>
                   {isRecording ? (
                     /* Recording UI */
@@ -3327,18 +3334,20 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                         type="button"
                         onClick={() => setShowEmojiPicker(!showEmojiPicker)}
                         title="Add emoji"
+                        disabled={isChatBlocked}
                         style={{
                           width: 36, height: 36, borderRadius: 9,
                           border: "1px solid var(--border)",
                           background: "var(--bg2)",
                           color: showEmojiPicker ? "var(--accent)" : "var(--ink3)",
-                          cursor: "pointer",
+                          cursor: isChatBlocked ? "not-allowed" : "pointer",
+                          opacity: isChatBlocked ? 0.55 : 1,
                           display: "flex", alignItems: "center", justifyContent: "center",
                           transition: "color 0.15s, background 0.15s, border-color 0.15s",
                           flexShrink: 0,
                         }}
                         onMouseOver={(e) => {
-                          if (!showEmojiPicker) {
+                          if (!showEmojiPicker && !isChatBlocked) {
                             e.currentTarget.style.color = "var(--ink)";
                             e.currentTarget.style.borderColor = "var(--border2)";
                           }
@@ -3360,8 +3369,9 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                       </button>
 
                       {/* Attachment */}
-                      <label style={{ cursor: "pointer", color: "var(--ink3)", display: "flex", alignItems: "center", justifyContent: "center", width: 36, height: 36, borderRadius: 9, border: "1px solid var(--border)", background: "var(--bg2)", flexShrink: 0, transition: "color 0.15s, background 0.15s, border-color 0.15s" }}
+                      <label style={{ cursor: isChatBlocked ? "not-allowed" : "pointer", opacity: isChatBlocked ? 0.55 : 1, color: "var(--ink3)", display: "flex", alignItems: "center", justifyContent: "center", width: 36, height: 36, borderRadius: 9, border: "1px solid var(--border)", background: "var(--bg2)", flexShrink: 0, transition: "color 0.15s, background 0.15s, border-color 0.15s" }}
                         onMouseOver={(e) => {
+                          if (isChatBlocked) return;
                           e.currentTarget.style.color = "#fff";
                           e.currentTarget.style.background = "linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%)";
                           e.currentTarget.style.borderColor = "transparent";
@@ -3371,7 +3381,7 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                           e.currentTarget.style.background = "var(--bg2)";
                           e.currentTarget.style.borderColor = "var(--border)";
                         }}>
-                        <input type="file" style={{ display: "none" }} onChange={handleFileSelect} disabled={isUploading} />
+                        <input type="file" style={{ display: "none" }} onChange={handleFileSelect} disabled={isUploading || isChatBlocked} />
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
                         </svg>
@@ -3391,8 +3401,8 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                         className="chat-app-input"
                         value={message}
                         onChange={(e) => { setMessage(e.target.value); handleKeystroke(); }}
-                        placeholder={isUploading ? "Uploading…" : selectedFile ? "Add a caption…" : "Type a message…"}
-                        disabled={isUploading}
+                        placeholder={isChatBlocked ? blockedChatMessage : isUploading ? "Uploading…" : selectedFile ? "Add a caption…" : "Type a message…"}
+                        disabled={isUploading || isChatBlocked}
                         style={{
                           flex: 1, minWidth: 0, padding: "10px 16px",
                           borderRadius: 24, border: "1px solid var(--border)",
@@ -3406,16 +3416,19 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                       {!message.trim() && !selectedFile ? (
                         <button type="button" onClick={startRecording}
                           title="Record voice note"
+                          disabled={isChatBlocked}
                           onMouseDown={(e) => e.preventDefault()}
                           onTouchStart={(e) => e.preventDefault()}
                           style={{
                             width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
                             border: "1px solid var(--border)", background: "var(--bg2)",
-                            color: "var(--accent)", cursor: "pointer",
+                            color: "var(--accent)", cursor: isChatBlocked ? "not-allowed" : "pointer",
+                            opacity: isChatBlocked ? 0.55 : 1,
                             display: "flex", alignItems: "center", justifyContent: "center",
                             transition: "background 0.15s, color 0.15s, border-color 0.15s",
                           }}
                           onMouseOver={(e) => {
+                            if (isChatBlocked) return;
                             e.currentTarget.style.background = "linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%)";
                             e.currentTarget.style.color = "#fff";
                             e.currentTarget.style.borderColor = "transparent";
@@ -3431,19 +3444,19 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
                           </svg>
                         </button>
                       ) : (
-                        <button type="submit" disabled={isUploading}
+                        <button type="submit" disabled={isUploading || isChatBlocked}
                           className="gradient-btn"
                           onMouseDown={(e) => e.preventDefault()}
                           onTouchStart={(e) => e.preventDefault()}
                           style={{
                             width: 38, height: 38, borderRadius: "50%", flexShrink: 0,
                             border: "none", color: "#fff",
-                            cursor: isUploading ? "not-allowed" : "pointer",
+                            cursor: isUploading || isChatBlocked ? "not-allowed" : "pointer",
                             display: "flex", alignItems: "center", justifyContent: "center",
-                            opacity: isUploading ? 0.6 : 1,
+                            opacity: isUploading || isChatBlocked ? 0.6 : 1,
                             boxShadow: "0 2px 10px rgba(0,0,0,0.22)",
                           }}
-                          onMouseOver={(e) => { if (!isUploading) e.currentTarget.style.transform = "scale(1.07)"; }}
+                          onMouseOver={(e) => { if (!isUploading && !isChatBlocked) e.currentTarget.style.transform = "scale(1.07)"; }}
                           onMouseOut={(e) => { e.currentTarget.style.transform = "scale(1)"; }}
                         >
                           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

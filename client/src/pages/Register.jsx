@@ -280,6 +280,56 @@ function FormField({ type, placeholder, value, onChange, onFocus, onBlur, focuse
   );
 }
 
+const getPasswordStrength = (password) => {
+  const checks = [
+    password.length >= 8,
+    /[a-z]/.test(password),
+    /[A-Z]/.test(password),
+    /\d/.test(password),
+    /[^A-Za-z0-9]/.test(password),
+    !/\s/.test(password),
+  ];
+  const passed = checks.filter(Boolean).length;
+
+  if (!password) {
+    return {
+      isSecure: false,
+      color: "var(--ink3)",
+      text: "Use 8+ characters with uppercase, lowercase, number, and symbol.",
+    };
+  }
+
+  if (!checks[5]) {
+    return {
+      isSecure: false,
+      color: "#ef4444",
+      text: "Password cannot contain spaces.",
+    };
+  }
+
+  if (passed >= 6) {
+    return {
+      isSecure: true,
+      color: "#16a34a",
+      text: "Strong password.",
+    };
+  }
+
+  if (passed >= 4) {
+    return {
+      isSecure: false,
+      color: "#f59e0b",
+      text: "Add uppercase, lowercase, number, and symbol.",
+    };
+  }
+
+  return {
+    isSecure: false,
+    color: "#ef4444",
+    text: "Weak password. Use 8+ characters with uppercase, lowercase, number, and symbol.",
+  };
+};
+
 // ─── LeftPanel Component (from Login.jsx) ───────────────────────────────────
 const LeftPanel = memo(({
   name = "Muhammad Bin Nasir",
@@ -442,6 +492,7 @@ function Register({ setPage, dark, setDark, themeId, setThemeId }) {
   const [focused, setFocused]   = useState(null);
   const [btnState, setBtnState] = useState("idle"); // idle | loading | success
   const [errorMsg, setErrorMsg] = useState("");
+  const passwordStrength = getPasswordStrength(formData.password);
 
   // Breakpoints
   const isMobile  = vw < 900;
@@ -452,6 +503,13 @@ function Register({ setPage, dark, setDark, themeId, setThemeId }) {
   const handleRegister = async (e) => {
     e.preventDefault();
     setErrorMsg(""); // Clear previous errors
+
+    if (!passwordStrength.isSecure) {
+      setErrorMsg("Please use a strong password before creating your account.");
+      setTimeout(() => setErrorMsg(""), 4000);
+      return;
+    }
+
     setBtnState("loading");
 
     try {
@@ -606,6 +664,19 @@ function Register({ setPage, dark, setDark, themeId, setThemeId }) {
                   onBlur={() => setFocused(null)}
                   focused={focused === "password"}
                 />
+                <div
+                  aria-live="polite"
+                  style={{
+                    marginTop: -14,
+                    marginBottom: 18,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: passwordStrength.color,
+                    lineHeight: 1.4,
+                  }}
+                >
+                  {passwordStrength.text}
+                </div>
 
                 {/* Aesthetic Error Reminder */}
                 {errorMsg && (
@@ -630,7 +701,7 @@ function Register({ setPage, dark, setDark, themeId, setThemeId }) {
 
                 <button
                   type="submit"
-                  disabled={btnState !== "idle"}
+                  disabled={btnState !== "idle" || !passwordStrength.isSecure}
                   style={{
                     width: "100%", padding: "13px",
                     background: btnState === "success" ? "#16a34a" : "var(--accent)",
@@ -638,8 +709,8 @@ function Register({ setPage, dark, setDark, themeId, setThemeId }) {
                     borderRadius: "var(--rs)",
                     fontFamily: "'Bricolage Grotesque', sans-serif",
                     fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em",
-                    cursor: btnState !== "idle" ? "not-allowed" : "pointer",
-                    opacity: btnState === "loading" ? 0.85 : 1,
+                    cursor: btnState !== "idle" || !passwordStrength.isSecure ? "not-allowed" : "pointer",
+                    opacity: btnState === "loading" || !passwordStrength.isSecure ? 0.85 : 1,
                     transition: "background 0.25s, transform 0.15s, box-shadow 0.15s",
                     marginTop: 4,
                     display: "flex", alignItems: "center", justifyContent: "center",
