@@ -1,6 +1,6 @@
 import { useState, useEffect, memo } from "react";
 import { api } from "../services/api";
-import { Palette, Code2, MapPin, Mail, ExternalLink, Sparkles, MessageSquare, Video, Lock, Globe, Image, Layers, Smartphone, CheckCircle2, Zap, Search, ShieldCheck, Database, Cloud, Bell, Cpu } from "lucide-react";
+import { Palette, Code2, Sparkles, MessageSquare, Video, Lock, Globe, Image, Layers, Smartphone, CheckCircle2, Zap, Search, ShieldCheck, Database, Cloud, Bell, Cpu } from "lucide-react";
 import ThemePicker from "../components/ThemePicker";
 
 /*
@@ -41,46 +41,6 @@ const defaultFeatures = [
 ];
 
 const defaultDeployments = [];
-
-function InfoPill({ icon: Icon, children, href }) {
-  const content = (
-    <>
-      <Icon className="h-4 w-4" color="url(#theme-gradient)" />
-      <span>{children}</span>
-    </>
-  );
-
-  if (href) {
-    return (
-      <a 
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center gap-2 rounded-full border px-4 py-2 text-xs sm:text-sm backdrop-blur transition hover:opacity-80 no-underline"
-        style={{
-          borderColor: "var(--border)",
-          background: "var(--card2)",
-          color: "var(--ink2)"
-        }}
-      >
-        {content}
-      </a>
-    );
-  }
-
-  return (
-    <div 
-      className="flex items-center gap-2 rounded-full border px-4 py-2 text-xs sm:text-sm backdrop-blur"
-      style={{
-        borderColor: "var(--border)",
-        background: "var(--card2)",
-        color: "var(--ink2)"
-      }}
-    >
-      {content}
-    </div>
-  );
-}
 
 function TechCard({ name, subtitle, live, isDarkBG }) {
   return (
@@ -332,12 +292,9 @@ const getPasswordStrength = (password) => {
 
 // ─── LeftPanel Component (from Login.jsx) ───────────────────────────────────
 const LeftPanel = memo(({
-  name = "Muhammad Bin Nasir",
+  name = "Muhammad Bin Nasir, Muhammad Shahmeer",
   description = "Computer Science student building scalable MERN applications.",
-  location = "Multan, Pakistan",
-  email = "Muhammad.243595@gmail.com",
-  linkedin = "https://www.linkedin.com/in/muhammad-bin-nasir-5b790b308/",
-  headline = "MERN stack\npractice project.",
+  headline = "Software Engineering\n Semester Project.",
   techStack = defaultTechStack,
   features = defaultFeatures,
   deployments = defaultDeployments,
@@ -429,13 +386,6 @@ const LeftPanel = memo(({
             <p className="mt-3 max-w-xl text-xs sm:text-sm opacity-70" style={{ color: "var(--ink2)" }}>
               {description}
             </p>
-          </div>
-
-          {/* INFO */}
-          <div className="flex flex-wrap gap-2">
-            <InfoPill icon={MapPin}>{location}</InfoPill>
-            <InfoPill icon={Mail}>{email}</InfoPill>
-            <InfoPill icon={ExternalLink} href={linkedin}>LinkedIn Profile</InfoPill>
           </div>
 
           {/* FEATURES */}
