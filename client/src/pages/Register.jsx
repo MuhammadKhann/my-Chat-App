@@ -22,22 +22,22 @@ const defaultTechStack = [
 ];
 
 const defaultFeatures = [
-  { label: "Real-time Messaging", icon: MessageSquare },
-  { label: "Voice & Video Calls", icon: Video },
-  { label: "End-to-End Encryption", icon: Lock },
-  { label: "Online Status Tracking", icon: Globe },
-  { label: "File & Image Sharing", icon: Image },
-  { label: "Multiple UI Themes", icon: Layers },
-  { label: "Responsive Interface", icon: Smartphone },
-  { label: "Message Receipts", icon: CheckCircle2 },
+  { label: "Real-Time Messaging", icon: MessageSquare },
+  { label: "Voice and Video Calls", icon: Video },
+  { label: "Secure User Authentication", icon: ShieldCheck },
+  { label: "Password Strength Validation", icon: Lock },
+  { label: "Message Status Tracking", icon: CheckCircle2 },
+  { label: "Privacy Modes", icon: Globe },
+  { label: "User Blocking System", icon: ShieldCheck },
   { label: "Typing Indicators", icon: Zap },
-  { label: "Global User Search", icon: Search },
-  { label: "JWT Secure Auth", icon: ShieldCheck },
-  { label: "Persistent History", icon: Database },
-  { label: "Smart Link Previews", icon: ExternalLink },
-  { label: "Secure Cloud Backup", icon: Cloud },
-  { label: "Real-time Alerts", icon: Bell },
-  { label: "High Performance", icon: Cpu },
+  { label: "File and Media Sharing", icon: Image },
+  { label: "Smart Media Preview", icon: Layers },
+  { label: "Threaded Replies", icon: MessageSquare },
+  { label: "Message Editing with History", icon: Code2 },
+  { label: "Delete and Remove Controls", icon: Database },
+  { label: "Online/Offline Presence", icon: Globe },
+  { label: "Profile Avatars", icon: Image },
+  { label: "Themes and Dark Mode", icon: Palette },
 ];
 
 const defaultDeployments = [];
@@ -492,6 +492,7 @@ function Register({ setPage, dark, setDark, themeId, setThemeId }) {
   const [focused, setFocused]   = useState(null);
   const [btnState, setBtnState] = useState("idle"); // idle | loading | success
   const [errorMsg, setErrorMsg] = useState("");
+  const [showPw, setShowPw] = useState(false);
   const passwordStrength = getPasswordStrength(formData.password);
 
   // Breakpoints
@@ -655,15 +656,39 @@ function Register({ setPage, dark, setDark, themeId, setThemeId }) {
                   onBlur={() => setFocused(null)}
                   focused={focused === "email"}
                 />
-                <FormField
-                  type="password"
-                  placeholder="Password (Min. 8 characters)"
-                  value={formData.password}
-                  onChange={e => setFormData({ ...formData, password: e.target.value })}
-                  onFocus={() => setFocused("password")}
-                  onBlur={() => setFocused(null)}
-                  focused={focused === "password"}
-                />
+                <div style={{ position: "relative", marginBottom: 24 }}>
+                  <input
+                    type={showPw ? "text" : "password"}
+                    placeholder="Password (Min. 8 characters)"
+                    value={formData.password}
+                    onChange={e => setFormData({ ...formData, password: e.target.value })}
+                    onFocus={() => setFocused("password")}
+                    onBlur={() => setFocused(null)}
+                    required
+                    style={{
+                      width: "100%", padding: "12px 50px 12px 0",
+                      background: "transparent",
+                      border: "none",
+                      borderBottom: `2px solid ${focused === "password" ? "var(--accent)" : "var(--border)"}`,
+                      fontFamily: "'Inter', sans-serif",
+                      fontSize: 15, color: "var(--ink)",
+                      outline: "none",
+                      transition: "border-color 0.2s",
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw(p => !p)}
+                    style={{
+                      position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)",
+                      background: "none", border: "none", cursor: "pointer",
+                      color: "var(--ink3)", fontSize: 13, fontWeight: 500,
+                      display: "flex", alignItems: "center"
+                    }}
+                  >
+                    {showPw ? "Hide" : "Show"}
+                  </button>
+                </div>
                 <div
                   aria-live="polite"
                   style={{

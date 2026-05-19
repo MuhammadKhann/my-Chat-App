@@ -48,22 +48,22 @@ const defaultTechStack = [
 ];
 
 const defaultFeatures = [
-  { label: "Real-time Messaging", icon: MessageSquare },
-  { label: "Voice & Video Calls", icon: Video },
-  { label: "End-to-End Encryption", icon: Lock },
-  { label: "Online Status Tracking", icon: Globe },
-  { label: "File & Image Sharing", icon: Image },
-  { label: "Multiple UI Themes", icon: Layers },
-  { label: "Responsive Interface", icon: Smartphone },
-  { label: "Message Receipts", icon: CheckCircle2 },
+  { label: "Real-Time Messaging", icon: MessageSquare },
+  { label: "Voice and Video Calls", icon: Video },
+  { label: "Secure User Authentication", icon: ShieldCheck },
+  { label: "Password Strength Validation", icon: Lock },
+  { label: "Message Status Tracking", icon: CheckCircle2 },
+  { label: "Privacy Modes", icon: Globe },
+  { label: "User Blocking System", icon: ShieldCheck },
   { label: "Typing Indicators", icon: Zap },
-  { label: "Global User Search", icon: Search },
-  { label: "JWT Secure Auth", icon: ShieldCheck },
-  { label: "Persistent History", icon: Database },
-  { label: "Smart Link Previews", icon: ExternalLink },
-  { label: "Secure Cloud Backup", icon: Cloud },
-  { label: "Real-time Alerts", icon: Bell },
-  { label: "High Performance", icon: Cpu },
+  { label: "File and Media Sharing", icon: Image },
+  { label: "Smart Media Preview", icon: Layers },
+  { label: "Threaded Replies", icon: MessageSquare },
+  { label: "Message Editing with History", icon: Code2 },
+  { label: "Delete and Remove Controls", icon: Database },
+  { label: "Online/Offline Presence", icon: Globe },
+  { label: "Profile Avatars", icon: Image },
+  { label: "Themes and Dark Mode", icon: Palette },
 ];
 
 const defaultDeployments = [];
@@ -175,12 +175,9 @@ function DeploymentCard({ name, subtitle, detail, status, icon: Icon }) {
 }
 
 const LeftPanel = memo(({
-  name = "Muhammad Bin Nasir",
+  name = "Muhammad Bin Nasir, Muhammad Shahmeer",
   description = "Computer Science student building scalable MERN applications.",
-  location = "Multan, Pakistan",
-  email = "Muhammad.243595@gmail.com",
-  linkedin = "https://www.linkedin.com/in/muhammad-bin-nasir-5b790b308/",
-  headline = "MERN stack\npractice project.",
+  headline = "Software Engineering\n Semester Project.",
   techStack = defaultTechStack,
   features = defaultFeatures,
   deployments = defaultDeployments,
