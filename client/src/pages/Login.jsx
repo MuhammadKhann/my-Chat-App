@@ -8,10 +8,7 @@ import {
   ArrowRight,
   Code2,
   Cloud,
-  ExternalLink,
   Globe,
-  Mail,
-  MapPin,
   MessageSquare,
   ShieldCheck,
   Sparkles,
@@ -67,46 +64,6 @@ const defaultFeatures = [
 ];
 
 const defaultDeployments = [];
-
-function InfoPill({ icon: Icon, children, href }) {
-  const content = (
-    <>
-      <Icon className="h-4 w-4" color="url(#theme-gradient)" />
-      <span>{children}</span>
-    </>
-  );
-
-  if (href) {
-    return (
-      <a 
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center gap-2 rounded-full border px-4 py-2 text-xs sm:text-sm backdrop-blur transition hover:opacity-80 no-underline"
-        style={{
-          borderColor: "var(--border)",
-          background: "var(--card2)",
-          color: "var(--ink2)"
-        }}
-      >
-        {content}
-      </a>
-    );
-  }
-
-  return (
-    <div 
-      className="flex items-center gap-2 rounded-full border px-4 py-2 text-xs sm:text-sm backdrop-blur"
-      style={{
-        borderColor: "var(--border)",
-        background: "var(--card2)",
-        color: "var(--ink2)"
-      }}
-    >
-      {content}
-    </div>
-  );
-}
 
 function TechCard({ name, subtitle, live, isDarkBG }) {
   return (
@@ -176,7 +133,7 @@ function DeploymentCard({ name, subtitle, detail, status, icon: Icon }) {
 
 const LeftPanel = memo(({
   name = "Muhammad Bin Nasir, Muhammad Shahmeer",
-  description = "Computer Science student building scalable MERN applications.",
+  description = "Computer Science students building scalable digital solutions.",
   headline = "Software Engineering\n Semester Project.",
   techStack = defaultTechStack,
   features = defaultFeatures,
@@ -269,13 +226,6 @@ const LeftPanel = memo(({
             <p className="mt-3 max-w-xl text-xs sm:text-sm opacity-70" style={{ color: "var(--ink2)" }}>
               {description}
             </p>
-          </div>
-
-          {/* INFO */}
-          <div className="flex flex-wrap gap-2">
-            <InfoPill icon={MapPin}>{location}</InfoPill>
-            <InfoPill icon={Mail}>{email}</InfoPill>
-            <InfoPill icon={ExternalLink} href={linkedin}>LinkedIn Profile</InfoPill>
           </div>
 
           {/* FEATURES */}
