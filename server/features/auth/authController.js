@@ -138,7 +138,7 @@ const googleLogin = async (req, res) => {
 
         if (user) {
             // User exists - log them in
-            generateTokenAndSetCookie(user._id, res);
+            const token = generateTokenAndSetCookie(user._id, res);
 
             return res.status(200).json({
                 _id: user._id,
@@ -148,6 +148,7 @@ const googleLogin = async (req, res) => {
                 theme: user.theme,
                 darkMode: user.darkMode,
                 privacyLevel: user.privacyLevel,
+                token,
                 isNewUser: false
             });
         }
@@ -225,7 +226,7 @@ const googleRegister = async (req, res) => {
         await user.save();
 
         // Generate token and log them in
-        generateTokenAndSetCookie(user._id, res);
+        const token = generateTokenAndSetCookie(user._id, res);
 
         res.status(201).json({
             _id: user._id,
@@ -235,6 +236,7 @@ const googleRegister = async (req, res) => {
             theme: user.theme,
             darkMode: user.darkMode,
             privacyLevel: user.privacyLevel,
+            token,
             isNewUser: false
         });
 

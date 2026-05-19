@@ -1038,8 +1038,25 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   useEffect(() => { blockedUsersRef.current = blockedUsers; }, [blockedUsers]);
 
   useEffect(() => {
-    if (user) { socket.emit("join_personal", user.id); }
-  }, [user]);
+    const token = user?.token || localStorage.getItem("chatAppToken");
+    if (!user?.id || !token) return;
+
+    socket.auth = { token };
+    if (socket.connected) socket.disconnect();
+    socket.connect();
+
+    const joinCurrentUserRooms = () => {
+      socket.emit("join_personal", user.id);
+      socket.emit("add_user", user.id);
+    };
+
+    socket.on("connect", joinCurrentUserRooms);
+    if (socket.connected) joinCurrentUserRooms();
+
+    return () => {
+      socket.off("connect", joinCurrentUserRooms);
+    };
+  }, [user?.id, user?.token]);
 
   useEffect(() => {
     if (selectedUser) {
@@ -1062,9 +1079,6 @@ function Chat({ user, setPage, setUser, dark, setDark, themeId, setThemeId }) {
   }, [selectedUser, user.id]);
 
   useEffect(() => {
-    if (socket && !socket.connected) { socket.connect(); }
-    if (user) { socket.emit("add_user", user.id); }
-
     socket.on("message_confirmed", ({ tempId, dbId, status, createdAt }) => {
       setChatHistory(prev => prev.map(m =>
         (m._id === "temp_" + tempId || m.tempId === tempId)

@@ -59,38 +59,42 @@ const normalizeText = (text) => {
 const setupMessageHandlers = (io, socket) => {
     // Handle joining personal room and loading privacy settings
     socket.on("join_personal", async (userId) => {
-        socket.join(userId);
-        console.log(`User ${userId} joined their personal room`);
-
-        const user = await User.findById(userId);
-        if (user) {
-            privacyCache.set(userId, user.privacyLevel);
-            if (user.blockedUsers && user.blockedUsers.length > 0) {
-                blockCache.set(userId, new Set(user.blockedUsers.map(id => id.toString())));
-            }
+        const authenticatedUserId = socket.userId?.toString();
+        if (!authenticatedUserId) return;
+        if (userId && userId.toString() !== authenticatedUserId) {
+            console.warn(`⚠️ Ignoring join_personal mismatch. socket=${authenticatedUserId}, payload=${userId}`);
         }
 
-        const level = privacyCache.get(userId);
+        socket.join(authenticatedUserId);
+        console.log(`User ${authenticatedUserId} joined their personal room`);
+
+        const user = await User.findById(authenticatedUserId);
+        if (user) {
+            privacyCache.set(authenticatedUserId, user.privacyLevel);
+            blockCache.set(authenticatedUserId, new Set((user.blockedUsers || []).map(id => id.toString())));
+        }
+
+        const level = privacyCache.get(authenticatedUserId);
         if (!level || level === 'standard') {
-            onlineUsers.set(userId, socket.id);
+            onlineUsers.set(authenticatedUserId, socket.id);
             // Notify others, but respect isolation
             for (const [otherUserId, otherSocketId] of onlineUsers) {
-                if (otherUserId === userId) continue;
+                if (otherUserId === authenticatedUserId) continue;
                 // If userId has blocked otherUserId, don't notify them
-                if (blockCache.get(userId)?.has(otherUserId)) continue;
+                if (blockCache.get(authenticatedUserId)?.has(otherUserId)) continue;
                 
-                io.to(otherSocketId).emit("user_status_change", { userId, isOnline: true });
+                io.to(otherSocketId).emit("user_status_change", { userId: authenticatedUserId, isOnline: true });
             }
         }
 
-        socket.emit("online_users_list", getVisibleOnlineUsers(userId));
+        socket.emit("online_users_list", getVisibleOnlineUsers(authenticatedUserId));
 
         try {
-            const pendingMessages = await Message.find({ receiver: userId, status: 'sent' });
+            const pendingMessages = await Message.find({ receiver: authenticatedUserId, status: 'sent' });
 
             if (pendingMessages.length > 0) {
                 await Message.updateMany(
-                    { receiver: userId, status: 'sent' },
+                    { receiver: authenticatedUserId, status: 'sent' },
                     { $set: { status: 'delivered' } }
                 );
 
@@ -108,47 +112,51 @@ const setupMessageHandlers = (io, socket) => {
 
     // Legacy: frontend emits "add_user" instead of "join_personal"
     socket.on("add_user", async (userId) => {
-        console.log(`📥 ADD_USER EVENT RECEIVED for: ${userId}`);
-        try {
-            socket.join(userId);
-            console.log(`✅ User ${userId} joined room`);
+        const authenticatedUserId = socket.userId?.toString();
+        if (!authenticatedUserId) return;
+        if (userId && userId.toString() !== authenticatedUserId) {
+            console.warn(`⚠️ Ignoring add_user mismatch. socket=${authenticatedUserId}, payload=${userId}`);
+        }
 
-            const user = await User.findById(userId);
+        console.log(`📥 ADD_USER EVENT RECEIVED for: ${authenticatedUserId}`);
+        try {
+            socket.join(authenticatedUserId);
+            console.log(`✅ User ${authenticatedUserId} joined room`);
+
+            const user = await User.findById(authenticatedUserId);
             if (user) {
-                privacyCache.set(userId, user.privacyLevel);
-                if (user.blockedUsers && user.blockedUsers.length > 0) {
-                    blockCache.set(userId, new Set(user.blockedUsers.map(id => id.toString())));
-                }
-                console.log(`✅ User ${userId} privacy level: ${user.privacyLevel}`);
+                privacyCache.set(authenticatedUserId, user.privacyLevel);
+                blockCache.set(authenticatedUserId, new Set((user.blockedUsers || []).map(id => id.toString())));
+                console.log(`✅ User ${authenticatedUserId} privacy level: ${user.privacyLevel}`);
             } else {
-                console.log(`⚠️ User ${userId} not found in DB`);
+                console.log(`⚠️ User ${authenticatedUserId} not found in DB`);
             }
 
-            const level = privacyCache.get(userId);
-            console.log(`📊 Privacy level for ${userId}: ${level}`);
+            const level = privacyCache.get(authenticatedUserId);
+            console.log(`📊 Privacy level for ${authenticatedUserId}: ${level}`);
             
             if (!level || level === 'standard') {
-                onlineUsers.set(userId, socket.id);
+                onlineUsers.set(authenticatedUserId, socket.id);
                 // Notify others, but respect isolation
                 for (const [otherUserId, otherSocketId] of onlineUsers) {
-                    if (otherUserId === userId) continue;
-                    if (blockCache.get(userId)?.has(otherUserId)) continue;
-                    io.to(otherSocketId).emit("user_status_change", { userId, isOnline: true });
+                    if (otherUserId === authenticatedUserId) continue;
+                    if (blockCache.get(authenticatedUserId)?.has(otherUserId)) continue;
+                    io.to(otherSocketId).emit("user_status_change", { userId: authenticatedUserId, isOnline: true });
                 }
-                console.log(`✅ User ${userId} added to onlineUsers, socket: ${socket.id}`);
+                console.log(`✅ User ${authenticatedUserId} added to onlineUsers, socket: ${socket.id}`);
             } else {
-                console.log(`🔒 User ${userId} not added (privacy: ${level})`);
+                console.log(`🔒 User ${authenticatedUserId} not added (privacy: ${level})`);
             }
 
             console.log(`📊 Total online users: ${onlineUsers.size}`);
-            socket.emit("online_users_list", getVisibleOnlineUsers(userId));
+            socket.emit("online_users_list", getVisibleOnlineUsers(authenticatedUserId));
 
-            const pendingMessages = await Message.find({ receiver: userId, status: 'sent' });
-            console.log(`📨 ${pendingMessages.length} pending messages for ${userId}`);
+            const pendingMessages = await Message.find({ receiver: authenticatedUserId, status: 'sent' });
+            console.log(`📨 ${pendingMessages.length} pending messages for ${authenticatedUserId}`);
 
             if (pendingMessages.length > 0) {
                 await Message.updateMany(
-                    { receiver: userId, status: 'sent' },
+                    { receiver: authenticatedUserId, status: 'sent' },
                     { $set: { status: 'delivered' } }
                 );
 
@@ -186,6 +194,19 @@ const setupMessageHandlers = (io, socket) => {
             } catch (idError) {
                 console.error("❌ ObjectId conversion failed:", idError.message);
                 socket.emit("send_error", { error: "Invalid user ID format" });
+                return;
+            }
+
+            const authenticatedUserId = socket.userId?.toString();
+            if (!authenticatedUserId || senderId.toString() !== authenticatedUserId) {
+                console.error("❌ Sender mismatch:", {
+                    authenticatedUserId,
+                    payloadSender: senderId.toString()
+                });
+                socket.emit("send_error", {
+                    tempId: data.tempId,
+                    error: "Authentication mismatch. Please refresh and try again."
+                });
                 return;
             }
 
