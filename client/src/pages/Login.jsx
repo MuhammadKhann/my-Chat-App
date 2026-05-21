@@ -132,9 +132,12 @@ function DeploymentCard({ name, subtitle, detail, status, icon: Icon }) {
 }
 
 const LeftPanel = memo(({
-  name = "Muhammad Bin Nasir, Muhammad Shahmeer",
-  description = "Computer Science students building scalable digital solutions.",
-  headline = "Software Engineering\n Semester Project.",
+  name = "Muhammad Bin Nasir",
+  description = "Computer Science student building scalable MERN applications.",
+  location = "Multan, Pakistan",
+  email = "Muhammad.243595@gmail.com",
+  linkedin = "https://www.linkedin.com/in/muhammad-bin-nasir-5b790b308/",
+  headline = "MERN stack\npractice project.",
   techStack = defaultTechStack,
   features = defaultFeatures,
   deployments = defaultDeployments,
@@ -226,6 +229,11 @@ const LeftPanel = memo(({
             <p className="mt-3 max-w-xl text-xs sm:text-sm opacity-70" style={{ color: "var(--ink2)" }}>
               {description}
             </p>
+            <div className="mt-4 space-y-2 text-[11px]" style={{ color: "var(--ink3)" }}>
+              <p>Location: {location}</p>
+              <p>Email: <a href={`mailto:${email}`} style={{ color: "var(--accent)" }}>{email}</a></p>
+              <p>LinkedIn: <a href={linkedin} target="_blank" rel="noreferrer" style={{ color: "var(--accent)" }}>Profile</a></p>
+            </div>
           </div>
 
           {/* FEATURES */}
