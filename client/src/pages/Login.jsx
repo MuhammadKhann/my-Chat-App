@@ -67,7 +67,7 @@ const defaultDeployments = [];
 
 function TechCard({ name, subtitle, live, isDarkBG }) {
   return (
-    <div 
+    <div
       className="rounded-lg border p-3 transition-all duration-300 hover:shadow-md"
       style={{
         borderColor: isDarkBG ? "rgba(255,255,255,0.1)" : "var(--border)",
@@ -94,7 +94,7 @@ function TechCard({ name, subtitle, live, isDarkBG }) {
 
 function DeploymentCard({ name, subtitle, detail, status, icon: Icon }) {
   return (
-    <div 
+    <div
       className="rounded-xl border p-4"
       style={{
         borderColor: "var(--border)",
@@ -103,7 +103,7 @@ function DeploymentCard({ name, subtitle, detail, status, icon: Icon }) {
     >
       <div className="flex justify-between items-start">
         <div className="flex gap-3">
-          <div 
+          <div
             className="h-10 w-10 flex items-center justify-center rounded-lg"
             style={{
               background: "var(--accent2)",
@@ -116,7 +116,7 @@ function DeploymentCard({ name, subtitle, detail, status, icon: Icon }) {
             <p className="text-xs" style={{ color: "var(--ink3)" }}>{subtitle}</p>
           </div>
         </div>
-        <span 
+        <span
           className="text-[10px] px-2 py-1 rounded-full font-medium"
           style={{
             background: "rgba(34, 197, 94, 0.1)",
@@ -132,12 +132,7 @@ function DeploymentCard({ name, subtitle, detail, status, icon: Icon }) {
 }
 
 const LeftPanel = memo(({
-  name = "Muhammad Bin Nasir",
-  description = "Computer Science student building scalable MERN applications.",
-  location = "Multan, Pakistan",
-  email = "Muhammad.243595@gmail.com",
-  linkedin = "https://www.linkedin.com/in/muhammad-bin-nasir-5b790b308/",
-  headline = "MERN stack\npractice project.",
+  headline = "MERN stack project.",
   techStack = defaultTechStack,
   features = defaultFeatures,
   deployments = defaultDeployments,
@@ -184,16 +179,26 @@ const LeftPanel = memo(({
         {/* TOP CREATOR BADGE */}
         <div className="mb-10 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div 
+            <div
               className="h-12 w-12 flex items-center justify-center rounded-2xl"
               style={{ background: "var(--card2)", border: "1px solid var(--border)" }}
             >
               <Code2 className="h-6 w-6" color="url(#theme-gradient)" />
             </div>
-            <div>
-              <p className="text-xs font-medium opacity-60" style={{ color: "var(--ink3)" }}>Created By</p>
-              <p className="text-lg font-bold" style={{ color: "var(--ink)" }}>{name}</p>
-              <p className="text-xs font-medium opacity-60" style={{ color: "var(--ink3)" }}>Junior Full Stack Developer</p>
+            <div style={{ flex: 1 }}>
+              <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--accent)" }}>Created By</p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 16px", marginBottom: 6 }}>
+                {[
+                  "M. Bin Nasir (243595)",
+                  "M. Shahmeer (243567)",
+                  "Hamza Asif Butt (243613)",
+                  "M. Arsalan (2435601)",
+                ].map((n) => (
+                  <p key={n} className="text-xs font-bold" style={{ color: "var(--ink)", lineHeight: 1.6 }}>{n}</p>
+                ))}
+              </div>
+              <p className="text-[11px] font-semibold" style={{ color: "var(--ink2)" }}>BSCS-B 4th Semester — Air University</p>
+              <p className="text-[11px] font-medium" style={{ color: "var(--ink2)" }}>Instructor: Muhammad Rashaf Jameel</p>
             </div>
           </div>
 
@@ -207,9 +212,9 @@ const LeftPanel = memo(({
 
           {/* HEADLINE */}
           <div>
-            <h1 
+            <h1
               className="text-lg sm:text-xl lg:text-2xl font-bold leading-tight"
-              style={{ 
+              style={{
                 fontFamily: "'Bricolage Grotesque', sans-serif",
                 color: "var(--ink)"
               }}
@@ -227,13 +232,9 @@ const LeftPanel = memo(({
               ))}
             </h1>
             <p className="mt-3 max-w-xl text-xs sm:text-sm opacity-70" style={{ color: "var(--ink2)" }}>
-              {description}
+              A MERN stack chat application built by BSCS-B 4th Semester students at Air University.
             </p>
-            <div className="mt-4 space-y-2 text-[11px]" style={{ color: "var(--ink3)" }}>
-              <p>Location: {location}</p>
-              <p>Email: <a href={`mailto:${email}`} style={{ color: "var(--accent)" }}>{email}</a></p>
-              <p>LinkedIn: <a href={linkedin} target="_blank" rel="noreferrer" style={{ color: "var(--accent)" }}>Profile</a></p>
-            </div>
+
           </div>
 
           {/* FEATURES */}
@@ -316,7 +317,7 @@ function TopBar({ dark, onToggle, themeId, setThemeId }) {
         }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
             <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-              stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>
         <span style={{
@@ -326,8 +327,8 @@ function TopBar({ dark, onToggle, themeId, setThemeId }) {
         }}>Chat App</span>
         <span style={{
           fontSize: 10, fontWeight: 600, letterSpacing: "0.08em",
-          textTransform: "uppercase", 
-          background: "linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%)", 
+          textTransform: "uppercase",
+          background: "linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%)",
           padding: "3px 8px", borderRadius: 100,
           marginLeft: 2,
           color: "#fff",
@@ -350,10 +351,10 @@ function TopBar({ dark, onToggle, themeId, setThemeId }) {
             <Palette className="h-5 w-5" />
           </button>
           {showPicker && (
-            <ThemePicker 
-              currentTheme={themeId} 
-              onThemeChange={setThemeId} 
-              onClose={() => setShowPicker(false)} 
+            <ThemePicker
+              currentTheme={themeId}
+              onThemeChange={setThemeId}
+              onClose={() => setShowPicker(false)}
             />
           )}
         </div>
@@ -414,9 +415,9 @@ function Login({ setPage, dark, setDark, setUser, themeId, setThemeId }) {
   // 2. INTERNAL THEME STATE REMOVED
 
   const [formData, setFormData] = useState({ identifier: "", password: "" });
-  const [focused, setFocused]   = useState(null);
-  const [btnState, setBtnState] = useState("idle"); 
-  const [showPw, setShowPw]     = useState(false);
+  const [focused, setFocused] = useState(null);
+  const [btnState, setBtnState] = useState("idle");
+  const [showPw, setShowPw] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [comingSoon, setComingSoon] = useState(null);
@@ -459,8 +460,8 @@ function Login({ setPage, dark, setDark, setUser, themeId, setThemeId }) {
     }
   }, []);
 
-  const isMobile  = vw < 900;
-  const isTablet  = vw >= 900 && vw < 1200;
+  const isMobile = vw < 900;
+  const isTablet = vw >= 900 && vw < 1200;
   const isDesktop = vw >= 1200;
 
   const handleLogin = async (e) => {
@@ -481,24 +482,24 @@ function Login({ setPage, dark, setDark, setUser, themeId, setThemeId }) {
 
         // Save the token for Header-based auth (vital for incognito/cross-domain cookies)
         if (data.token) {
-            localStorage.setItem("chatAppToken", data.token);
+          localStorage.setItem("chatAppToken", data.token);
         }
 
         // Only save the session permanently if "Remember Me" is checked
         if (rememberMe) {
-            localStorage.setItem("chatAppUser", JSON.stringify(data));
+          localStorage.setItem("chatAppUser", JSON.stringify(data));
         } else {
-            // Ensure no old sessions remain if the user unchecked it
-            localStorage.removeItem("chatAppUser");
+          // Ensure no old sessions remain if the user unchecked it
+          localStorage.removeItem("chatAppUser");
         }
 
         setBtnState("success");
         setUser(data); // This still sets the user in memory for the current session
         setTimeout(() => {
-            setBtnState("idle");
-            setPage("chat");
+          setBtnState("idle");
+          setPage("chat");
         }, 1400);
-        } else {
+      } else {
         // Instead of alert(data.error)
         setErrorMsg(data.error || "User not found or invalid password.");
         setBtnState("idle");
@@ -682,8 +683,8 @@ function Login({ setPage, dark, setDark, setUser, themeId, setThemeId }) {
       <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
           style={{ animation: "spin 0.8s linear infinite" }}>
-          <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" strokeWidth="3"/>
-          <path d="M12 2a10 10 0 0110 10" stroke="#fff" strokeWidth="3" strokeLinecap="round"/>
+          <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" strokeWidth="3" />
+          <path d="M12 2a10 10 0 0110 10" stroke="#fff" strokeWidth="3" strokeLinecap="round" />
         </svg>
         Signing in…
       </span>
@@ -694,16 +695,16 @@ function Login({ setPage, dark, setDark, setUser, themeId, setThemeId }) {
 
   return (
     <>
-      <div style={{ 
-        height: isMobile ? "auto" : "calc(var(--vh, 1vh) * 100)", 
+      <div style={{
+        height: isMobile ? "auto" : "calc(var(--vh, 1vh) * 100)",
         minHeight: "calc(var(--vh, 1vh) * 100)",
-        display: "flex", 
-        flexDirection: "column", 
-        background: "var(--bg)", 
-        transition: "background 0.3s", 
-        overflow: isMobile ? "visible" : "hidden" 
+        display: "flex",
+        flexDirection: "column",
+        background: "var(--bg)",
+        transition: "background 0.3s",
+        overflow: isMobile ? "visible" : "hidden"
       }}>
-        
+
         {/* TOPBAR */}
         <TopBar dark={dark} onToggle={() => setDark(!dark)} themeId={themeId} setThemeId={setThemeId} />
 
@@ -741,7 +742,7 @@ function Login({ setPage, dark, setDark, setUser, themeId, setThemeId }) {
                 letterSpacing: "-0.02em",
                 display: "inline-block"
               }}>Chat App</h1>
-              
+
               <h2 style={{
                 fontFamily: "'Bricolage Grotesque', sans-serif",
                 fontWeight: 700,
@@ -750,11 +751,11 @@ function Login({ setPage, dark, setDark, setUser, themeId, setThemeId }) {
                 marginBottom: 12,
                 letterSpacing: "-0.02em",
               }}>Welcome Back!</h2>
-              
+
               <p style={{ fontSize: 14, color: "var(--ink2)", marginBottom: 32, lineHeight: 1.5 }}>
                 Don't have an account?{" "}
-                <span 
-                  onClick={() => setPage("register")} 
+                <span
+                  onClick={() => setPage("register")}
                   style={{ color: "var(--accent)", fontWeight: 500, cursor: "pointer", textDecoration: "underline" }}
                 >Create a new account now</span>, it's FREE! Takes less than a minute.
               </p>
@@ -793,11 +794,11 @@ function Login({ setPage, dark, setDark, setUser, themeId, setThemeId }) {
                   <button
                     type="button"
                     onClick={() => setShowPw(p => !p)}
-                    style={{ 
-                      position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", 
-                      background: "none", border: "none", cursor: "pointer", 
+                    style={{
+                      position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)",
+                      background: "none", border: "none", cursor: "pointer",
                       color: "var(--ink3)", fontSize: 13, fontWeight: 500,
-                      display: "flex", alignItems: "center" 
+                      display: "flex", alignItems: "center"
                     }}
                   >
                     {showPw ? "Hide" : "Show"}
@@ -805,18 +806,18 @@ function Login({ setPage, dark, setDark, setUser, themeId, setThemeId }) {
                 </div>
 
                 {/* Remember Me Checkbox */}
-                <div style={{ 
-                  display: "flex", 
-                  alignItems: "center", 
-                  gap: "10px", 
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "10px",
                   marginBottom: "20px",
                 }}>
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     id="rememberMe"
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    style={{ 
+                    style={{
                       cursor: "pointer",
                       width: 18,
                       height: 18,
@@ -830,21 +831,21 @@ function Login({ setPage, dark, setDark, setUser, themeId, setThemeId }) {
 
                 {/* Aesthetic Error Reminder */}
                 {errorMsg && (
-                  <div style={{ 
-                    background: "rgba(239, 68, 68, 0.1)", 
-                    border: "1px solid rgba(239, 68, 68, 0.2)", 
-                    color: "#ef4444", 
-                    padding: "10px 14px", 
-                    borderRadius: "var(--rs)", 
-                    fontSize: "12px", 
-                    fontWeight: 500, 
+                  <div style={{
+                    background: "rgba(239, 68, 68, 0.1)",
+                    border: "1px solid rgba(239, 68, 68, 0.2)",
+                    color: "#ef4444",
+                    padding: "10px 14px",
+                    borderRadius: "var(--rs)",
+                    fontSize: "12px",
+                    fontWeight: 500,
                     marginBottom: "16px",
                     display: "flex",
                     alignItems: "center",
                     gap: "8px",
-                    animation: "fadeIn 0.3s ease" 
+                    animation: "fadeIn 0.3s ease"
                   }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
                     {errorMsg}
                   </div>
                 )}

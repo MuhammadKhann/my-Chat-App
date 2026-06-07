@@ -44,7 +44,7 @@ const defaultDeployments = [];
 
 function TechCard({ name, subtitle, live, isDarkBG }) {
   return (
-    <div 
+    <div
       className="rounded-lg border p-3 transition-all duration-300 hover:shadow-md"
       style={{
         borderColor: isDarkBG ? "rgba(255,255,255,0.1)" : "var(--border)",
@@ -109,7 +109,7 @@ function TopBar({ dark, onToggle, themeId, setThemeId }) {
         }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
             <path d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-              stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </div>
         <span style={{
@@ -119,8 +119,8 @@ function TopBar({ dark, onToggle, themeId, setThemeId }) {
         }}>Chat App</span>
         <span style={{
           fontSize: 10, fontWeight: 600, letterSpacing: "0.08em",
-          textTransform: "uppercase", 
-          background: "linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%)", 
+          textTransform: "uppercase",
+          background: "linear-gradient(135deg, var(--gradient-start) 0%, var(--gradient-end) 100%)",
           padding: "3px 8px", borderRadius: 100,
           marginLeft: 2,
           color: "#fff",
@@ -144,10 +144,10 @@ function TopBar({ dark, onToggle, themeId, setThemeId }) {
             <Palette className="h-5 w-5" />
           </button>
           {showPicker && (
-            <ThemePicker 
-              currentTheme={themeId} 
-              onThemeChange={setThemeId} 
-              onClose={() => setShowPicker(false)} 
+            <ThemePicker
+              currentTheme={themeId}
+              onThemeChange={setThemeId}
+              onClose={() => setShowPicker(false)}
             />
           )}
         </div>
@@ -292,12 +292,7 @@ const getPasswordStrength = (password) => {
 
 // ─── LeftPanel Component (from Login.jsx) ───────────────────────────────────
 const LeftPanel = memo(({
-  name = "Muhammad Bin Nasir",
-  description = "Computer Science student building scalable MERN applications.",
-  location = "Multan, Pakistan",
-  email = "Muhammad.243595@gmail.com",
-  linkedin = "https://www.linkedin.com/in/muhammad-bin-nasir-5b790b308/",
-  headline = "MERN stack\npractice project.",
+  headline = "MERN stack project.",
   techStack = defaultTechStack,
   features = defaultFeatures,
   deployments = defaultDeployments,
@@ -344,16 +339,26 @@ const LeftPanel = memo(({
         {/* TOP CREATOR BADGE */}
         <div className="mb-10 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div 
+            <div
               className="h-12 w-12 flex items-center justify-center rounded-2xl"
               style={{ background: "var(--card2)", border: "1px solid var(--border)" }}
             >
               <Code2 className="h-6 w-6" color="url(#theme-gradient)" />
             </div>
-            <div>
-              <p className="text-xs font-medium opacity-60" style={{ color: "var(--ink3)" }}>Created By</p>
-              <p className="text-lg font-bold" style={{ color: "var(--ink)" }}>{name}</p>
-              <p className="text-xs font-medium opacity-60" style={{ color: "var(--ink3)" }}>Junior Full Stack Developer</p>
+            <div style={{ flex: 1 }}>
+              <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--accent)" }}>Created By</p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 16px", marginBottom: 6 }}>
+                {[
+                  "M. Bin Nasir (243595)",
+                  "M. Shahmeer (243567)",
+                  "Hamza Asif Butt (243613)",
+                  "M. Arsalan (2435601)",
+                ].map((n) => (
+                  <p key={n} className="text-xs font-bold" style={{ color: "var(--ink)", lineHeight: 1.6 }}>{n}</p>
+                ))}
+              </div>
+              <p className="text-[11px] font-semibold" style={{ color: "var(--ink2)" }}>BSCS-B 4th Semester — Air University</p>
+              <p className="text-[11px] font-medium" style={{ color: "var(--ink2)" }}>Instructor: Muhammad Rashaf Jameel</p>
             </div>
           </div>
 
@@ -367,9 +372,9 @@ const LeftPanel = memo(({
 
           {/* HEADLINE */}
           <div>
-            <h1 
+            <h1
               className="text-lg sm:text-xl lg:text-2xl font-bold leading-tight"
-              style={{ 
+              style={{
                 fontFamily: "'Bricolage Grotesque', sans-serif",
                 color: "var(--ink)"
               }}
@@ -387,13 +392,9 @@ const LeftPanel = memo(({
               ))}
             </h1>
             <p className="mt-3 max-w-xl text-xs sm:text-sm opacity-70" style={{ color: "var(--ink2)" }}>
-              {description}
+              A MERN stack chat application built by BSCS-B 4th Semester students at Air University.
             </p>
-            <div className="mt-4 space-y-2 text-[11px]" style={{ color: "var(--ink3)" }}>
-              <p>Location: {location}</p>
-              <p>Email: <a href={`mailto:${email}`} style={{ color: "var(--accent)" }}>{email}</a></p>
-              <p>LinkedIn: <a href={linkedin} target="_blank" rel="noreferrer" style={{ color: "var(--accent)" }}>Profile</a></p>
-            </div>
+
           </div>
 
           {/* FEATURES */}
@@ -441,21 +442,21 @@ const LeftPanel = memo(({
 });
 
 // ─── Main Register Component (Modified signature) ───────────────────────────
-function Register({ setPage, dark, setDark, themeId, setThemeId }) { 
+function Register({ setPage, dark, setDark, themeId, setThemeId }) {
   const vw = useViewport();
-  
+
   // Local theme state removed 
 
   const [formData, setFormData] = useState({ username: "", email: "", password: "" });
-  const [focused, setFocused]   = useState(null);
+  const [focused, setFocused] = useState(null);
   const [btnState, setBtnState] = useState("idle"); // idle | loading | success
   const [errorMsg, setErrorMsg] = useState("");
   const [showPw, setShowPw] = useState(false);
   const passwordStrength = getPasswordStrength(formData.password);
 
   // Breakpoints
-  const isMobile  = vw < 900;
-  const isTablet  = vw >= 900 && vw < 1200;
+  const isMobile = vw < 900;
+  const isTablet = vw >= 900 && vw < 1200;
   const isDesktop = vw >= 1200;
 
   // ── handleRegister (your backend logic) ──────────────────────────────────
@@ -472,31 +473,31 @@ function Register({ setPage, dark, setDark, themeId, setThemeId }) {
     setBtnState("loading");
 
     try {
-        const response = await fetch(api("/api/auth/register"), {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            credentials: 'include',
-            body: JSON.stringify(formData),
-        });
+      const response = await fetch(api("/api/auth/register"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: 'include',
+        body: JSON.stringify(formData),
+      });
 
-        const data = await response.json();
-        if (response.ok) {
-            setBtnState("success");
-            setTimeout(() => {
-                setBtnState("idle");
-                setPage("login");
-            }, 1800);
-        } else {
-            // --- NEW: DYNAMIC ERROR BINDING ---
-            // This will now perfectly display the specific message from our backend update
-            setErrorMsg(data.error || "Registration failed. Please try again.");
-            setBtnState("idle");
-            setTimeout(() => setErrorMsg(""), 4000); // Clear after 4 seconds
-        }
-    } catch (err) {
-        setErrorMsg("Network error. Is the server running?");
+      const data = await response.json();
+      if (response.ok) {
+        setBtnState("success");
+        setTimeout(() => {
+          setBtnState("idle");
+          setPage("login");
+        }, 1800);
+      } else {
+        // --- NEW: DYNAMIC ERROR BINDING ---
+        // This will now perfectly display the specific message from our backend update
+        setErrorMsg(data.error || "Registration failed. Please try again.");
         setBtnState("idle");
-        setTimeout(() => setErrorMsg(""), 4000);
+        setTimeout(() => setErrorMsg(""), 4000); // Clear after 4 seconds
+      }
+    } catch (err) {
+      setErrorMsg("Network error. Is the server running?");
+      setBtnState("idle");
+      setTimeout(() => setErrorMsg(""), 4000);
     }
   };
 
@@ -506,8 +507,8 @@ function Register({ setPage, dark, setDark, themeId, setThemeId }) {
       <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
           style={{ animation: "spin 0.8s linear infinite" }}>
-          <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" strokeWidth="3"/>
-          <path d="M12 2a10 10 0 0110 10" stroke="#fff" strokeWidth="3" strokeLinecap="round"/>
+          <circle cx="12" cy="12" r="10" stroke="rgba(255,255,255,0.3)" strokeWidth="3" />
+          <path d="M12 2a10 10 0 0110 10" stroke="#fff" strokeWidth="3" strokeLinecap="round" />
         </svg>
         Creating account…
       </span>
@@ -520,35 +521,35 @@ function Register({ setPage, dark, setDark, themeId, setThemeId }) {
   const ShieldIcon = (
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
       <path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-        stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
   const LockIcon = (
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
       <path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-        stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
   const BoltIcon = (
     <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
       <path d="M13 10V3L4 14h7v7l9-11h-7z"
-        stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+        stroke="var(--accent)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 
 
   return (
     <>
-      <div style={{ 
-        height: isMobile ? "auto" : "calc(var(--vh, 1vh) * 100)", 
+      <div style={{
+        height: isMobile ? "auto" : "calc(var(--vh, 1vh) * 100)",
         minHeight: "calc(var(--vh, 1vh) * 100)",
-        display: "flex", 
-        flexDirection: "column", 
-        background: "var(--bg)", 
-        transition: "background 0.3s", 
-        overflow: isMobile ? "visible" : "hidden" 
+        display: "flex",
+        flexDirection: "column",
+        background: "var(--bg)",
+        transition: "background 0.3s",
+        overflow: isMobile ? "visible" : "hidden"
       }}>
-        
+
         {/* TopBar */}
         <TopBar dark={dark} onToggle={() => setDark(!dark)} />
 
@@ -663,21 +664,21 @@ function Register({ setPage, dark, setDark, themeId, setThemeId }) {
 
                 {/* Aesthetic Error Reminder */}
                 {errorMsg && (
-                  <div style={{ 
-                    background: "rgba(239, 68, 68, 0.1)", 
-                    border: "1px solid rgba(239, 68, 68, 0.2)", 
-                    color: "#ef4444", 
-                    padding: "10px 14px", 
-                    borderRadius: "var(--rs)", 
-                    fontSize: "12px", 
-                    fontWeight: 500, 
+                  <div style={{
+                    background: "rgba(239, 68, 68, 0.1)",
+                    border: "1px solid rgba(239, 68, 68, 0.2)",
+                    color: "#ef4444",
+                    padding: "10px 14px",
+                    borderRadius: "var(--rs)",
+                    fontSize: "12px",
+                    fontWeight: 500,
                     marginBottom: "14px",
                     display: "flex",
                     alignItems: "center",
                     gap: "8px",
-                    animation: "fadeIn 0.3s ease" 
+                    animation: "fadeIn 0.3s ease"
                   }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
                     {errorMsg}
                   </div>
                 )}
