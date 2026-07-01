@@ -361,7 +361,7 @@ const LeftPanel = memo(({
             <div style={{ flex: 1 }}>
               <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--accent)" }}>Created By</p>
               <p className="text-xs font-bold mb-2" style={{ color: "var(--ink)", lineHeight: 1.6 }}>
-                Muhammad Bin Nasir (243595)
+                Muhammad Bin Nasir
               </p>
               <div style={{ display: "flex", gap: 12, marginBottom: 6 }}>
                 <a href="https://github.com/MuhammadKhann" target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--ink2)", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>
@@ -405,7 +405,7 @@ const LeftPanel = memo(({
               ))}
             </h1>
             <p className="mt-3 max-w-xl text-xs sm:text-sm opacity-70" style={{ color: "var(--ink2)" }}>
-              A MERN stack chat application built by BSCS-B 4th Semester students at Air University.
+              A MERN stack chat application built by 4th Semester student at Air University.
             </p>
 
           </div>
