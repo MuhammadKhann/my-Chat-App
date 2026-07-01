@@ -180,7 +180,7 @@ const LeftPanel = memo(({
       {/* SCROLL CONTAINER */}
       <div className={`h-full ${disableScroll ? "" : "overflow-y-auto"} scroll-smooth px-6 py-10 sm:px-10 lg:px-14 hide-scrollbar`}>
 
-      {/* TOP CREATOR BADGE */}
+{/* TOP CREATOR BADGE */}
         <div className="mb-10 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div
@@ -195,21 +195,11 @@ const LeftPanel = memo(({
                 Muhammad Bin Nasir (243595)
               </p>
               <div style={{ display: "flex", gap: 12, marginBottom: 6 }}>
-                
-                  href="https://github.com/MuhammadKhann"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--ink2)", fontSize: 11, fontWeight: 600, textDecoration: "none" }}
-                >
+                <a href="https://github.com/MuhammadKhann" target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--ink2)", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>
                   <Github className="h-3.5 w-3.5" />
                   GitHub
                 </a>
-                
-                  href="https://www.linkedin.com/in/muhammad-bin-nasir-5b790b308"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--ink2)", fontSize: 11, fontWeight: 600, textDecoration: "none" }}
-                >
+                <a href="https://www.linkedin.com/in/muhammad-bin-nasir-5b790b308" target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--ink2)", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>
                   <Linkedin className="h-3.5 w-3.5" />
                   LinkedIn
                 </a>
@@ -218,18 +208,10 @@ const LeftPanel = memo(({
               <p className="text-[11px] font-medium" style={{ color: "var(--ink2)" }}>Instructor: Muhammad Rashaf Jameel</p>
             </div>
           </div>
-
           <span className="hidden sm:flex items-center gap-2 text-xs" style={{ color: "var(--ink3)" }}>
             <Sparkles className="h-4 w-4" color="url(#theme-gradient)" />
           </span>
         </div>
-</div>
-
-          <span className="hidden sm:flex items-center gap-2 text-xs" style={{ color: "var(--ink3)" }}>
-            <Sparkles className="h-4 w-4" color="url(#theme-gradient)" />
-          </span>
-        </div>
-
         {/* MAIN CONTENT */}
         <div className="space-y-10">
 
