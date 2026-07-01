@@ -376,7 +376,7 @@ const LeftPanel = memo(({
               <p className="text-[11px] font-medium" style={{ color: "var(--ink2)" }}>Instructor: Muhammad Rashaf Jameel</p>
             </div>
           </div>
-        
+
           <span className="hidden sm:flex items-center gap-2 text-xs" style={{ color: "var(--ink3)" }}>
             <Sparkles className="h-4 w-4" color="url(#theme-gradient)" />
           </span>
