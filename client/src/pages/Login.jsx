@@ -180,7 +180,7 @@ const LeftPanel = memo(({
       {/* SCROLL CONTAINER */}
       <div className={`h-full ${disableScroll ? "" : "overflow-y-auto"} scroll-smooth px-6 py-10 sm:px-10 lg:px-14 hide-scrollbar`}>
 
-       {/* TOP CREATOR BADGE */}
+      {/* TOP CREATOR BADGE */}
         <div className="mb-10 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div
