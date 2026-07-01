@@ -1,6 +1,6 @@
 import { useState, useEffect, memo } from "react";
 import { api } from "../services/api";
-import { Palette, Code2, Sparkles, MessageSquare, Video, Lock, Globe, Image, Layers, Smartphone, CheckCircle2, Zap, Search, ShieldCheck, Database, Cloud, Bell, Cpu } from "lucide-react";
+import { Palette, Code2, Sparkles, MessageSquare, Video, Lock, Globe, Image, Layers, Smartphone, CheckCircle2, Zap, Search, ShieldCheck, Database, Cloud, Bell, Cpu, Github, Linkedin } from "lucide-react";
 import ThemePicker from "../components/ThemePicker";
 
 /*
@@ -297,6 +297,7 @@ const LeftPanel = memo(({
   features = defaultFeatures,
   deployments = defaultDeployments,
   className = "",
+  style = {},
   disableScroll = false,
 }) => {
   return (
@@ -307,6 +308,7 @@ const LeftPanel = memo(({
         color: "var(--ink)",
         borderRight: disableScroll ? "none" : "1px solid var(--border)",
         borderTop: disableScroll ? "1px solid var(--border)" : "none",
+        ...style,
       }}
     >
       <style>{`
@@ -347,21 +349,38 @@ const LeftPanel = memo(({
             </div>
             <div style={{ flex: 1 }}>
               <p className="text-xs font-semibold uppercase tracking-widest mb-2" style={{ color: "var(--accent)" }}>Created By</p>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 16px", marginBottom: 6 }}>
-                {[
-                  "M. Bin Nasir (243595)",
-                  "M. Shahmeer (243567)",
-                  "Hamza Asif Butt (243613)",
-                  "M. Arsalan (2435601)",
-                ].map((n) => (
-                  <p key={n} className="text-xs font-bold" style={{ color: "var(--ink)", lineHeight: 1.6 }}>{n}</p>
-                ))}
+              <p className="text-xs font-bold mb-2" style={{ color: "var(--ink)", lineHeight: 1.6 }}>
+                Muhammad Bin Nasir (243595)
+              </p>
+              <div style={{ display: "flex", gap: 12, marginBottom: 6 }}>
+                
+                  href="https://github.com/MuhammadKhann"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--ink2)", fontSize: 11, fontWeight: 600, textDecoration: "none" }}
+                >
+                  <Github className="h-3.5 w-3.5" />
+                  GitHub
+                </a>
+                
+                  href="https://www.linkedin.com/in/muhammad-bin-nasir-5b790b308"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--ink2)", fontSize: 11, fontWeight: 600, textDecoration: "none" }}
+                >
+                  <Linkedin className="h-3.5 w-3.5" />
+                  LinkedIn
+                </a>
               </div>
               <p className="text-[11px] font-semibold" style={{ color: "var(--ink2)" }}>BSCS-B 4th Semester — Air University</p>
               <p className="text-[11px] font-medium" style={{ color: "var(--ink2)" }}>Instructor: Muhammad Rashaf Jameel</p>
             </div>
           </div>
-
+        
+          <span className="hidden sm:flex items-center gap-2 text-xs" style={{ color: "var(--ink3)" }}>
+            <Sparkles className="h-4 w-4" color="url(#theme-gradient)" />
+          </span>
+        </div>
           <span className="hidden sm:flex items-center gap-2 text-xs" style={{ color: "var(--ink3)" }}>
             <Sparkles className="h-4 w-4" color="url(#theme-gradient)" />
           </span>
@@ -561,10 +580,10 @@ function Register({ setPage, dark, setDark, themeId, setThemeId }) {
           overflow: isMobile ? "visible" : "hidden",
         }}>
 
-          {/* LEFT PANEL - WELCOME (70% on desktop, hidden on mobile) */}
-          {!isMobile && (
-            <LeftPanel className="flex-[0_0_70%]" />
-          )}
+        {/* LEFT PANEL - WELCOME (70% on desktop, hidden on mobile) */}
+        {!isMobile && (
+          <LeftPanel style={{ flex: "0 0 70%", width: "70%" }} />
+        )}
 
           {/* RIGHT PANEL — FORM (30% on desktop, full on mobile) */}
           <div style={{
@@ -743,7 +762,7 @@ function Register({ setPage, dark, setDark, themeId, setThemeId }) {
 
       {/* MOBILE VIEW: LEFT PANEL AT BOTTOM */}
       {isMobile && (
-        <LeftPanel className="w-full" disableScroll={true} />
+        <LeftPanel style={{ width: "100%" }} disableScroll={true} />
       )}
 
     </>
