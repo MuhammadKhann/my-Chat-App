@@ -223,9 +223,6 @@ const LeftPanel = memo(({
             <Sparkles className="h-4 w-4" color="url(#theme-gradient)" />
           </span>
         </div>
-  <span className="hidden sm:flex items-center gap-2 text-xs" style={{ color: "var(--ink3)" }}>
-    <Sparkles className="h-4 w-4" color="url(#theme-gradient)" />
-  </span>
 </div>
 
           <span className="hidden sm:flex items-center gap-2 text-xs" style={{ color: "var(--ink3)" }}>
