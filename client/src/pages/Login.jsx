@@ -4,29 +4,7 @@ import { api } from "../services/api";
 import ThemePicker from "../components/ThemePicker";
 import GoogleAuthButton from "../components/GoogleAuthButton";
 import authService from "../services/authService";
-import {
-  ArrowRight,
-  Code2,
-  Cloud,
-  Globe,
-  MessageSquare,
-  ShieldCheck,
-  Sparkles,
-  Zap,
-  Video,
-  Lock,
-  Image,
-  Layers,
-  Smartphone,
-  CheckCircle2,
-  Palette,
-  Bell,
-  Search,
-  Database,
-  Cpu,
-  Github,
-  Linkedin,
-} from "lucide-react";
+import { ArrowRight, Code2, Cloud, Globe, MessageSquare, ShieldCheck, Sparkles, Zap, Video, Lock, Image, Layers, Smartphone, CheckCircle2, Palette, Bell, Search, Database, Cpu } from "lucide-react";
 
 /*
 UPDATED LEFT PANEL
@@ -37,6 +15,17 @@ UPDATED LEFT PANEL
 ✔ Clean + production-ready
 */
 
+const GithubIcon = (props) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
+    <path d="M12 .5C5.65.5.5 5.65.5 12c0 5.09 3.29 9.4 7.86 10.93.57.1.79-.25.79-.55 0-.27-.01-1.16-.02-2.11-3.2.7-3.88-1.36-3.88-1.36-.52-1.34-1.28-1.69-1.28-1.69-1.04-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.23-1.28-5.23-5.68 0-1.26.45-2.29 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11 11 0 0 1 5.79 0c2.2-1.49 3.17-1.18 3.17-1.18.64 1.59.24 2.76.12 3.05.74.8 1.19 1.83 1.19 3.09 0 4.41-2.69 5.38-5.25 5.67.41.36.78 1.06.78 2.14 0 1.55-.01 2.79-.01 3.17 0 .3.21.66.8.55A11.51 11.51 0 0 0 23.5 12c0-6.35-5.15-11.5-11.5-11.5Z"/>
+  </svg>
+);
+
+const LinkedinIcon = (props) => (
+  <svg viewBox="0 0 24 24" fill="currentColor" {...props}>
+    <path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.34V9h3.42v1.56h.05c.48-.9 1.64-1.85 3.38-1.85 3.61 0 4.28 2.38 4.28 5.47v6.27ZM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13ZM7.12 20.45H3.56V9h3.56v11.45Z"/>
+  </svg>
+);
 const defaultTechStack = [
   { name: "MongoDB", subtitle: "Database" },
   { name: "Express.js", subtitle: "Backend" },
@@ -196,13 +185,13 @@ const LeftPanel = memo(({
               </p>
               <div style={{ display: "flex", gap: 12, marginBottom: 6 }}>
                 <a href="https://github.com/MuhammadKhann" target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--ink2)", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>
-                  <Github className="h-3.5 w-3.5" />
-                  GitHub
-                </a>
-                <a href="https://www.linkedin.com/in/muhammad-bin-nasir-5b790b308" target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--ink2)", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>
-                  <Linkedin className="h-3.5 w-3.5" />
-                  LinkedIn
-                </a>
+                <GithubIcon className="h-3.5 w-3.5" />
+                GitHub
+              </a>
+              <a href="https://www.linkedin.com/in/muhammad-bin-nasir-5b790b308" target="_blank" rel="noopener noreferrer" style={{ display: "flex", alignItems: "center", gap: 4, color: "var(--ink2)", fontSize: 11, fontWeight: 600, textDecoration: "none" }}>
+                <LinkedinIcon className="h-3.5 w-3.5" />
+                LinkedIn
+              </a>
               </div>
               <p className="text-[11px] font-semibold" style={{ color: "var(--ink2)" }}>BSCS-B 4th Semester — Air University</p>
               <p className="text-[11px] font-medium" style={{ color: "var(--ink2)" }}>Instructor: Muhammad Rashaf Jameel</p>
@@ -237,7 +226,7 @@ const LeftPanel = memo(({
               ))}
             </h1>
             <p className="mt-3 max-w-xl text-xs sm:text-sm opacity-70" style={{ color: "var(--ink2)" }}>
-              A MERN stack chat application built by BSCS-B 4th Semester students at Air University.
+              A MERN stack chat application built by 4th Semester student at Air University.
             </p>
 
           </div>
